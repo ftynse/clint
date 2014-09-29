@@ -32,13 +32,23 @@ T *oslListTransform(T *container, Func f, Args... args) {
 
 /// Call a function on an OSL object as if this object was not part of the list.
 /// Function f takes an OSL object of intereset as the first argument, other arguments are optional.
-template <typename T, typename Func, typename... Args>
-inline typename std::result_of<Func>::type oslListNoSeqCall(T *ptr, const Func f, Args... args) {
+template <typename T, typename Func, typename... Args,
+          typename std::enable_if<!std::is_void<std::result_of<Func(T *, Args...)>>::value>::type * = nullptr>
+inline auto oslListNoSeqCall(T *ptr, Func f, Args... args) -> decltype(f(ptr, args...)) {
   T *keeper = ptr->next;
   ptr->next = nullptr;
-  typename std::result_of<Func>::type result = f(ptr, args...);
+  f(ptr, args...);
   ptr->next = keeper;
-  if (std::is_move_assignable<typename std::result_of<Func>::type>::value) {
+}
+
+template <typename T, typename Func, typename... Args,
+          typename std::enable_if<std::is_void<std::result_of<Func(T *, Args...)>>::value>::type * = nullptr>
+inline auto oslListNoSeqCall(T *ptr, Func f, Args... args) -> decltype(f(ptr, args...)) {
+  T *keeper = ptr->next;
+  ptr->next = nullptr;
+  auto result = f(ptr, args...);
+  ptr->next = keeper;
+  if (std::is_move_assignable<decltype(f(ptr, args...))>::value) {
     return std::move(result);
   } else {
     return result;
