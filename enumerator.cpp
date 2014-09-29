@@ -38,16 +38,20 @@ std::vector<std::vector<int> > ISLEnumerator::enumerate(osl_relation_p relation,
   allDimensions.reserve(relation->nb_columns - 2);
   for (int i = 0; i < relation->nb_columns - 2; i++) {
     if (i < relation->nb_input_dims + relation->nb_output_dims ||
-        i > relation->nb_input_dims + relation->nb_output_dims + relation->nb_local_dims) {
+        i >= relation->nb_input_dims + relation->nb_output_dims + relation->nb_local_dims) {
       allDimensions.push_back(i);
     }
   }
+  dimensionsToProjectOut.reserve(allDimensions.size() - dimensions.size());
   std::set_difference(std::begin(allDimensions),
                       std::end(allDimensions),
                       std::begin(dimensions),
                       std::end(dimensions),
-                      std::begin(dimensionsToProjectOut));
+                      std::back_inserter(dimensionsToProjectOut));
 
+  // Sort dimensions to project out in the descending order.
+  // Thus, the projection will not change the indices of the next dimensions to project out.
+  std::sort(std::begin(dimensionsToProjectOut), std::end(dimensionsToProjectOut), std::greater<int>());
   for (int dim : dimensionsToProjectOut) {
     isl_dim_type dim_type;
     int index;

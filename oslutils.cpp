@@ -3,6 +3,8 @@
 
 #include <osl/osl.h>
 
+#include <clay/beta.h>
+
 osl_relation_p oslApplyScattering(osl_statement_p stmt) {
   osl_relation_p domain_union_part, scattering_union_part;
   osl_relation_p scattering = osl_relation_clone(stmt->scattering);
@@ -180,20 +182,31 @@ osl_relation_p oslRelationFixAllParameters(osl_relation_p relation, int value) {
   return oslRelationFixParameters(relation, values);
 }
 
-osl_scop_p prepareEnumeration(osl_scop_p scop) {
-  osl_scop_p enumeratable = osl_scop_clone(scop);
-  osl_relation_p fixedContext = oslRelationsFixAllParameters(scop->context, 4); // FIXME: hardcoded value 4
-
+std::vector<int> betaFromClay(clay_array_p beta) {
+  std::vector<int> betavector;
+  betavector.reserve(beta->size);
+  std::copy(beta->data, beta->data + beta->size, std::back_inserter(betavector));
+  return std::move(betavector);
 }
 
+clay_array_p clayBetaFromVector(const std::vector<int> &betaVector) {
+  clay_array_p beta = clay_array_malloc();
+  for (int i : betaVector) {
+    clay_array_add(beta, i);
+  }
+  return beta;
+}
 
-
-
-
-
-
-
-
-
-
-
+BetaMap oslBetaMap(osl_scop_p scop) {
+  BetaMap betaMap;
+  // FIXME: betas are duplicate in multiple scops
+  oslListForeach(scop, [&betaMap](osl_scop_p scop_part) {
+    oslListForeach(scop_part->statement, [scop_part,&betaMap](osl_statement_p stmt) {
+      oslListForeach(stmt->scattering, [scop_part,stmt,&betaMap](osl_relation_p relation) {
+        clay_array_p beta = clay_beta_extract(relation);
+        betaMap[betaFromClay(beta)] = std::make_tuple(scop_part, stmt, relation);
+      });
+    });
+  });
+  return std::move(betaMap);
+}

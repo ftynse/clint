@@ -3,7 +3,11 @@
 
 #include <osl/osl.h>
 
+#include <clay/beta.h>
+
 #include <functional>
+#include <map>
+#include <tuple>
 #include <utility>
 
 /// OpenScop linked-list foreach
@@ -80,5 +84,15 @@ inline osl_relation_p oslRelationsFixAllParameters(osl_relation_p relation, int 
 inline osl_relation_p oslRelationsWithContext(osl_relation_p relation, osl_relation_p context) {
   return oslListTransform(relation, &oslRelationWithContext, context);
 }
+
+// Vectors are lexicographically-comparable.
+typedef std::map<std::vector<int>,
+                 std::tuple<osl_scop_p, osl_statement_p, osl_relation_p>
+                > BetaMap;
+
+BetaMap oslBetaMap(osl_scop_p scop);
+
+std::vector<int> betaFromClay(clay_array_p beta);
+clay_array_p clayBetaFromVector(const std::vector<int> &betaVector);
 
 #endif // OSLUTILS_H
