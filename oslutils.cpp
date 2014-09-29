@@ -199,12 +199,11 @@ clay_array_p clayBetaFromVector(const std::vector<int> &betaVector) {
 
 BetaMap oslBetaMap(osl_scop_p scop) {
   BetaMap betaMap;
-  // FIXME: betas are duplicate in multiple scops
-  oslListForeach(scop, [&betaMap](osl_scop_p scop_part) {
-    oslListForeach(scop_part->statement, [scop_part,&betaMap](osl_statement_p stmt) {
-      oslListForeach(stmt->scattering, [scop_part,stmt,&betaMap](osl_relation_p relation) {
+  oslListNoSeqCall(scop, [&betaMap](osl_scop_p single_scop) {
+    oslListForeach(single_scop->statement, [single_scop,&betaMap](osl_statement_p stmt) {
+      oslListForeach(stmt->scattering, [single_scop,stmt,&betaMap](osl_relation_p relation) {
         clay_array_p beta = clay_beta_extract(relation);
-        betaMap[betaFromClay(beta)] = std::make_tuple(scop_part, stmt, relation);
+        betaMap[betaFromClay(beta)] = std::make_tuple(single_scop, stmt, relation);
       });
     });
   });
