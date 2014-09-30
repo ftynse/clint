@@ -32,7 +32,7 @@ public:
     return statement_->program();
   }
 
-  void setupFromPoints__(std::vector<std::vector<int>> &&points);
+  void setProjectedPoints(std::vector<std::vector<int>> &&points);
 
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
   QRectF boundingRect() const;

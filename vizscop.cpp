@@ -4,10 +4,15 @@
 #include "vizstatement.h"
 
 VizScop::VizScop(osl_scop_p scop, VizProgram *parent) :
-  QObject(parent), program_(parent) {
-  osl_statement_p stmt;
-  LL_FOREACH(stmt, scop->statement) {
+  QObject(parent), m_scop_part(scop), program_(parent) {
+  m_betaMap = oslBetaMap(scop);
+  oslListForeach(scop->statement, [this](osl_statement_p stmt) {
     VizStatement *vizStmt = new VizStatement(stmt, this);
-    statements_.push_back(vizStmt);
-  }
+    oslListForeach(stmt->scattering, [this,vizStmt](osl_relation_p scatter) {
+      m_vizBetaMap[betaExtract(scatter)] = vizStmt;
+    });
+  });
+
+  // FIXME: hardcoded parameter value
+  m_fixedContext = oslRelationFixAllParameters(m_scop_part->context, 4);
 }

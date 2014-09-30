@@ -14,12 +14,14 @@ public:
   explicit VizStatement(osl_statement_p stmt, VizScop *parent = nullptr);
 
   VizScop *scop() const {
-    return scop_;
+    return m_scop;
   }
 
   VizProgram *program() const {
-    return scop_->program();
+    return m_scop->program();
   }
+
+  std::vector<std::vector<int>> projectOn(int horizontalDimIdx, int verticalDimIdx, const std::vector<int> &betaVector) const;
 
 //  QVector<int> scatteredAlphaBeta() const {
 
@@ -29,7 +31,8 @@ signals:
 public slots:
 
 private:
-  VizScop *scop_;
+  VizScop *m_scop;
+  osl_statement_p m_statement;
 };
 
 #endif // VIZSTATEMENT_H

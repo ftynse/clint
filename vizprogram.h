@@ -4,11 +4,11 @@
 #include <QHash>
 #include <QObject>
 #include <QSet>
-#include <QSharedPointer>
 #include <QVector>
-#include <QWeakPointer>
 
 #include <osl/osl.h>
+
+#include "enumerator.h"
 
 class VizStatement;
 class VizScop;
@@ -18,6 +18,7 @@ class VizProgram : public QObject {
   Q_OBJECT
 public:
   explicit VizProgram(osl_scop_p scop, QObject *parent = 0);
+  ~VizProgram();
 
   QSet<VizStatement *> statementsInCoordinateSystem(VizCoordinateSystem *system) const {
     return csToStmt_.values(system).toSet();
@@ -25,6 +26,19 @@ public:
 
   QSet<VizCoordinateSystem *> coordinateSystemsForStatement(VizStatement *stmt) const {
     return stmtToCS_.values(stmt).toSet();
+  }
+
+  osl_scop_p scop() const {
+    return m_scop;
+  }
+
+  Enumerator *enumerator() const {
+    return m_enumerator;
+  }
+
+  VizScop *operator [](int idx) {
+    CLINT_ASSERT(idx < m_scops.size(), "Indexed access out of bounds");
+    return m_scops.at(idx);
   }
 
 signals:
@@ -39,7 +53,11 @@ private:
   QMultiHash<VizCoordinateSystem *, VizStatement *> csToStmt_;
 
   /** A vector of all scops in order of their execution flow */
-  QVector<VizScop *> scops_;
+  QVector<VizScop *> m_scops;
+
+  osl_scop_p m_scop;
+
+  Enumerator *m_enumerator;
 };
 
 #endif // VIZPROGRAM_H

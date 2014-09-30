@@ -3,38 +3,21 @@
 #include "vizprogram.h"
 #include "vizscop.h"
 
-#include <isl/ctx.h>
-#include <isl/set.h>
-#include <isl/map.h>
+VizProgram::VizProgram(osl_scop_p scop, QObject *parent) :
+  QObject(parent), m_scop(scop) {
 
-#include <osl/relation.h>
+  // TODO: factory that concentrates osl-related creation?
+  // AZ: I think it is okay for general objects (program, scop, stmt, stmtoccurence) to use osl.
+  // They may accept a different constructor as long as they provide the same interface for the
+  // coordinate system part.
+  oslListForeach(scop, [this](osl_scop_p sc) {
+    VizScop *vizScop = new VizScop(sc, this);
+    m_scops.push_back(vizScop);
+  });
 
-#include <piplib/piplibMP.h>
-
-#include <tuple>
-#include <functional>
-#include <utility>
-
-
-template <typename T>
-T *osl_list_prev(T *var, T *container) {
-  T *t;
-  for (t = container; t != nullptr; t = t->next) {
-    if (t->next == var) {
-      break;
-    }
-  }
-  return t;
+  m_enumerator = new ISLEnumerator;
 }
 
-VizProgram::VizProgram(osl_scop_p scop, QObject *parent) :
-  QObject(parent) {
-
-  osl_scop_p sc;
-  LL_FOREACH(sc, scop) {
-    VizScop *vizScop = new VizScop(scop, this);
-    scops_.push_back(vizScop);
-  }
-
-  osl_names_p names = osl_scop_names(scop);
+VizProgram::~VizProgram() {
+  delete m_enumerator;
 }

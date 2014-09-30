@@ -19,8 +19,7 @@ public:
   }
 
   void buildFromScop__(osl_scop_p scop);
-  void createCoordinateSystem(const std::vector<int> &betaVector);
-
+  void projectScop(VizScop *vscop);
 signals:
 
 public slots:
@@ -36,6 +35,7 @@ private:
   int m_horizontalDimensionIdx;
   int m_verticalDimensionIdx;
 
+  void createCoordinateSystem(const std::vector<int> &betaVector);
   void updateSceneLayout();
 };
 

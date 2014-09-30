@@ -8,7 +8,7 @@ VizPolyhedron::VizPolyhedron(QGraphicsItem *parent) :
   QGraphicsObject(parent) {
 }
 
-void VizPolyhedron::setupFromPoints__(std::vector<std::vector<int> > &&points) {
+void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points) {
   for (const std::vector<int> &point : points) {
     VizPoint *vp = new VizPoint(this);
     if (point.size() == 0) {

@@ -63,7 +63,8 @@ public:
     return m_verticalDimensionIdx;
   }
 
-  void addStatement__(osl_scop_p scop, osl_statement_p stmt, const std::vector<int> &betaVector);
+  bool addStatement__(osl_scop_p scop, osl_statement_p stmt, const std::vector<int> &betaVector);
+  bool projectStatement(VizStatement *statement, const std::vector<int> &betaVector);
 
 signals:
 

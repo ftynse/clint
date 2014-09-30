@@ -40,7 +40,10 @@ ClintWindow::ClintWindow(QWidget *parent) :
   if (!f) fprintf(stderr, "blah\n");
   osl_scop_p scop = osl_scop_read(f);
   fclose(f);
-  projection->buildFromScop__(scop);
+
+  VizProgram *vprogram = new VizProgram(scop, this);
+  VizScop *vscop = (*vprogram)[0];
+  projection->projectScop(vscop);
 
   setCentralWidget(projection->widget());
 }

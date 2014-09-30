@@ -38,10 +38,9 @@ void ClintProjection::createCoordinateSystem(const std::vector<int> &betaVector)
   m_scene->addItem(vcs);
 }
 
-// TODO: Should accept VizProgram instead
-// VizProgram can compute betatree once and manage transformation information
-void ClintProjection::buildFromScop__(osl_scop_p scop) {
-  BetaMap betaMap = oslBetaMap(scop);
+void ClintProjection::projectScop(VizScop *vscop) {
+  VizScop::VizBetaMap betaMap = vscop->vizBetaMap();
+
   std::vector<int> currentPileBeta, currentCoordinateSystemBeta;
   currentPileBeta.push_back(-100500);
   currentCoordinateSystemBeta.push_back(-100500);
@@ -54,13 +53,17 @@ void ClintProjection::buildFromScop__(osl_scop_p scop) {
   // results in a new container creation.
   // BetaMap is a map ordered by the beta-vector lexicographically. We can iterate
   // over it and stack visualized polyhedra properly.
+  bool visiblePile = true;
+  bool visibleCS   = true;
+  // TODO: this should not work directly with betas, rather choose a VizStatement and an
+  // index to select i-th beta of it.  Then compare VizStatements to each other with respect
+  // to that index.  tuple<VizStatement *, index> may be reified to VizStatementOccurence
+  // with ordering by beta enabled.
   for (auto betapair : betaMap) {
-    osl_scop_p      scop_ptr;
-    osl_statement_p stmt_ptr;
-    osl_relation_p  relation_ptr;
     std::vector<int> betaVector = betapair.first;
-    std::tie(scop_ptr, stmt_ptr, relation_ptr) = betapair.second;
-    if (!partialBetaEquals(currentPileBeta, betaVector, 0, m_horizontalDimensionIdx + 1)) {
+    VizStatement *vstmt = betapair.second;
+    if (!partialBetaEquals(currentPileBeta, betaVector, 0, m_horizontalDimensionIdx + 1) &&
+        visiblePile) {
       // create a new pile AND create a new CS in it
       m_coordinateSystems.emplace_back();
       createCoordinateSystem(betaVector);
@@ -68,14 +71,28 @@ void ClintProjection::buildFromScop__(osl_scop_p scop) {
       std::copy(std::begin(betaVector), std::end(betaVector), std::back_inserter(currentPileBeta));
       currentCoordinateSystemBeta.clear();
       std::copy(std::begin(betaVector), std::end(betaVector), std::back_inserter(currentCoordinateSystemBeta));
-    } else if (!partialBetaEquals(currentCoordinateSystemBeta, betaVector, m_horizontalDimensionIdx + 1, m_verticalDimensionIdx + 1)){
+      visiblePile = false;
+      visibleCS = false;
+    } else if (!partialBetaEquals(currentCoordinateSystemBeta, betaVector, m_horizontalDimensionIdx + 1, m_verticalDimensionIdx + 1) &&
+               visibleCS){
       // create a new CS in the current pile
       createCoordinateSystem(betaVector);
       currentCoordinateSystemBeta.clear();
       std::copy(std::begin(betaVector), std::end(betaVector), std::back_inserter(currentCoordinateSystemBeta));
+      visibleCS = false;
     }
     vcs = m_coordinateSystems.back().back();
-    vcs->addStatement__(scop_ptr, stmt_ptr, betaVector);
+    visibleCS = vcs->projectStatement(vstmt, betaVector) || visibleCS;
+    visiblePile = visiblePile || visibleCS;
+  }
+  if (!visibleCS) {
+    VizCoordinateSystem *vcs = m_coordinateSystems.back().back();
+    m_scene->removeItem(vcs);
+    m_coordinateSystems.back().pop_back();
+    delete vcs;
+  }
+  if (!visiblePile) {
+    m_coordinateSystems.pop_back();
   }
   updateSceneLayout();
 }
