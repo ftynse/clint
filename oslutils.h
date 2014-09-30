@@ -86,7 +86,7 @@ T *oslListPrev(T *var, T *container) {
 }
 
 
-osl_relation_p oslApplyScattering(osl_statement_p stmt);
+osl_relation_p oslApplyScattering(osl_statement_p stmt, std::vector<int> beta = std::vector<int>());
 
 osl_relation_p oslRelationWithContext(osl_relation_p relation, osl_relation_p context);
 
@@ -114,6 +114,7 @@ typedef std::map<std::vector<int>,
 
 BetaMap oslBetaMap(osl_scop_p scop);
 
+// FIXME: we use Clay to access betas; when this functionality is moved to OSL, switch!
 std::vector<int> betaFromClay(clay_array_p beta);
 clay_array_p clayBetaFromVector(const std::vector<int> &betaVector);
 

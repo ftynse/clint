@@ -5,7 +5,7 @@
 
 #include <clay/beta.h>
 
-osl_relation_p oslApplyScattering(osl_statement_p stmt) {
+osl_relation_p oslApplyScattering(osl_statement_p stmt, std::vector<int> beta) {
   osl_relation_p domain_union_part, scattering_union_part;
   osl_relation_p scattering = osl_relation_clone(stmt->scattering);
   osl_relation_p domain = osl_relation_clone(stmt->domain);
@@ -54,7 +54,17 @@ osl_relation_p oslApplyScattering(osl_statement_p stmt) {
       CLINT_ASSERT(domain_union_part->nb_parameters == scattering_union_part->nb_parameters,
                    "Number of parameters doesn't match between domain and scattering");
       CLINT_ASSERT(domain_union_part->nb_input_dims == 0,
-                   "Domain should not have input dimensions")
+                   "Domain should not have input dimensions");
+
+      // If the filter beta is provided, only work with statements that match the given beta.
+      if (!beta.empty()) {
+        std::vector<int> scatteringBeta = betaExtract(scattering_union_part);
+        // If the filter beta is longer then the given beta, it does not match.
+        if (beta.size() > scatteringBeta.size())
+          continue;
+        if (!std::equal(std::begin(beta), std::end(beta), std::begin(scatteringBeta)))
+          continue;
+      }
 
       // Prepare a domain relation for concatenation with a scattering relation.
       // Add columns to accomodate local dimensions of the scattering relation (l's).
@@ -204,6 +214,7 @@ BetaMap oslBetaMap(osl_scop_p scop) {
       oslListForeach(stmt->scattering, [single_scop,stmt,&betaMap](osl_relation_p relation) {
         clay_array_p beta = clay_beta_extract(relation);
         betaMap[betaFromClay(beta)] = std::make_tuple(single_scop, stmt, relation);
+        clay_array_free(beta);
       });
     });
   });
