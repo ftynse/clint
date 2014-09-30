@@ -33,7 +33,7 @@ T *oslListTransform(T *container, Func f, Args... args) {
 /// Call a function on an OSL object as if this object was not part of the list.
 /// Function f takes an OSL object of intereset as the first argument, other arguments are optional.
 template <typename T, typename Func, typename... Args,
-          typename std::enable_if<!std::is_void<std::result_of<Func(T *, Args...)>>::value>::type * = nullptr>
+          typename std::enable_if<std::is_void<typename std::result_of<Func(T *, Args...)>::type>::value>::type * = nullptr>
 inline auto oslListNoSeqCall(T *ptr, Func f, Args... args) -> decltype(f(ptr, args...)) {
   T *keeper = ptr->next;
   ptr->next = nullptr;
@@ -42,7 +42,7 @@ inline auto oslListNoSeqCall(T *ptr, Func f, Args... args) -> decltype(f(ptr, ar
 }
 
 template <typename T, typename Func, typename... Args,
-          typename std::enable_if<std::is_void<std::result_of<Func(T *, Args...)>>::value>::type * = nullptr>
+          typename std::enable_if<!std::is_void<typename std::result_of<Func(T *, Args...)>::type>::value>::type * = nullptr>
 inline auto oslListNoSeqCall(T *ptr, Func f, Args... args) -> decltype(f(ptr, args...)) {
   T *keeper = ptr->next;
   ptr->next = nullptr;
@@ -74,6 +74,18 @@ void oslListForeachSingle(T *container, Func f, Args... args) {
   oslListForeach(container, function, args...);
 }
 
+template <typename T>
+T *oslListPrev(T *var, T *container) {
+  T *t;
+  for (t = container; t != nullptr; t = t->next) {
+    if (t->next == var) {
+      break;
+    }
+  }
+  return t;
+}
+
+
 osl_relation_p oslApplyScattering(osl_statement_p stmt);
 
 osl_relation_p oslRelationWithContext(osl_relation_p relation, osl_relation_p context);
@@ -104,5 +116,12 @@ BetaMap oslBetaMap(osl_scop_p scop);
 
 std::vector<int> betaFromClay(clay_array_p beta);
 clay_array_p clayBetaFromVector(const std::vector<int> &betaVector);
+
+inline std::vector<int> betaExtract(osl_relation_p relation) {
+  clay_array_p clay_beta = clay_beta_extract(relation);
+  std::vector<int> beta = betaFromClay(clay_beta);
+  clay_array_free(clay_beta);
+  return std::move(beta);
+}
 
 #endif // OSLUTILS_H
