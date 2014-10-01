@@ -1,7 +1,7 @@
 project(clint)
 cmake_minimum_required(VERSION 2.8)
 set(CMAKE_BUILD_TYPE none)
-set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -pedantic -g")
+set(CMAKE_CXX_FLAGS "-std=c++1y -Wall -pedantic -g")
 
 # Periscop projects
 find_package(osl REQUIRED)
