@@ -18,7 +18,6 @@ public:
     return m_view;
   }
 
-  void buildFromScop__(osl_scop_p scop);
   void projectScop(VizScop *vscop);
 signals:
 
@@ -35,7 +34,7 @@ private:
   int m_horizontalDimensionIdx;
   int m_verticalDimensionIdx;
 
-  void createCoordinateSystem(const std::vector<int> &betaVector);
+  void createCoordinateSystem(int dimensionality);
   void updateSceneLayout();
 };
 

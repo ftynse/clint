@@ -26,9 +26,7 @@ public:
 
   std::vector<std::vector<int>> projectOn(int horizontalDimIdx, int verticalDimIdx, const std::vector<int> &betaVector) const;
 
-//  QVector<int> scatteredAlphaBeta() const {
-
-//  }
+  std::vector<VizStmtOccurrence *> occurences() const;
 signals:
 
 public slots:

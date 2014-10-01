@@ -6,8 +6,6 @@
 #include <QSet>
 #include <QVector>
 
-#include <osl/osl.h>
-
 #include "enumerator.h"
 
 class VizStatement;
@@ -26,10 +24,6 @@ public:
 
   QSet<VizCoordinateSystem *> coordinateSystemsForStatement(VizStatement *stmt) const {
     return stmtToCS_.values(stmt).toSet();
-  }
-
-  osl_scop_p scop() const {
-    return m_scop;
   }
 
   Enumerator *enumerator() const {

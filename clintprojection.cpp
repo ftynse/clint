@@ -1,6 +1,7 @@
 #include "clintprojection.h"
-#include "vizcoordinatesystem.h"
 #include "oslutils.h"
+#include "vizcoordinatesystem.h"
+#include "vizstmtoccurrence.h"
 
 #include <QtWidgets>
 #include <QtCore>
@@ -26,12 +27,12 @@ inline bool partialBetaEquals(const std::vector<int> &original, const std::vecto
                     std::begin(beta) + from);
 }
 
-void ClintProjection::createCoordinateSystem(const std::vector<int> &betaVector) {
+void ClintProjection::createCoordinateSystem(int dimensionality) {
   VizCoordinateSystem *vcs;
-  vcs = new VizCoordinateSystem(m_horizontalDimensionIdx < (betaVector.size() - 1) ?
+  vcs = new VizCoordinateSystem(m_horizontalDimensionIdx < dimensionality ?
                                   m_horizontalDimensionIdx :
                                   VizCoordinateSystem::NO_DIMENSION,
-                                m_verticalDimensionIdx < (betaVector.size() - 1) ?
+                                m_verticalDimensionIdx < dimensionality ?
                                   m_verticalDimensionIdx :
                                   VizCoordinateSystem::NO_DIMENSION);
   m_coordinateSystems.back().push_back(vcs);
@@ -39,51 +40,42 @@ void ClintProjection::createCoordinateSystem(const std::vector<int> &betaVector)
 }
 
 void ClintProjection::projectScop(VizScop *vscop) {
-  VizScop::VizBetaMap betaMap = vscop->vizBetaMap();
-
-  std::vector<int> currentPileBeta, currentCoordinateSystemBeta;
-  currentPileBeta.push_back(-100500);
-  currentCoordinateSystemBeta.push_back(-100500);
-
-  VizCoordinateSystem *vcs = nullptr;
-
   // With beta-vectors for statements, we cannot have a match that is not equality,
   // i.e. we cannot have simultaneously [1] and [1,3] as beta-vectors for statements.
   // Therefore when operating with statements, any change in beta-vector equality
   // results in a new container creation.
-  // BetaMap is a map ordered by the beta-vector lexicographically. We can iterate
-  // over it and stack visualized polyhedra properly.
-  bool visiblePile = true;
-  bool visibleCS   = true;
-  // TODO: this should not work directly with betas, rather choose a VizStatement and an
-  // index to select i-th beta of it.  Then compare VizStatements to each other with respect
-  // to that index.  tuple<VizStatement *, index> may be reified to VizStatementOccurence
-  // with ordering by beta enabled.
-  for (auto betapair : betaMap) {
-    std::vector<int> betaVector = betapair.first;
-    VizStatement *vstmt = betapair.second;
-    if (!partialBetaEquals(currentPileBeta, betaVector, 0, m_horizontalDimensionIdx + 1) &&
+  std::vector<VizStmtOccurrence *> allOccurrences;
+  for (VizStatement *vstmt : vscop->statements()) {
+    std::vector<VizStmtOccurrence *> stmtOccurrences = vstmt->occurences();
+    allOccurrences.insert(std::end(allOccurrences),
+                          std::make_move_iterator(std::begin(stmtOccurrences)),
+                          std::make_move_iterator(std::end(stmtOccurrences)));
+  }
+  std::sort(std::begin(allOccurrences), std::end(allOccurrences), VizStmtOccurrencePtrComparator());
+
+  VizCoordinateSystem *vcs              = nullptr;
+  VizStmtOccurrence *previousOccurrence = nullptr;
+  bool visiblePile                      = true;
+  bool visibleCS                        = true;
+  for (VizStmtOccurrence *occurrence : allOccurrences) {
+    int difference = previousOccurrence ?
+          previousOccurrence->firstDifferentDimension(*occurrence) :
+          -1;
+    if (difference < m_horizontalDimensionIdx + 1 &&
         visiblePile) {
-      // create a new pile AND create a new CS in it
       m_coordinateSystems.emplace_back();
-      createCoordinateSystem(betaVector);
-      currentPileBeta.clear();
-      std::copy(std::begin(betaVector), std::end(betaVector), std::back_inserter(currentPileBeta));
-      currentCoordinateSystemBeta.clear();
-      std::copy(std::begin(betaVector), std::end(betaVector), std::back_inserter(currentCoordinateSystemBeta));
+      createCoordinateSystem(occurrence->dimensionality());
       visiblePile = false;
       visibleCS = false;
-    } else if (!partialBetaEquals(currentCoordinateSystemBeta, betaVector, m_horizontalDimensionIdx + 1, m_verticalDimensionIdx + 1) &&
-               visibleCS){
-      // create a new CS in the current pile
-      createCoordinateSystem(betaVector);
-      currentCoordinateSystemBeta.clear();
-      std::copy(std::begin(betaVector), std::end(betaVector), std::back_inserter(currentCoordinateSystemBeta));
+    } else if (difference < m_verticalDimensionIdx + 1 &&
+               visibleCS) {
+      createCoordinateSystem(occurrence->dimensionality());
       visibleCS = false;
     }
     vcs = m_coordinateSystems.back().back();
-    visibleCS = vcs->projectStatement(vstmt, betaVector) || visibleCS;
+    visibleCS = vcs->projectStatementOccurrence(occurrence) || visibleCS;
     visiblePile = visiblePile || visibleCS;
+    previousOccurrence = occurrence;
   }
   if (!visibleCS) {
     VizCoordinateSystem *vcs = m_coordinateSystems.back().back();

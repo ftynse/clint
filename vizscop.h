@@ -3,10 +3,10 @@
 
 #include <QObject>
 
-#include "oslutils.h"
 #include "vizprogram.h"
 
 #include <map>
+#include <unordered_set>
 #include <vector>
 
 class VizStatement;
@@ -24,10 +24,6 @@ public:
     return program_;
   }
 
-  osl_scop_p scop_part() const {
-    return m_scop_part;
-  }
-
   const VizBetaMap &vizBetaMap() const {
     return m_vizBetaMap;
   }
@@ -35,6 +31,8 @@ public:
   osl_relation_p fixedContext() const {
     return m_fixedContext;
   }
+
+  std::unordered_set<VizStatement *> statements() const;
 
 signals:
 
@@ -46,7 +44,6 @@ private:
   osl_relation_p m_fixedContext;
 //  std::vector<VizStatement *> statements_;
   // statements = unique values of m_vizBetaMap
-  BetaMap m_betaMap;
   VizBetaMap m_vizBetaMap;
 };
 
