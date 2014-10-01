@@ -5,27 +5,55 @@
 
 #include <clay/beta.h>
 
-osl_relation_p oslApplyScattering(osl_statement_p stmt, std::vector<int> beta) {
-  osl_relation_p domain_union_part, scattering_union_part;
-  osl_relation_p scattering = osl_relation_clone(stmt->scattering);
-  osl_relation_p domain = osl_relation_clone(stmt->domain);
+#include <algorithm>
+#include <vector>
+#include <functional>
+#include <utility>
 
-  CLINT_ASSERT(stmt->domain->nb_parameters == stmt->scattering->nb_parameters,
-               "Statement relations use different parameters");
+osl_relation_p oslApplyScattering(osl_statement_p stmt) {
+  return oslApplyScattering(oslListToVector(stmt->domain),
+                            oslListToVector(stmt->scattering));
+}
+
+osl_relation_p oslApplyScattering(osl_statement_p stmt, const std::vector<int> &beta) {
+  std::vector<osl_relation_p> domains = oslListToVector(stmt->domain);
+  std::vector<osl_relation_p> scatterings;
+  oslListForeach(stmt->scattering, [&beta,&scatterings](osl_relation_p scattering){
+    // If the filter beta is provided, only work with statements that match the given beta.
+    if (!beta.empty()) {
+      std::vector<int> scatteringBeta = betaExtract(scattering);
+      // If the filter beta is longer then the given beta, it does not match.
+      if (beta.size() > scatteringBeta.size())
+        return;
+      if (!std::equal(std::begin(beta), std::end(beta), std::begin(scatteringBeta)))
+        return;
+      scatterings.push_back(scattering);
+    }
+  });
+  return oslApplyScattering(domains, scatterings);
+}
+
+osl_relation_p oslApplyScattering(const std::vector<osl_relation_p> &domains,
+                                  const std::vector<osl_relation_p> &scatterings) {
+  std::vector<osl_relation_p> domain, scattering;
+  std::transform(std::begin(domains), std::end(domains), std::back_inserter(domain),
+                 std::bind(&osl_relation_nclone, std::placeholders::_1, 1));
+  std::transform(std::begin(scatterings), std::end(scatterings), std::back_inserter(scattering),
+                 std::bind(&osl_relation_nclone, std::placeholders::_1, 1));
 
   int domainMaxNbLocalDim = 0, scatteringMaxNbLocalDim = 0;
-  LL_FOREACH(domain_union_part, domain) {
+  for (osl_relation_p domain_union_part : domain) {
     if (domainMaxNbLocalDim < domain_union_part->nb_local_dims) {
       domainMaxNbLocalDim = domain_union_part->nb_local_dims;
     }
   }
-  LL_FOREACH(scattering_union_part, scattering) {
+  for (osl_relation_p scattering_union_part : scattering) {
     if (scatteringMaxNbLocalDim < scattering_union_part->nb_local_dims) {
       scatteringMaxNbLocalDim = scattering_union_part->nb_local_dims;
     }
   }
 
-  LL_FOREACH(domain_union_part, domain) {
+  for (osl_relation_p domain_union_part : domain) {
     // Make space for local dimensions (move current to the end).
     for (int i = 0; i < scatteringMaxNbLocalDim; i++) {
       osl_relation_insert_blank_column(domain_union_part,
@@ -34,7 +62,7 @@ osl_relation_p oslApplyScattering(osl_statement_p stmt, std::vector<int> beta) {
     domain_union_part->nb_local_dims += scatteringMaxNbLocalDim;
   }
 
-  LL_FOREACH(scattering_union_part, scattering) {
+  for (osl_relation_p scattering_union_part : scattering) {
     // Make space for extra local dimensions (leave current at the beginning).
     for (int i = 0; i < domainMaxNbLocalDim; i++) {
       osl_relation_insert_blank_column(scattering_union_part,
@@ -47,24 +75,14 @@ osl_relation_p oslApplyScattering(osl_statement_p stmt, std::vector<int> beta) {
   osl_relation_p applied_domain = nullptr;
   osl_relation_p result = nullptr;
   // Cartesian product of unions of relations
-  LL_FOREACH(domain_union_part, domain) {
-    LL_FOREACH(scattering_union_part, scattering) {
+  for (osl_relation_p domain_union_part : domain) {
+    for (osl_relation_p scattering_union_part : scattering) {
       CLINT_ASSERT(domain_union_part->nb_output_dims == scattering_union_part->nb_input_dims,
                    "Scattering is not applicable to the domain: dimensionality mismatch");
       CLINT_ASSERT(domain_union_part->nb_parameters == scattering_union_part->nb_parameters,
                    "Number of parameters doesn't match between domain and scattering");
       CLINT_ASSERT(domain_union_part->nb_input_dims == 0,
                    "Domain should not have input dimensions");
-
-      // If the filter beta is provided, only work with statements that match the given beta.
-      if (!beta.empty()) {
-        std::vector<int> scatteringBeta = betaExtract(scattering_union_part);
-        // If the filter beta is longer then the given beta, it does not match.
-        if (beta.size() > scatteringBeta.size())
-          continue;
-        if (!std::equal(std::begin(beta), std::end(beta), std::begin(scatteringBeta)))
-          continue;
-      }
 
       // Prepare a domain relation for concatenation with a scattering relation.
       // Add columns to accomodate local dimensions of the scattering relation (l's).
@@ -116,8 +134,12 @@ osl_relation_p oslApplyScattering(osl_statement_p stmt, std::vector<int> beta) {
     }
   }
 
-  osl_relation_free(domain);
-  osl_relation_free(scattering);
+  for (osl_relation_p domain_union_part : domain) {
+    osl_relation_free(domain_union_part);
+  }
+  for (osl_relation_p scattering_union_part : scattering) {
+    osl_relation_free(scattering_union_part);
+  }
 
   return result;
 }
@@ -191,6 +213,7 @@ osl_relation_p oslRelationFixAllParameters(osl_relation_p relation, int value) {
   values.resize(relation->nb_parameters, std::make_pair(true, value));
   return oslRelationFixParameters(relation, values);
 }
+
 
 std::vector<int> betaFromClay(clay_array_p beta) {
   std::vector<int> betavector;

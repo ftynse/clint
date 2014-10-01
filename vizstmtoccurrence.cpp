@@ -82,9 +82,8 @@ std::vector<std::vector<int>> VizStmtOccurrence::projectOn(int horizontalDimIdx,
     visibleDimensions.push_back(verticalBetaDim);
   }
 
-  // TODO: we do not need the beta-filter anymore, since the scatterings that match the
-  // current beta are already filtered and stored in m_oslScatterings.
-  osl_relation_p applied = oslApplyScattering(m_oslStatement, m_betaVector);
+  osl_relation_p applied = oslApplyScattering(oslListToVector(m_oslStatement->domain),
+                                              m_oslScatterings);
   osl_relation_p ready = oslRelationsWithContext(applied, m_statement->scop()->fixedContext());
 
   std::vector<std::vector<int>> points =

@@ -41,6 +41,10 @@ inline auto oslListNoSeqCall(T *ptr, Func f, Args... args) -> decltype(f(ptr, ar
   ptr->next = keeper;
 }
 
+/// Call a function returning a value for every part of the linked-list OSL object.
+/// Function f takes an OSL object of intereset as the first argument, other arguments are optional.
+/// If function returns a value, it is ignored.
+/// \see oslListTransform to keep the values returned by the function and prevent possible memory leaks.
 template <typename T, typename Func, typename... Args,
           typename std::enable_if<!std::is_void<typename std::result_of<Func(T *, Args...)>::type>::value>::type * = nullptr>
 inline auto oslListNoSeqCall(T *ptr, Func f, Args... args) -> decltype(f(ptr, args...)) {
@@ -55,12 +59,12 @@ inline auto oslListNoSeqCall(T *ptr, Func f, Args... args) -> decltype(f(ptr, ar
   }
 }
 
-/// Call a function for every part of the linked-list OSL object.
+/// Call a function returning void for every part of the linked-list OSL object.
 /// Function f takes an OSL object of intereset as the first argument, other arguments are optional.
 /// If function returns a value, it is ignored.
 /// \see oslListTransform to keep the values returned by the function and prevent possible memory leaks.
 template <typename T, typename Func, typename... Args>
-void oslListForeach(T *container, Func f, Args... args) {
+inline void oslListForeach(T *container, Func f, Args... args) {
   for (T *container_part = container; container_part != nullptr; container_part = container_part->next) {
     f(container_part, args...);
   }
@@ -85,8 +89,32 @@ T *oslListPrev(T *var, T *container) {
   return t;
 }
 
+template <typename T>
+std::vector<T *> oslListToVector(T *container) {
+  std::vector<T *> vector;
+  for (T *ptr = container; ptr != nullptr; ptr = ptr->next) {
+    vector.push_back(ptr);
+  }
+  return std::move(vector);
+}
 
-osl_relation_p oslApplyScattering(osl_statement_p stmt, std::vector<int> beta = std::vector<int>());
+template <typename T>
+T *oslListFromVector(const std::vector<T *> &vector) {
+  if (vector.size() == 0)
+    return nullptr;
+  T *head = vector.front();
+  T *ptr  = head;
+  for (size_t i = 1; i < vector.size(); i++) {
+    ptr->next = vector[i];
+    ptr = ptr->next;
+  }
+}
+
+
+osl_relation_p oslApplyScattering(osl_statement_p stmt);
+osl_relation_p oslApplyScattering(osl_statement_p stmt, const std::vector<int> &beta);
+osl_relation_p oslApplyScattering(const std::vector<osl_relation_p> &domains,
+                                  const std::vector<osl_relation_p> &scatterings);
 
 osl_relation_p oslRelationWithContext(osl_relation_p relation, osl_relation_p context);
 
