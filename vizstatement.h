@@ -6,7 +6,10 @@
 #include <vizprogram.h>
 #include <vizscop.h>
 
+#include <map>
 #include <vector>
+
+class VizStmtOccurrence;
 
 class VizStatement : public QObject {
   Q_OBJECT
@@ -33,6 +36,7 @@ public slots:
 private:
   VizScop *m_scop;
   osl_statement_p m_statement;
+  std::map<std::vector<int>, VizStmtOccurrence *> m_occurrences;
 };
 
 #endif // VIZSTATEMENT_H
