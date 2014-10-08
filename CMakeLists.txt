@@ -1,7 +1,17 @@
 project(clint)
-cmake_minimum_required(VERSION 2.8)
-set(CMAKE_BUILD_TYPE none)
-set(CMAKE_CXX_FLAGS "-std=c++1y -Wall -pedantic -g")
+cmake_minimum_required(VERSION 2.8.10)
+set(CMAKE_CXX_FLAGS "-std=c++1y -Wall -pedantic -O3")
+set(CMAKE_CXX_FLAGS_DEBUG "-std=c++1y -Wall -pedantic -O0 -g")
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  message(STATUS "Using clang compiler")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wdocumentation")
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+  message(STATUS "Using GNU compiler")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wextra")
+else()
+  message(STATUS "Using ${CMAKE_CXX_COMPILER_ID} compiler.  No predefined flags set")
+endif()
 
 # Periscop projects
 find_package(osl REQUIRED)

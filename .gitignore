@@ -2,6 +2,5 @@
 moc_*
 Makefile
 build/*
+release/*
 *.user*
-CMakeFiles/*
-CMakeCache.txt
