@@ -1,8 +1,10 @@
+#include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
 
 #include "vizprojection.h"
 #include "clintwindow.h"
+#include "oslutils.h"
 
 namespace {
 
@@ -33,17 +35,89 @@ ClintWindow::ClintWindow(QWidget *parent) :
   QMainWindow(parent) {
 
   setWindowTitle("Clint: Chunky Loop INTerface");
+  setupActions();
+  setupMenus();
+}
 
-  VizProjection *projection = new VizProjection(0, 1, this);
+void ClintWindow::setupActions() {
+  m_actionFileOpen = new QAction(QIcon::fromTheme("document-open"), "Open...", this);
+  m_actionFileClose = new QAction("Close", this);
+  m_actionFileQuit = new QAction(QIcon::fromTheme("application-exit"), "Quit", this);
 
-  FILE *f = fopen("maxviz.scop", "r");
-  if (!f) fprintf(stderr, "blah\n");
-  osl_scop_p scop = osl_scop_read(f);
-  fclose(f);
+  m_actionFileOpen->setShortcut(QKeySequence::Open);
+  m_actionFileClose->setShortcut(QKeySequence::Close);
+  m_actionFileQuit->setShortcut(QKeySequence::Quit);
 
-  ClintProgram *vprogram = new ClintProgram(scop, this);
-  ClintScop *vscop = (*vprogram)[0];
-  projection->projectScop(vscop);
+  connect(m_actionFileOpen, &QAction::triggered, this, &ClintWindow::fileOpen);
+  connect(m_actionFileClose, &QAction::triggered, this, &ClintWindow::fileClose);
+  connect(m_actionFileQuit, &QAction::triggered, qApp, &QApplication::quit);
+}
 
-  setCentralWidget(projection->widget());
+void ClintWindow::setupMenus() {
+  m_menuBar = new QMenuBar(this);
+  QMenu *fileMenu = new QMenu("File");
+  fileMenu->addAction(m_actionFileOpen);
+  fileMenu->addAction(m_actionFileClose);
+  fileMenu->addSeparator();
+  fileMenu->addAction(m_actionFileQuit);
+  m_menuBar->addAction(fileMenu->menuAction());
+  m_menuBar->setNativeMenuBar(false);  // Override MacOS behavior since it does not display the menu
+  setMenuBar(m_menuBar);
+}
+
+void ClintWindow::fileOpen() {
+  if (m_fileOpen) {
+    fileClose();
+  }
+
+  QString selectedFilter;
+  QString fileName = QFileDialog::getOpenFileName(this, "Open file", QString(), "OpenScop files (*.scop);;C/C++ sources (*.c *.cpp *.cxx)", &selectedFilter);
+  if (fileName.isNull())
+    return;
+  const char *cFileName = QFile::encodeName(fileName).constData();
+  QString fileNameNoPath = QFileInfo(fileName).fileName();
+  FILE *file = fopen(cFileName, "r");
+  if (!file) {
+    QMessageBox::critical(this, QString(), QString("Could not open %1 for reading").arg(fileNameNoPath), QMessageBox::Ok, QMessageBox::Ok);
+    return;
+  }
+
+  osl_scop_p scop = nullptr;
+  if (selectedFilter.compare("OpenScop files (*.scop)") == 0) {
+    scop = osl_scop_read(file);
+  } else if (selectedFilter.compare("C/C++ sources (*.c *.cpp *.cxx)") == 0){
+    scop = oslFromCCode(file);
+  } else {
+    CLINT_UNREACHABLE;
+  }
+  fclose(file);
+  if (!scop) {
+    QMessageBox::warning(this, QString(), "No SCoP in the given file", QMessageBox::Ok, QMessageBox::Ok);
+    return;
+  }
+
+  setWindowTitle(QString("%1 - Clint").arg(fileNameNoPath));
+
+  m_program = new ClintProgram(scop, this);
+  ClintScop *vscop = (*m_program)[0];
+  m_projection = new VizProjection(0, 1, this);
+  m_projection->projectScop(vscop);
+
+  setCentralWidget(m_projection->widget());
+
+  m_fileOpen = true;
+}
+
+void ClintWindow::fileClose() {
+  setWindowTitle("Clint: Chunky Loop INTerface");
+
+  setCentralWidget(nullptr);
+  m_program->setParent(nullptr);
+  delete m_program;
+  m_program = nullptr;
+  m_projection->setParent(nullptr);
+  delete m_projection;
+  m_projection = nullptr;
+
+  m_fileOpen = false;
 }
