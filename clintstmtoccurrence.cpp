@@ -1,11 +1,11 @@
 #include "oslutils.h"
-#include "vizstatement.h"
-#include "vizstmtoccurrence.h"
+#include "clintstmt.h"
+#include "clintstmtoccurrence.h"
 
 #include <functional>
 
-VizStmtOccurrence::VizStmtOccurrence(osl_statement_p stmt, const std::vector<int> &betaVector,
-                                     VizStatement *parent) :
+ClintStmtOccurrence::ClintStmtOccurrence(osl_statement_p stmt, const std::vector<int> &betaVector,
+                                     ClintStmt *parent) :
   QObject(parent), m_oslStatement(stmt), m_statement(parent) {
   oslListForeach(stmt->scattering, [this,&betaVector](osl_relation_p scattering) {
     if (betaExtract(scattering) == betaVector) {
@@ -23,15 +23,15 @@ VizStmtOccurrence::VizStmtOccurrence(osl_statement_p stmt, const std::vector<int
   m_cachedDimMaxs[-2] = 0;
 }
 
-bool operator < (const VizStmtOccurrence &lhs, const VizStmtOccurrence &rhs) {
+bool operator < (const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs) {
   return lhs.m_betaVector < rhs.m_betaVector;
 }
 
-bool operator ==(const VizStmtOccurrence &lhs, const VizStmtOccurrence &rhs) {
+bool operator ==(const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs) {
   return lhs.m_betaVector == rhs.m_betaVector;
 }
 
-std::vector<std::vector<int>> VizStmtOccurrence::projectOn(int horizontalDimIdx, int verticalDimIdx) const {
+std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimIdx, int verticalDimIdx) const {
   // Transform iterator (alpha only) indices to enumerator (beta-alpha-beta) indices
   // betaDims are found properly iff the dimensionalityChecker assertion holds.
   int horizontalDimOsl    = 1 + 2 * horizontalDimIdx;
@@ -97,7 +97,7 @@ std::vector<std::vector<int>> VizStmtOccurrence::projectOn(int horizontalDimIdx,
   return std::move(points);
 }
 
-void VizStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &points,
+void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &points,
                                       int horizontalDimIdx, int verticalDimIdx) const {
   // Initialize with extreme values for min and max unless already computed for previous polyhedron
   size_t pointSize = points.front().size();
@@ -146,7 +146,7 @@ void VizStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &point
   }
 }
 
-int VizStmtOccurrence::minimumValue(int dimIdx) const {
+int ClintStmtOccurrence::minimumValue(int dimIdx) const {
   if (dimIdx >= dimensionality())
     return 0;
   if (m_cachedDimMins.count(dimIdx) == 0) {
@@ -157,7 +157,7 @@ int VizStmtOccurrence::minimumValue(int dimIdx) const {
   return m_cachedDimMins[dimIdx];
 }
 
-int VizStmtOccurrence::maximumValue(int dimIdx) const {
+int ClintStmtOccurrence::maximumValue(int dimIdx) const {
   if (dimIdx >= dimensionality())
     return 0;
   if (m_cachedDimMaxs.count(dimIdx) == 0) {

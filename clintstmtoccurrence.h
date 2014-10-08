@@ -1,7 +1,7 @@
-#ifndef VIZSTMTOCCURRENCE_H
-#define VIZSTMTOCCURRENCE_H
+#ifndef CLINTSTMTOCCURRENCE_H
+#define CLINTSTMTOCCURRENCE_H
 
-#include "vizstatement.h"
+#include "clintstmt.h"
 
 #include <osl/relation.h>
 #include <osl/statement.h>
@@ -11,17 +11,17 @@
 #include <unordered_map>
 #include <vector>
 
-class VizStmtOccurrence : public QObject {
+class ClintStmtOccurrence : public QObject {
   Q_OBJECT
 public:
-  VizStmtOccurrence(osl_statement_p stmt,
+  ClintStmtOccurrence(osl_statement_p stmt,
                     const std::vector<int> &betaVector,
-                    VizStatement *parent = 0);
+                    ClintStmt *parent = 0);
 
-  friend bool operator < (const VizStmtOccurrence &lhs, const VizStmtOccurrence &rhs);
-  friend bool operator ==(const VizStmtOccurrence &lhs, const VizStmtOccurrence &rhs);
+  friend bool operator < (const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs);
+  friend bool operator ==(const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs);
 
-  int firstDifferentDimension(const VizStmtOccurrence &that) {
+  int firstDifferentDimension(const ClintStmtOccurrence &that) {
     // With beta-vectors for statements, we cannot have a match that is not equality,
     // i.e. we cannot have simultaneously [1] and [1,3] as beta-vectors for statements.
     CLINT_ASSERT(!std::equal(std::begin(m_betaVector),
@@ -41,15 +41,15 @@ public:
     return static_cast<int>(m_betaVector.size() - 1);
   }
 
-  VizStatement *statement() const {
+  ClintStmt *statement() const {
     return m_statement;
   }
 
-  VizProgram *program() const {
+  ClintProgram *program() const {
     return m_statement->program();
   }
 
-  VizScop *scop() const {
+  ClintScop *scop() const {
     return m_statement->scop();
   }
 
@@ -64,7 +64,7 @@ private:
   std::vector<osl_relation_p> m_oslScatterings;
   osl_statement_p m_oslStatement;
   std::vector<int> m_betaVector;
-  VizStatement *m_statement;
+  ClintStmt *m_statement;
 
   // Caches for min/max.
   mutable std::unordered_map<int, int> m_cachedDimMins;
@@ -75,9 +75,9 @@ private:
 };
 
 struct VizStmtOccurrencePtrComparator {
-  bool operator () (const VizStmtOccurrence *lhs, const VizStmtOccurrence *rhs) {
+  bool operator () (const ClintStmtOccurrence *lhs, const ClintStmtOccurrence *rhs) {
     return *lhs < *rhs;
   }
 };
 
-#endif // VIZSTMTOCCURRENCE_H
+#endif // CLINTSTMTOCCURRENCE_H

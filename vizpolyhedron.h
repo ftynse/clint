@@ -5,9 +5,9 @@
 #include <QPainterPath>
 
 #include <vizcoordinatesystem.h>
-#include <vizprogram.h>
-#include <vizscop.h>
-#include <vizstatement.h>
+#include <clintprogram.h>
+#include <clintscop.h>
+#include <clintstmt.h>
 
 class VizPoint;
 
@@ -16,7 +16,7 @@ class VizPolyhedron : public QGraphicsObject {
 public:
   explicit VizPolyhedron(QGraphicsItem *parent = 0);
 
-  VizStatement *statement() const {
+  ClintStmt *statement() const {
     return statement_;
   }
 
@@ -24,11 +24,11 @@ public:
     return coordinateSystem_;
   }
 
-  VizScop *scop() const {
+  ClintScop *scop() const {
     return statement_->scop();
   }
 
-  VizProgram *program() const {
+  ClintProgram *program() const {
     return statement_->program();
   }
 
@@ -44,7 +44,7 @@ signals:
 public slots:
 
 private:
-  VizStatement *statement_;
+  ClintStmt *statement_;
   VizCoordinateSystem *coordinateSystem_;
 
   // TODO: introduce a QPolygon that corresponds to the convex hull for all the child points

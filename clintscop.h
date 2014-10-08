@@ -1,26 +1,26 @@
-#ifndef VIZSCOP_H
-#define VIZSCOP_H
+#ifndef CLINTSCOP_H
+#define CLINTSCOP_H
 
 #include <QObject>
 
-#include "vizprogram.h"
+#include "clintprogram.h"
 
 #include <map>
 #include <unordered_set>
 #include <vector>
 
-class VizStatement;
+class ClintStmt;
 
-class VizScop : public QObject
+class ClintScop : public QObject
 {
   Q_OBJECT
 public:
-  typedef std::map<std::vector<int>, VizStatement *> VizBetaMap;
+  typedef std::map<std::vector<int>, ClintStmt *> VizBetaMap;
 
-  explicit VizScop(osl_scop_p scop, VizProgram *parent = nullptr);
+  explicit ClintScop(osl_scop_p scop, ClintProgram *parent = nullptr);
 
   // Accessors
-  VizProgram *program() const {
+  ClintProgram *program() const {
     return program_;
   }
 
@@ -32,7 +32,7 @@ public:
     return m_fixedContext;
   }
 
-  std::unordered_set<VizStatement *> statements() const;
+  std::unordered_set<ClintStmt *> statements() const;
 
 signals:
 
@@ -40,11 +40,11 @@ public slots:
 
 private:
   osl_scop_p m_scop_part;
-  VizProgram *program_;
+  ClintProgram *program_;
   osl_relation_p m_fixedContext;
 //  std::vector<VizStatement *> statements_;
   // statements = unique values of m_vizBetaMap
   VizBetaMap m_vizBetaMap;
 };
 
-#endif // VIZSCOP_H
+#endif // CLINTSCOP_H

@@ -1,6 +1,6 @@
 #include "vizcoordinatesystem.h"
 #include "vizpolyhedron.h"
-#include "vizstmtoccurrence.h"
+#include "clintstmtoccurrence.h"
 #include "oslutils.h"
 #include "enumerator.h"
 
@@ -19,7 +19,7 @@ VizCoordinateSystem::VizCoordinateSystem(size_t horizontalDimensionIdx, size_t v
   m_font = qApp->font();  // Setting up default font for the view.  Can be adjusted afterwards.
 }
 
-bool VizCoordinateSystem::projectStatementOccurrence(VizStmtOccurrence *occurrence) {
+bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurrence) {
   // Check if the axes are displayed properly.
   CLINT_ASSERT((occurrence->dimensionality() > m_horizontalDimensionIdx) == m_horizontalAxisVisible,
                "Projecting statement on the axis-less dimension");

@@ -1,7 +1,7 @@
-#include "clintprojection.h"
+#include "vizprojection.h"
 #include "oslutils.h"
 #include "vizcoordinatesystem.h"
-#include "vizstmtoccurrence.h"
+#include "clintstmtoccurrence.h"
 
 #include <QtWidgets>
 #include <QtCore>
@@ -13,7 +13,7 @@
 // FIXME: hardcoded margin value
 const double coordinateSystemMargin = 5.0;
 
-ClintProjection::ClintProjection(int horizontalDimensionIdx, int verticalDimensionIdx, QObject *parent) :
+VizProjection::VizProjection(int horizontalDimensionIdx, int verticalDimensionIdx, QObject *parent) :
   QObject(parent), m_horizontalDimensionIdx(horizontalDimensionIdx), m_verticalDimensionIdx(verticalDimensionIdx) {
 
   m_scene = new QGraphicsScene;
@@ -27,7 +27,7 @@ inline bool partialBetaEquals(const std::vector<int> &original, const std::vecto
                     std::begin(beta) + from);
 }
 
-void ClintProjection::createCoordinateSystem(int dimensionality) {
+void VizProjection::createCoordinateSystem(int dimensionality) {
   VizCoordinateSystem *vcs;
   vcs = new VizCoordinateSystem(m_horizontalDimensionIdx < dimensionality ?
                                   m_horizontalDimensionIdx :
@@ -39,14 +39,14 @@ void ClintProjection::createCoordinateSystem(int dimensionality) {
   m_scene->addItem(vcs);
 }
 
-void ClintProjection::projectScop(VizScop *vscop) {
+void VizProjection::projectScop(ClintScop *vscop) {
   // With beta-vectors for statements, we cannot have a match that is not equality,
   // i.e. we cannot have simultaneously [1] and [1,3] as beta-vectors for statements.
   // Therefore when operating with statements, any change in beta-vector equality
   // results in a new container creation.
-  std::vector<VizStmtOccurrence *> allOccurrences;
-  for (VizStatement *vstmt : vscop->statements()) {
-    std::vector<VizStmtOccurrence *> stmtOccurrences = vstmt->occurences();
+  std::vector<ClintStmtOccurrence *> allOccurrences;
+  for (ClintStmt *vstmt : vscop->statements()) {
+    std::vector<ClintStmtOccurrence *> stmtOccurrences = vstmt->occurences();
     allOccurrences.insert(std::end(allOccurrences),
                           std::make_move_iterator(std::begin(stmtOccurrences)),
                           std::make_move_iterator(std::end(stmtOccurrences)));
@@ -54,7 +54,7 @@ void ClintProjection::projectScop(VizScop *vscop) {
   std::sort(std::begin(allOccurrences), std::end(allOccurrences), VizStmtOccurrencePtrComparator());
 
   VizCoordinateSystem *vcs              = nullptr;
-  VizStmtOccurrence *previousOccurrence = nullptr;
+  ClintStmtOccurrence *previousOccurrence = nullptr;
   bool visiblePile   = true;
   bool visibleCS     = true;
   std::vector<std::pair<int, int>> columnMinMax;
@@ -63,7 +63,7 @@ void ClintProjection::projectScop(VizScop *vscop) {
   int horizontalMax = 0;
   int verticalMin   = 0;
   int verticalMax   = 0;
-  for (VizStmtOccurrence *occurrence : allOccurrences) {
+  for (ClintStmtOccurrence *occurrence : allOccurrences) {
     int difference = previousOccurrence ?
           previousOccurrence->firstDifferentDimension(*occurrence) :
           -1;
@@ -127,7 +127,7 @@ void ClintProjection::projectScop(VizScop *vscop) {
   updateSceneLayout();
 }
 
-void ClintProjection::updateSceneLayout() {
+void VizProjection::updateSceneLayout() {
   double horizontalOffset = 0.0;
   for (size_t col = 0, col_end = m_coordinateSystems.size(); col < col_end; col++) {
     double verticalOffset = 0.0;

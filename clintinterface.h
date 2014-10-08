@@ -4,7 +4,7 @@
 #include <QWidget>
 #include <QList>
 
-#include "clintprojection.h"
+#include "vizprojection.h"
 
 class ClintInterface : public QWidget
 {
@@ -18,7 +18,7 @@ public slots:
 
 private:
   // Interface is a list of projections
-  QList<ClintProjection *> projections_;
+  QList<VizProjection *> projections_;
 };
 
 #endif // CLINTINTERFACE_H

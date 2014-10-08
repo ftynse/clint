@@ -6,9 +6,9 @@
 #include <QObject>
 #include <QSet>
 
-#include "vizprogram.h"
-#include "vizscop.h"
-#include "vizstatement.h"
+#include "clintprogram.h"
+#include "clintscop.h"
+#include "clintstmt.h"
 #include "vizpolyhedron.h"
 
 // FIXME: hardcoded value of distance between points.
@@ -28,16 +28,16 @@ public:
                                size_t verticalDimensionIdx = NO_DIMENSION,
                                QGraphicsItem *parent = nullptr);
 
-  QSet<VizScop *> visibleScops() {
-    QSet<VizStatement *> stmts = m_program->statementsInCoordinateSystem(this);
-    QSet<VizScop *> scops;
-    for (VizStatement *stmt : stmts) {
+  QSet<ClintScop *> visibleScops() {
+    QSet<ClintStmt *> stmts = m_program->statementsInCoordinateSystem(this);
+    QSet<ClintScop *> scops;
+    for (ClintStmt *stmt : stmts) {
       scops.insert(stmt->scop());
     }
     return scops;
   }
 
-  const VizProgram *program() const {
+  const ClintProgram *program() const {
     return m_program;
   }
 
@@ -68,7 +68,7 @@ public:
     return m_verticalDimensionIdx;
   }
 
-  bool projectStatementOccurrence(VizStmtOccurrence *occurrence);
+  bool projectStatementOccurrence(ClintStmtOccurrence *occurrence);
 
   void extendHorizontally(int minimum, int maximum) {
     m_horizontalMin = std::min(m_horizontalMin, minimum);
@@ -107,7 +107,7 @@ public slots:
 
 private:
   std::vector<VizPolyhedron *> m_polyhedra;
-  VizProgram *m_program;
+  ClintProgram *m_program;
 
   size_t m_horizontalDimensionIdx = CLINT_UNDEFINED;
   size_t m_verticalDimensionIdx   = CLINT_UNDEFINED;

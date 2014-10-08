@@ -1,5 +1,5 @@
-#ifndef CLINTPROJECTION_H
-#define CLINTPROJECTION_H
+#ifndef VIZPROJECTION_H
+#define VIZPROJECTION_H
 
 #include <QGraphicsScene>
 #include <QGraphicsView>
@@ -9,16 +9,16 @@
 
 #include "vizcoordinatesystem.h"
 
-class ClintProjection : public QObject
+class VizProjection : public QObject
 {
   Q_OBJECT
 public:
-  ClintProjection(int horizontalDimensionIdx, int verticalDimensionIdx, QObject *parent = 0);
+  VizProjection(int horizontalDimensionIdx, int verticalDimensionIdx, QObject *parent = 0);
   QWidget *widget() {
     return m_view;
   }
 
-  void projectScop(VizScop *vscop);
+  void projectScop(ClintScop *vscop);
 signals:
 
 public slots:
@@ -38,4 +38,4 @@ private:
   void updateSceneLayout();
 };
 
-#endif // CLINTPROJECTION_H
+#endif // VIZPROJECTION_H

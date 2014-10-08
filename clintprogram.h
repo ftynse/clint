@@ -1,5 +1,5 @@
-#ifndef VIZPROGRAM_H
-#define VIZPROGRAM_H
+#ifndef CLINTPROGRAM_H
+#define CLINTPROGRAM_H
 
 #include <QHash>
 #include <QObject>
@@ -8,21 +8,21 @@
 
 #include "enumerator.h"
 
-class VizStatement;
-class VizScop;
+class ClintStmt;
+class ClintScop;
 class VizCoordinateSystem;
 
-class VizProgram : public QObject {
+class ClintProgram : public QObject {
   Q_OBJECT
 public:
-  explicit VizProgram(osl_scop_p scop, QObject *parent = 0);
-  ~VizProgram();
+  explicit ClintProgram(osl_scop_p scop, QObject *parent = 0);
+  ~ClintProgram();
 
-  QSet<VizStatement *> statementsInCoordinateSystem(VizCoordinateSystem *system) const {
+  QSet<ClintStmt *> statementsInCoordinateSystem(VizCoordinateSystem *system) const {
     return csToStmt_.values(system).toSet();
   }
 
-  QSet<VizCoordinateSystem *> coordinateSystemsForStatement(VizStatement *stmt) const {
+  QSet<VizCoordinateSystem *> coordinateSystemsForStatement(ClintStmt *stmt) const {
     return stmtToCS_.values(stmt).toSet();
   }
 
@@ -30,7 +30,7 @@ public:
     return m_enumerator;
   }
 
-  VizScop *operator [](int idx) {
+  ClintScop *operator [](int idx) {
     CLINT_ASSERT(idx < m_scops.size(), "Indexed access out of bounds");
     return m_scops.at(idx);
   }
@@ -43,15 +43,15 @@ private:
   // coordinate systems and statements should be children of this object
   /** Bidirectional mapping between visual scops and visual coordinates
    *  systems they belong to */
-  QMultiHash<VizStatement *, VizCoordinateSystem *> stmtToCS_;
-  QMultiHash<VizCoordinateSystem *, VizStatement *> csToStmt_;
+  QMultiHash<ClintStmt *, VizCoordinateSystem *> stmtToCS_;
+  QMultiHash<VizCoordinateSystem *, ClintStmt *> csToStmt_;
 
   /** A vector of all scops in order of their execution flow */
-  QVector<VizScop *> m_scops;
+  QVector<ClintScop *> m_scops;
 
   osl_scop_p m_scop;
 
   Enumerator *m_enumerator;
 };
 
-#endif // VIZPROGRAM_H
+#endif // CLINTPROGRAM_H

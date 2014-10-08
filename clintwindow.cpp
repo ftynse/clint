@@ -1,7 +1,7 @@
 #include <QtGui>
 #include <QtWidgets>
 
-#include "clintprojection.h"
+#include "vizprojection.h"
 #include "clintwindow.h"
 
 namespace {
@@ -34,15 +34,15 @@ ClintWindow::ClintWindow(QWidget *parent) :
 
   setWindowTitle("Clint: Chunky Loop INTerface");
 
-  ClintProjection *projection = new ClintProjection(0, 1, this);
+  VizProjection *projection = new VizProjection(0, 1, this);
 
   FILE *f = fopen("maxviz.scop", "r");
   if (!f) fprintf(stderr, "blah\n");
   osl_scop_p scop = osl_scop_read(f);
   fclose(f);
 
-  VizProgram *vprogram = new VizProgram(scop, this);
-  VizScop *vscop = (*vprogram)[0];
+  ClintProgram *vprogram = new ClintProgram(scop, this);
+  ClintScop *vscop = (*vprogram)[0];
   projection->projectScop(vscop);
 
   setCentralWidget(projection->widget());

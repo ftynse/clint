@@ -6,9 +6,9 @@
 
 #include <vizcoordinatesystem.h>
 #include <vizpolyhedron.h>
-#include <vizprogram.h>
-#include <vizscop.h>
-#include <vizstatement.h>
+#include <clintprogram.h>
+#include <clintscop.h>
+#include <clintstmt.h>
 
 class VizPoint : public QGraphicsObject
 {
@@ -22,15 +22,15 @@ public:
     return polyhedron_;
   }
 
-  VizStatement *statement() const {
+  ClintStmt *statement() const {
     return polyhedron_->statement();
   }
 
-  VizScop *scop() const {
+  ClintScop *scop() const {
     return polyhedron_->scop();
   }
 
-  VizProgram *program() const {
+  ClintProgram *program() const {
     return polyhedron_->program();
   }
 
