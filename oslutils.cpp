@@ -247,3 +247,23 @@ BetaMap oslBetaMap(osl_scop_p scop) {
   });
   return std::move(betaMap);
 }
+
+osl_scop_p oslFromCCode(FILE *file) {
+  clan_options_p clan_opts = clan_options_malloc();
+  clan_opts->castle = 0;
+  clan_opts->autoscop = 1;
+  clan_opts->extbody = 1;
+  osl_scop_p clan_scop = clan_scop_extract(file, clan_opts);
+  clan_options_free(clan_opts);
+  return clan_scop;
+}
+
+osl_scop_p oslFromCCode(char *code) {
+  FILE *file = tmpfile();
+  fprintf(file, "%s", code);
+  fflush(file);
+  rewind(file);
+  osl_scop_p clan_scop = oslFromCCode(file);
+  fclose(file);
+  return clan_scop;
+}

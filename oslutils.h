@@ -5,6 +5,8 @@
 
 #include <clay/beta.h>
 
+#include <clan/clan.h>
+
 #include <functional>
 #include <map>
 #include <tuple>
@@ -153,4 +155,6 @@ inline std::vector<int> betaExtract(osl_relation_p relation) {
   return std::move(beta);
 }
 
+osl_scop_p oslFromCCode(FILE *file);
+osl_scop_p oslFromCCode(char *code);
 #endif // OSLUTILS_H
