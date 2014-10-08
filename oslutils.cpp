@@ -185,7 +185,11 @@ osl_relation_p oslRelationFixParameters(osl_relation_p relation, const std::vect
 
   CLINT_ASSERT(values.size() == relation->nb_parameters, "Not all parameters provided with values");
   size_t num = std::count_if(std::begin(values), std::end(values), [](const std::pair<bool, int> &it) { return it.first; });
-  osl_relation_p fixers = osl_relation_malloc(num, relation->nb_columns);
+  osl_relation_p fixers = osl_relation_pmalloc(relation->precision, num, relation->nb_columns);
+  fixers->nb_input_dims = relation->nb_input_dims;
+  fixers->nb_output_dims = relation->nb_output_dims;
+  fixers->nb_local_dims = relation->nb_local_dims;
+  fixers->nb_parameters = relation->nb_parameters;
   size_t idx = 0;
   size_t firstParam = relation->nb_input_dims + relation->nb_output_dims + relation->nb_local_dims + 1;
   for (size_t i = 0; i < values.size(); i++) {
