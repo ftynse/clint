@@ -1,16 +1,21 @@
 #ifndef VIZCOORDINATESYSTEM_H
 #define VIZCOORDINATESYSTEM_H
 
-#include <QObject>
+#include <QFont>
 #include <QGraphicsObject>
+#include <QObject>
 #include <QSet>
 
-#include <vizprogram.h>
-#include <vizscop.h>
-#include <vizstatement.h>
+#include "vizprogram.h"
+#include "vizscop.h"
+#include "vizstatement.h"
+#include "vizpolyhedron.h"
 
+// FIXME: hardcoded value of distance between points.
 #define DISPLACEMENT 4
 #define CLINT_UNDEFINED -1ULL
+#define VIZ_POINT_RADIUS   4
+#define VIZ_POINT_DISTANCE 16
 
 class VizPolyhedron;
 
@@ -65,6 +70,37 @@ public:
 
   bool projectStatementOccurrence(VizStmtOccurrence *occurrence);
 
+  void extendHorizontally(int minimum, int maximum) {
+    m_horizontalMin = std::min(m_horizontalMin, minimum);
+    m_horizontalMax = std::max(m_horizontalMax, maximum);
+  }
+
+  void extendVertically(int minimum, int maximum) {
+    m_verticalMin = std::min(m_verticalMin, minimum);
+    m_verticalMax = std::max(m_verticalMax, maximum);
+  }
+
+  void setMinMax(int horizontalMinimum, int horizontalMaximum,
+                 int verticalMinimum, int verticalMaximum);
+
+  void setMinMax(const std::pair<int, int> &horizontal,
+                 const std::pair<int, int> &vertical) {
+    setMinMax(horizontal.first, horizontal.second,
+              vertical.first, vertical.second);
+  }
+
+  int horizontalAxisLength() const {
+    return (m_horizontalMax - m_horizontalMin + 3) * VIZ_POINT_DISTANCE;
+  }
+
+  int verticalAxisLength() const {
+    return (m_verticalMax - m_verticalMin + 3) * VIZ_POINT_DISTANCE;
+  }
+
+  int ticMargin() const {
+    return 2 * VIZ_POINT_RADIUS;
+  }
+
 signals:
 
 public slots:
@@ -78,6 +114,15 @@ private:
 
   bool m_horizontalAxisVisible = true;
   bool m_verticalAxisVisible   = true;
+
+  // Default coordinate system is set up at zero.
+  // TODO: make this configurable, not all loops may start at origin
+  int m_horizontalMin = 0;
+  int m_horizontalMax = 0;
+  int m_verticalMin   = 0;
+  int m_verticalMax   = 0;
+
+  QFont m_font;
 };
 
 #endif // VIZCOORDINATESYSTEM_H

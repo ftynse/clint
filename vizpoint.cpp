@@ -34,7 +34,4 @@ void VizPoint::setOriginalCoordinates(int horizontal, int vertical) {
 void VizPoint::setScatteredCoordinates(int horizontal, int vertical) {
   m_scatteredHorizontal = horizontal;
   m_scatteredVertical = vertical;
-  qreal posX = horizontal == NO_COORD ? 0 : VIZ_POINT_DISTANCE * horizontal;
-  qreal posY = vertical == NO_COORD ? 0 : VIZ_POINT_DISTANCE * vertical;
-  setPos(posX, posY);
 }

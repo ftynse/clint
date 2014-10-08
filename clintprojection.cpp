@@ -55,8 +55,14 @@ void ClintProjection::projectScop(VizScop *vscop) {
 
   VizCoordinateSystem *vcs              = nullptr;
   VizStmtOccurrence *previousOccurrence = nullptr;
-  bool visiblePile                      = true;
-  bool visibleCS                        = true;
+  bool visiblePile   = true;
+  bool visibleCS     = true;
+  std::vector<std::pair<int, int>> columnMinMax;
+  std::vector<std::vector<std::pair<int, int>>> csMinMax;
+  int horizontalMin = 0;
+  int horizontalMax = 0;
+  int verticalMin   = 0;
+  int verticalMax   = 0;
   for (VizStmtOccurrence *occurrence : allOccurrences) {
     int difference = previousOccurrence ?
           previousOccurrence->firstDifferentDimension(*occurrence) :
@@ -64,18 +70,50 @@ void ClintProjection::projectScop(VizScop *vscop) {
     if (difference < m_horizontalDimensionIdx + 1 &&
         visiblePile) {
       m_coordinateSystems.emplace_back();
+      columnMinMax.emplace_back(std::make_pair(INT_MAX, INT_MIN));
+      csMinMax.emplace_back();
+      csMinMax.back().emplace_back(std::make_pair(INT_MAX, INT_MIN));
       createCoordinateSystem(occurrence->dimensionality());
       visiblePile = false;
       visibleCS = false;
     } else if (difference < m_verticalDimensionIdx + 1 &&
                visibleCS) {
       createCoordinateSystem(occurrence->dimensionality());
+      csMinMax.back().emplace_back(std::make_pair(INT_MAX, INT_MIN));
       visibleCS = false;
     }
     vcs = m_coordinateSystems.back().back();
     visibleCS = vcs->projectStatementOccurrence(occurrence) || visibleCS;
     visiblePile = visiblePile || visibleCS;
+    if (m_horizontalDimensionIdx != VizCoordinateSystem::NO_DIMENSION) {
+      horizontalMin = occurrence->minimumValue(m_horizontalDimensionIdx);
+      horizontalMax = occurrence->maximumValue(m_horizontalDimensionIdx);
+    }
+    if (m_verticalDimensionIdx != VizCoordinateSystem::NO_DIMENSION) {
+      verticalMin = occurrence->minimumValue(m_verticalDimensionIdx);
+      verticalMax = occurrence->maximumValue(m_verticalDimensionIdx);
+    }
+    std::pair<int, int> minmax = columnMinMax.back();
+    minmax.first  = std::min(minmax.first, horizontalMin);
+    minmax.second = std::max(minmax.second, horizontalMax);
+    columnMinMax.back() = minmax;
+    minmax = csMinMax.back().back();
+    minmax.first  = std::min(minmax.first, verticalMin);
+    minmax.second = std::max(minmax.second, verticalMax);
+    csMinMax.back().back() = minmax;
     previousOccurrence = occurrence;
+  }
+  CLINT_ASSERT(columnMinMax.size() == m_coordinateSystems.size(),
+               "Sizes of column min/maxes and coordinate system columns don't match");
+  CLINT_ASSERT(csMinMax.size() == m_coordinateSystems.size(),
+               "Sizes of coordinate systems min/maxes don't match");
+  for (size_t col = 0, colend = m_coordinateSystems.size(); col < colend; col++) {
+    CLINT_ASSERT(csMinMax[col].size() == m_coordinateSystems[col].size(),
+                 "Sizes of coordinate systems min/maxes don't match");
+    for (size_t row = 0, rowend = m_coordinateSystems[col].size(); row < rowend; row++) {
+      VizCoordinateSystem *vcs = m_coordinateSystems[col][row];
+      vcs->setMinMax(columnMinMax[col], csMinMax[col][row]);
+    }
   }
   if (!visibleCS) {
     VizCoordinateSystem *vcs = m_coordinateSystems.back().back();
@@ -95,12 +133,9 @@ void ClintProjection::updateSceneLayout() {
     double verticalOffset = 0.0;
     double maximumWidth = 0.0;
     for (size_t row = 0, row_end = m_coordinateSystems[col].size(); row < row_end; row++) {
-      if (row == 0) {
-        verticalOffset = 0.0;
-      }
       VizCoordinateSystem *vcs = m_coordinateSystems[col][row];
       QRectF bounding = vcs->boundingRect();
-      vcs->setPos(horizontalOffset, -verticalOffset - bounding.width());
+      vcs->setPos(horizontalOffset, -verticalOffset);
       verticalOffset += bounding.height() + coordinateSystemMargin;
       maximumWidth = std::max(maximumWidth, bounding.width());
     }

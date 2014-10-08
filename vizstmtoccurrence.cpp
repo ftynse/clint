@@ -17,6 +17,10 @@ VizStmtOccurrence::VizStmtOccurrence(osl_statement_p stmt, const std::vector<int
 
   m_betaVector.reserve(betaVector.size());
   std::copy(std::begin(betaVector), std::end(betaVector), std::back_inserter(m_betaVector));
+
+  // FIXME: -2 is a value for NO_DIMENSION from VizCoordinateSystem.  Promote.
+  m_cachedDimMins[-2] = 0;
+  m_cachedDimMaxs[-2] = 0;
 }
 
 bool operator < (const VizStmtOccurrence &lhs, const VizStmtOccurrence &rhs) {
@@ -88,6 +92,78 @@ std::vector<std::vector<int>> VizStmtOccurrence::projectOn(int horizontalDimIdx,
 
   std::vector<std::vector<int>> points =
       program()->enumerator()->enumerate(ready, std::move(visibleDimensions));
+  computeMinMax(points, horizontalDimIdx, verticalDimIdx);
 
   return std::move(points);
+}
+
+void VizStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &points,
+                                      int horizontalDimIdx, int verticalDimIdx) const {
+  // Initialize with extreme values for min and max unless already computed for previous polyhedron
+  size_t pointSize = points.front().size();
+  int horizontalMin, horizontalMax, verticalMin = 0, verticalMax = 0;
+  if (horizontalDimIdx == -2) {
+    return;
+  }
+  switch (pointSize) {
+  case 4:
+    verticalMin   = INT_MAX;
+    verticalMax   = INT_MIN;
+    // fall through
+  case 2:
+    horizontalMin = INT_MAX;
+    horizontalMax = INT_MIN;
+    break;
+  case 0:
+    return;
+    break;
+  default:
+    CLINT_UNREACHABLE;
+    break;
+  }
+
+  // Compute min and max values for projected iterators of the current coordinate system.
+  for (const std::vector<int> &point : points) {
+    CLINT_ASSERT(point.size() == pointSize,
+                 "Enumerated points have different dimensionality");
+    horizontalMin = std::min(horizontalMin, point[0]);
+    horizontalMax = std::max(horizontalMax, point[0]);
+    if (pointSize == 4) {
+      verticalMin = std::min(verticalMin, point[1]);
+      verticalMax = std::max(verticalMax, point[1]);
+    }
+  }
+  CLINT_ASSERT(horizontalMin != INT_MIN, "Could not compute horizontal minimum");
+  CLINT_ASSERT(horizontalMax != INT_MAX, "Could not compute horizontal maximum");
+  CLINT_ASSERT(verticalMin != INT_MIN, "Could not compute vertical minimum");
+  CLINT_ASSERT(verticalMax != INT_MAX, "Could not compute vertical maximum");
+
+  m_cachedDimMins[horizontalDimIdx] = horizontalMin;
+  m_cachedDimMaxs[horizontalDimIdx] = horizontalMax;
+  if (pointSize == 4) {
+    m_cachedDimMins[verticalDimIdx] = verticalMin;
+    m_cachedDimMaxs[verticalDimIdx] = verticalMax;
+  }
+}
+
+int VizStmtOccurrence::minimumValue(int dimIdx) const {
+  if (dimIdx >= dimensionality())
+    return 0;
+  if (m_cachedDimMins.count(dimIdx) == 0) {
+    projectOn(dimIdx, INT_MAX);
+  }
+  CLINT_ASSERT(m_cachedDimMins.count(dimIdx) == 1,
+               "min cache failure");
+  return m_cachedDimMins[dimIdx];
+}
+
+int VizStmtOccurrence::maximumValue(int dimIdx) const {
+  if (dimIdx >= dimensionality())
+    return 0;
+  if (m_cachedDimMaxs.count(dimIdx) == 0) {
+    projectOn(dimIdx, INT_MAX);
+  }
+  CLINT_ASSERT(m_cachedDimMaxs.count(dimIdx) == 1,
+               "max cache failure");
+  return m_cachedDimMaxs[dimIdx];
 }

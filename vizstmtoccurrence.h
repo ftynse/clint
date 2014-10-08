@@ -8,6 +8,7 @@
 
 #include <QObject>
 
+#include <unordered_map>
 #include <vector>
 
 class VizStmtOccurrence : public QObject {
@@ -52,6 +53,9 @@ public:
     return m_statement->scop();
   }
 
+  int minimumValue(int dimIdx) const;
+  int maximumValue(int dimIdx) const;
+
 signals:
 
 public slots:
@@ -61,6 +65,13 @@ private:
   osl_statement_p m_oslStatement;
   std::vector<int> m_betaVector;
   VizStatement *m_statement;
+
+  // Caches for min/max.
+  mutable std::unordered_map<int, int> m_cachedDimMins;
+  mutable std::unordered_map<int, int> m_cachedDimMaxs;
+
+  void computeMinMax(const std::vector<std::vector<int>> &points,
+                     int horizontalDimIdx, int verticalDimIdx) const;
 };
 
 struct VizStmtOccurrencePtrComparator {
