@@ -24,8 +24,6 @@ public:
     return m_scop->program();
   }
 
-  std::vector<std::vector<int>> projectOn(int horizontalDimIdx, int verticalDimIdx, const std::vector<int> &betaVector) const;
-
   std::vector<ClintStmtOccurrence *> occurences() const;
 signals:
 

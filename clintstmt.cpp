@@ -21,11 +21,6 @@ ClintStmt::ClintStmt(osl_statement_p stmt, ClintScop *parent) :
   });
 }
 
-std::vector<std::vector<int>> ClintStmt::projectOn(int horizontalDimIdx,
-                                                      int verticalDimIdx,
-                                                      const std::vector<int> &betaVector) const {
-}
-
 std::vector<ClintStmtOccurrence *> ClintStmt::occurences() const {
   std::vector<ClintStmtOccurrence *> result;
   for (auto occurence : m_occurrences) {
