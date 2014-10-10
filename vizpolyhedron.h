@@ -62,7 +62,7 @@ private:
   int m_localVerticalMin   = 0;
 
   void setPointVisiblePos(VizPoint *vp, int x, int y);
-  static std::pair<int, int> pointScatteredCoordsReal(VizPoint *vp);
+  static std::pair<int, int> pointScatteredCoordsReal(const VizPoint *vp);
   std::vector<VizPoint *> convexHull() const;
   QPolygonF computePolygon() const;
 };

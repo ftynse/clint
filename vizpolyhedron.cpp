@@ -60,13 +60,13 @@ std::vector<VizPoint *> VizPolyhedron::convexHull() const {
 
   // Check if points form a single line.
   // Either one-dimensional projection of the loop, or loop with one iteration.
-  int commonX = list.front()->scatteredCoordinates().first;
-  int commonY = list.front()->scatteredCoordinates().second;
+  int commonX = pointScatteredCoordsReal(list.front()).first;
+  int commonY = pointScatteredCoordsReal(list.front()).second;
   bool sameX = true,
        sameY = true;
   for (VizPoint *vp : list) {
     int x, y;
-    std::tie(x, y) = vp->scatteredCoordinates();
+    std::tie(x, y) = pointScatteredCoordsReal(vp);
     sameX = sameX && x == commonX;
     sameY = sameY && y == commonY;
   }
@@ -74,13 +74,13 @@ std::vector<VizPoint *> VizPolyhedron::convexHull() const {
   if (sameX) {
     std::tie(minIter, maxIter) =
         std::minmax_element(std::begin(list), std::end(list), [](VizPoint *a, VizPoint *b){
-      return a->scatteredCoordinates().second < b->scatteredCoordinates().second;
+      return pointScatteredCoordsReal(a).second < pointScatteredCoordsReal(b).second;
     });
   }
   if (sameY) {
     std::tie(minIter, maxIter) =
       std::minmax_element(std::begin(list), std::end(list), [](VizPoint *a, VizPoint *b){
-      return a->scatteredCoordinates().first < b->scatteredCoordinates().first;
+      return pointScatteredCoordsReal(a).first < pointScatteredCoordsReal(b).first;
     });
   }
   if (sameX || sameY) {
@@ -91,8 +91,8 @@ std::vector<VizPoint *> VizPolyhedron::convexHull() const {
   // Returns angle in range [0, 2*M_PI).
   static auto angle = [](const VizPoint *a, const VizPoint *b) -> double {
     int x0, y0, x1, y1;
-    std::tie(x0, y0) = a->scatteredCoordinates();
-    std::tie(x1, y1) = b->scatteredCoordinates();
+    std::tie(x0, y0) = pointScatteredCoordsReal(a);
+    std::tie(x1, y1) = pointScatteredCoordsReal(b);
     int A = (y1 - y0);
     int B = (x1 - x0);
     double phi = std::atan2(A, B);
@@ -104,9 +104,9 @@ std::vector<VizPoint *> VizPolyhedron::convexHull() const {
   // Cross-product
   static auto ccw = [](const VizPoint *a, const VizPoint *b, const VizPoint *c) -> int {
     int x0, y0, x1, y1, x2, y2;
-    std::tie(x0, y0) = a->scatteredCoordinates();
-    std::tie(x1, y1) = b->scatteredCoordinates();
-    std::tie(x2, y2) = c->scatteredCoordinates();
+    std::tie(x0, y0) = pointScatteredCoordsReal(a);
+    std::tie(x1, y1) = pointScatteredCoordsReal(b);
+    std::tie(x2, y2) = pointScatteredCoordsReal(c);
     return (x1 - x0) * (y2 - y0) - (y1 - y0) * (x2 - x0);
   };
 
@@ -114,9 +114,9 @@ std::vector<VizPoint *> VizPolyhedron::convexHull() const {
   auto minYElement = std::min_element(std::begin(list),
                                       std::end(list),
                                       [](const VizPoint *a, const VizPoint *b) {
-    int diff = a->scatteredCoordinates().second - b->scatteredCoordinates().second;
+    int diff = pointScatteredCoordsReal(a).second - pointScatteredCoordsReal(b).second;
     if (diff == 0)
-      return a->scatteredCoordinates().first < b->scatteredCoordinates().first;
+      return pointScatteredCoordsReal(a).first < pointScatteredCoordsReal(b).first;
     return diff < 0;
   });
   VizPoint *originPoint = *minYElement;
@@ -127,9 +127,9 @@ std::vector<VizPoint *> VizPolyhedron::convexHull() const {
     double angleDiff = angle(originPoint, a) - angle(originPoint, b);
     if (fabs(angleDiff) < 1E-5) {
       int x0, y0, x1, y1, x2, y2;
-      std::tie(x0, y0) = a->scatteredCoordinates();
-      std::tie(x1, y1) = b->scatteredCoordinates();
-      std::tie(x2, y2) = originPoint->scatteredCoordinates();
+      std::tie(x0, y0) = pointScatteredCoordsReal(a);
+      std::tie(x1, y1) = pointScatteredCoordsReal(b);
+      std::tie(x2, y2) = pointScatteredCoordsReal(originPoint);
       return sqrt((x0 - x2) * (x0 - x2) + (y0 - y2) * (y0 - y2)) <
              sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
     }
@@ -166,7 +166,7 @@ QPolygonF VizPolyhedron::computePolygon() const {
   QPolygonF polygon;
   if (points.size() == 1) {
     int x, y;
-    std::tie(x, y) = points[0]->scatteredCoordinates();
+    std::tie(x, y) = pointScatteredCoordsReal(points[0]);
     double x1 = x - m_localHorizontalMin + 0.5,
            x2 = x - m_localHorizontalMin - 0.5,
            y1 = -(y - m_localVerticalMin + 0.5),
@@ -184,8 +184,8 @@ QPolygonF VizPolyhedron::computePolygon() const {
     VizPoint *p1 = *std::next(iter);
     VizPoint *p0 = *iter;
     int x0, y0, x1, y1;
-    std::tie(x0, y0) = p0->scatteredCoordinates();
-    std::tie(x1, y1) = p1->scatteredCoordinates();
+    std::tie(x0, y0) = pointScatteredCoordsReal(p0);
+    std::tie(x1, y1) = pointScatteredCoordsReal(p1);
     int vecX = x1 - x0;
     int vecY = y1 - y0;
     // Rotate 90 degrees clockwise
@@ -225,7 +225,7 @@ QPainterPath VizPolyhedron::shape() const {
   return QGraphicsItem::shape();
 }
 
-std::pair<int, int> VizPolyhedron::pointScatteredCoordsReal(VizPoint *vp) {
+std::pair<int, int> VizPolyhedron::pointScatteredCoordsReal(const VizPoint *vp) {
   std::pair<int, int> coords = vp->scatteredCoordinates();
   if (coords.first == VizPoint::NO_COORD) coords.first = 0;
   if (coords.second == VizPoint::NO_COORD) coords.second = 0;
