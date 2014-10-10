@@ -6,16 +6,16 @@
 #include <QObject>
 #include <QSet>
 
-#include "clintprogram.h"
-#include "clintscop.h"
-#include "clintstmt.h"
-#include "vizpolyhedron.h"
-
 // FIXME: hardcoded value of distance between points.
 #define VIZ_POLYHEDRON_OFFSET 4.0
 #define CLINT_UNDEFINED -1ULL
 #define VIZ_POINT_RADIUS   4
 #define VIZ_POINT_DISTANCE 16
+
+#include "clintprogram.h"
+#include "clintscop.h"
+#include "clintstmt.h"
+#include "vizpolyhedron.h"
 
 class VizPolyhedron;
 

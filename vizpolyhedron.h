@@ -4,10 +4,10 @@
 #include <QGraphicsObject>
 #include <QPainterPath>
 
-#include <vizcoordinatesystem.h>
-#include <clintprogram.h>
-#include <clintscop.h>
-#include <clintstmt.h>
+#include "vizcoordinatesystem.h"
+#include "clintprogram.h"
+#include "clintscop.h"
+#include "clintstmt.h"
 
 class VizPoint;
 
@@ -53,6 +53,7 @@ public slots:
 private:
   ClintStmt *statement_;
   VizCoordinateSystem *coordinateSystem_;
+  QPainterPath m_polyhedronShape;
 
   // TODO: introduce a QPolygon that corresponds to the convex hull for all the child points
   // update boundingRect and shape functions accordingly.
@@ -65,6 +66,20 @@ private:
   static std::pair<int, int> pointScatteredCoordsReal(const VizPoint *vp);
   std::vector<VizPoint *> convexHull() const;
   QPolygonF computePolygon() const;
+  void recomputeShape();
+
+  QPointF mapToCoordinates(double x, double y) const {
+    return QPointF((x - m_localHorizontalMin) * VIZ_POINT_DISTANCE,
+                   -(y - m_localVerticalMin) * VIZ_POINT_DISTANCE);
+  }
+
+  QPointF mapToCoordinates(std::pair<double, double> coords) const {
+    return mapToCoordinates(coords.first, coords.second);
+  }
+
+  QPointF mapToCoordinates(VizPoint *vp) const {
+    return mapToCoordinates(pointScatteredCoordsReal(vp));
+  }
 };
 
 #endif // VIZPOLYHEDRON_H

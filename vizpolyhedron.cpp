@@ -43,6 +43,7 @@ void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points,
     // alphas that are not in the current projection are wildcards for this point, can't get them
     // Or it can be reconstructed using respective parent polyhedron and coodrinate system
   }
+  recomputeShape();
 }
 
 std::vector<VizPoint *> VizPolyhedron::convexHull() const {
@@ -209,20 +210,84 @@ QPolygonF VizPolyhedron::computePolygon() const {
   return polygon;
 }
 
+void VizPolyhedron::recomputeShape() {
+  std::vector<VizPoint *> points = convexHull();
+  m_polyhedronShape = QPainterPath();
+
+  // Special case for one-point polyhedron
+  if (points.size() == 1) {
+    QPointF center = mapToCoordinates(points.front());
+    m_polyhedronShape.addRoundedRect(center.x() - VIZ_POINT_DISTANCE / 2.0,
+                                     center.y() - VIZ_POINT_DISTANCE / 2.0,
+                                     VIZ_POINT_DISTANCE,
+                                     VIZ_POINT_DISTANCE,
+                                     VIZ_POINT_DISTANCE / 4.0,
+                                     VIZ_POINT_DISTANCE / 4.0);
+    return;
+  }
+  // Even for a two-point polyhedron, convex hull would contain the first of them
+  // twice since it is a closed polyg
+  CLINT_ASSERT(points.size() >= 2, "Convex hull must have at least 3 points");
+
+  std::vector<std::pair<double, double>> polygonPoints;
+  for (auto iter = std::begin(points); iter != std::end(points) - 1; ++iter) {
+    VizPoint *p1 = *std::next(iter);
+    VizPoint *p0 = *iter;
+    int x0, y0, x1, y1;
+    std::tie(x0, y0) = pointScatteredCoordsReal(p0);
+    std::tie(x1, y1) = pointScatteredCoordsReal(p1);
+    int vecX = x1 - x0;
+    int vecY = y1 - y0;
+    // Rotate 90 degrees clockwise
+    // [x']   [cos -90  -sin -90] [x]   [ 0  1] [x]   [ y]
+    // [  ] = [                 ] [ ] = [     ] [ ] = [  ]
+    // [y']   [sin -90   cos -90] [y]   [-1  0] [y]   [-x]
+    // Normalize (divide by length) to unit vector, and take half of that.
+    double length = std::sqrt(vecX*vecX + vecY*vecY);
+    double offsetX = vecY / length / 2.0;
+    double offsetY = -vecX / length / 2.0;
+    polygonPoints.emplace_back(std::make_pair(x0 + offsetX, y0 + offsetY));
+    polygonPoints.emplace_back(std::make_pair(x1 + offsetX, y1 + offsetY));
+  }
+
+  m_polyhedronShape.moveTo(mapToCoordinates(polygonPoints.front()));
+  polygonPoints.push_back(polygonPoints.front());
+  for (size_t i = 1; i < polygonPoints.size() - 1; i += 2) {
+    QPointF targetPoint = mapToCoordinates(polygonPoints[i]);
+    QPointF nextPoint = mapToCoordinates(polygonPoints[i + 1]);
+    m_polyhedronShape.lineTo(targetPoint);
+    size_t centerIdx = (i + 1) / 2;
+    int x, y;
+    std::tie(x, y) = pointScatteredCoordsReal(points[centerIdx]);
+    QPointF rotationCenter = mapToCoordinates(points[centerIdx]);
+    QRectF arcRect(rotationCenter.x() - VIZ_POINT_DISTANCE / 2.0,
+                   rotationCenter.y() - VIZ_POINT_DISTANCE / 2.0,
+                   VIZ_POINT_DISTANCE, VIZ_POINT_DISTANCE);
+    QLineF l1(rotationCenter, targetPoint);
+    QLineF l2(rotationCenter, nextPoint);
+    qreal angle = l1.angle();
+    qreal length = l2.angle() - angle;
+    // We know it is traversed CCW, then the angle has to be positive.
+    if (length < 0)
+      length += 360;
+    m_polyhedronShape.arcTo(arcRect, angle, length);
+  }
+}
+
 void VizPolyhedron::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
   Q_UNUSED(option);
   Q_UNUSED(widget);
   painter->save();
-  painter->drawPolygon(computePolygon());
+  painter->drawPath(m_polyhedronShape);
   painter->restore();
 }
 
 QRectF VizPolyhedron::boundingRect() const {
-  return computePolygon().boundingRect();
+  return m_polyhedronShape.boundingRect();
 }
 
 QPainterPath VizPolyhedron::shape() const {
-  return QGraphicsItem::shape();
+  return m_polyhedronShape;
 }
 
 std::pair<int, int> VizPolyhedron::pointScatteredCoordsReal(const VizPoint *vp) {
