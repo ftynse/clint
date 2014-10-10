@@ -34,13 +34,17 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
 
   // TODO: set up iterator names
 
+  int occurrenceHorizontalMin = occurrence->minimumValue(m_horizontalDimensionIdx);
+  int occurrenceVerticalMin   = occurrence->minimumValue(m_verticalDimensionIdx);
   VizPolyhedron *vp = new VizPolyhedron(this);
   vp->setProjectedPoints(std::move(points),
-                         occurrence->minimumValue(m_horizontalDimensionIdx),
-                         occurrence->minimumValue(m_verticalDimensionIdx));
-  vp->setPos(DISPLACEMENT * static_cast<double>(m_polyhedra.size()),
-             -DISPLACEMENT * static_cast<double>(m_polyhedra.size()));
+                         occurrenceHorizontalMin,
+                         occurrenceVerticalMin);
   m_polyhedra.push_back(vp);
+  setMinMax(std::min(occurrenceHorizontalMin, m_horizontalMin),
+            std::max(occurrence->maximumValue(m_horizontalDimensionIdx), m_horizontalMax),
+            std::min(occurrenceVerticalMin, m_verticalMin),
+            std::max(occurrence->maximumValue(m_verticalDimensionIdx), m_verticalMax));
   return true;
 }
 
@@ -50,11 +54,12 @@ void VizCoordinateSystem::setMinMax(int horizontalMinimum, int horizontalMaximum
   m_horizontalMax = horizontalMaximum;
   m_verticalMin   = verticalMinimum;
   m_verticalMax   = verticalMaximum;
-  for (VizPolyhedron *vph : m_polyhedra) {
-    QPointF position = vph->pos();
-    position.rx() += (vph->localHorizontalMin() - horizontalMinimum) * VIZ_POINT_DISTANCE;
-    position.ry() += (vph->localVerticalMin() - verticalMinimum) * VIZ_POINT_DISTANCE;
-    vph->setPos(position);
+  for (size_t i = 0, iend = m_polyhedra.size(); i < iend; i++) {
+    VizPolyhedron *vph = m_polyhedra.at(i);
+    double offset = VIZ_POLYHEDRON_OFFSET * static_cast<double>(i);
+    vph->setPos(offset + (vph->localHorizontalMin() - horizontalMinimum + 1) * VIZ_POINT_DISTANCE,
+                -(offset + (vph->localVerticalMin() - verticalMinimum + 1) * VIZ_POINT_DISTANCE));
+    vph->setZValue(-i);
   }
 }
 

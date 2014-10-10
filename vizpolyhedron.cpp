@@ -26,15 +26,15 @@ void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points,
     if (point.size() == 0) {
       vp->setScatteredCoordinates();
       vp->setOriginalCoordinates();
-      setPointVisiblePos(vp, 1, 1);
+      setPointVisiblePos(vp, 0, 0);
     } else if (point.size() == 2) {
       vp->setOriginalCoordinates(point[1]);
       vp->setScatteredCoordinates(point[0]);
-      setPointVisiblePos(vp, point[0] - horizontalMin + 1, 1);
+      setPointVisiblePos(vp, point[0] - horizontalMin, 0);
     } else if (point.size() == 4) {
       vp->setOriginalCoordinates(point[2], point[3]);
       vp->setScatteredCoordinates(point[0], point[1]);
-      setPointVisiblePos(vp, point[0] - horizontalMin + 1, point[1] - verticalMin + 1);
+      setPointVisiblePos(vp, point[0] - horizontalMin, point[1] - verticalMin);
     } else {
       CLINT_ASSERT(!"unreachable", "Point has wrong number of dimensions");
     }
@@ -167,10 +167,10 @@ QPolygonF VizPolyhedron::computePolygon() const {
   if (points.size() == 1) {
     int x, y;
     std::tie(x, y) = points[0]->scatteredCoordinates();
-    double x1 = x - m_localHorizontalMin + 1.5,
-           x2 = x - m_localHorizontalMin + 0.5,
-           y1 = -(y - m_localVerticalMin + 1.5),
-           y2 = -(y - m_localVerticalMin + 0.5);
+    double x1 = x - m_localHorizontalMin + 0.5,
+           x2 = x - m_localHorizontalMin - 0.5,
+           y1 = -(y - m_localVerticalMin + 0.5),
+           y2 = -(y - m_localVerticalMin - 0.5);
     polygon.append(QPointF(x1 * VIZ_POINT_DISTANCE, y1 * VIZ_POINT_DISTANCE));
     polygon.append(QPointF(x1 * VIZ_POINT_DISTANCE, y2 * VIZ_POINT_DISTANCE));
     polygon.append(QPointF(x2 * VIZ_POINT_DISTANCE, y2 * VIZ_POINT_DISTANCE));
@@ -201,8 +201,8 @@ QPolygonF VizPolyhedron::computePolygon() const {
   }
 
   for (const std::pair<double, double> &point : polygonPoints) {
-    polygon.append(QPointF((point.first - m_localHorizontalMin + 1) * VIZ_POINT_DISTANCE,
-                           -(point.second - m_localVerticalMin + 1) * VIZ_POINT_DISTANCE));
+    polygon.append(QPointF((point.first - m_localHorizontalMin) * VIZ_POINT_DISTANCE,
+                           -(point.second - m_localVerticalMin) * VIZ_POINT_DISTANCE));
   }
   polygon.append(polygon.front());
 

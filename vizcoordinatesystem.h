@@ -12,7 +12,7 @@
 #include "vizpolyhedron.h"
 
 // FIXME: hardcoded value of distance between points.
-#define DISPLACEMENT 4.0
+#define VIZ_POLYHEDRON_OFFSET 4.0
 #define CLINT_UNDEFINED -1ULL
 #define VIZ_POINT_RADIUS   4
 #define VIZ_POINT_DISTANCE 16
@@ -115,8 +115,16 @@ private:
   bool m_horizontalAxisVisible = true;
   bool m_verticalAxisVisible   = true;
 
-  // Default coordinate system is set up at zero.
-  // TODO: make this configurable, not all loops may start at origin
+  /// @variable m_horizontalMin
+  /// @variable m_horizontalMax
+  /// @variable m_verticalMin
+  /// @variable m_verticalMax
+  /// @brief  Minimum and maximum values (inclusive) for the coordinate system.
+  /// By deafult, center coordinate system at (0, 0) with 1x1 span.
+  /// Call setMinMax(int, int, int, int) to change the coordinate system span.
+  /// When projectStatementOccurrence(ClintStmtOccurrence *) is called,
+  /// the coordinate system is extended so that it accommodates both the origin
+  /// point (0, 0) and the projection of statement occurrence.
   int m_horizontalMin = 0;
   int m_horizontalMax = 0;
   int m_verticalMin   = 0;
