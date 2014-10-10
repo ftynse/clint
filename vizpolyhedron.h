@@ -32,8 +32,15 @@ public:
     return statement_->program();
   }
 
+  int localHorizontalMin() const {
+    return m_localHorizontalMin;
+  }
+
+  int localVerticalMin() const {
+    return m_localVerticalMin;
+  }
+
   void setProjectedPoints(std::vector<std::vector<int>> &&points, int horizontalMin, int verticalMin);
-  void adjustProjectedPoints(int coordinateSystemOriginX, int coordinateSystemOriginY);
 
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
   QRectF boundingRect() const;
@@ -55,6 +62,9 @@ private:
   int m_localVerticalMin   = 0;
 
   void setPointVisiblePos(VizPoint *vp, int x, int y);
+  static std::pair<int, int> pointScatteredCoordsReal(VizPoint *vp);
+  std::vector<VizPoint *> convexHull() const;
+  QPolygonF computePolygon() const;
 };
 
 #endif // VIZPOLYHEDRON_H

@@ -12,7 +12,7 @@
 #include "vizpolyhedron.h"
 
 // FIXME: hardcoded value of distance between points.
-#define DISPLACEMENT 4
+#define DISPLACEMENT 4.0
 #define CLINT_UNDEFINED -1ULL
 #define VIZ_POINT_RADIUS   4
 #define VIZ_POINT_DISTANCE 16

@@ -54,7 +54,10 @@ public:
   }
 
   std::pair<int, int> scatteredCoordinates() const {
-    return std::move(std::make_pair(m_scatteredHorizontal, m_scatteredVertical));
+    int x = m_scatteredHorizontal == NO_COORD ? 0 : m_scatteredHorizontal;
+    int y = m_scatteredVertical == NO_COORD ? 0 : m_scatteredVertical;
+    return std::move(std::make_pair(x, y));
+//    return std::move(std::make_pair(m_scatteredHorizontal, m_scatteredVertical));
   }
 
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);

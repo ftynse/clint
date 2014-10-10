@@ -38,10 +38,8 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
   vp->setProjectedPoints(std::move(points),
                          occurrence->minimumValue(m_horizontalDimensionIdx),
                          occurrence->minimumValue(m_verticalDimensionIdx));
-  QRectF rect = vp->boundingRect();
-  // FIXME: hardcoded margin values, and -4 taken from polyhedra boundary size
-  vp->setPos(3 * m_polyhedra.size(),
-             -rect.height() - 4 - 3 * m_polyhedra.size());
+  vp->setPos(DISPLACEMENT * static_cast<double>(m_polyhedra.size()),
+             -DISPLACEMENT * static_cast<double>(m_polyhedra.size()));
   m_polyhedra.push_back(vp);
   return true;
 }
@@ -53,7 +51,10 @@ void VizCoordinateSystem::setMinMax(int horizontalMinimum, int horizontalMaximum
   m_verticalMin   = verticalMinimum;
   m_verticalMax   = verticalMaximum;
   for (VizPolyhedron *vph : m_polyhedra) {
-    vph->adjustProjectedPoints(horizontalMinimum, verticalMinimum);
+    QPointF position = vph->pos();
+    position.rx() += (vph->localHorizontalMin() - horizontalMinimum) * VIZ_POINT_DISTANCE;
+    position.ry() += (vph->localVerticalMin() - verticalMinimum) * VIZ_POINT_DISTANCE;
+    vph->setPos(position);
   }
 }
 
