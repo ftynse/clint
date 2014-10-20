@@ -48,6 +48,8 @@ void ClintWindow::setupActions() {
   m_actionFileClose->setShortcut(QKeySequence::Close);
   m_actionFileQuit->setShortcut(QKeySequence::Quit);
 
+  m_actionFileClose->setEnabled(false);
+
   connect(m_actionFileOpen, &QAction::triggered, this, &ClintWindow::fileOpen);
   connect(m_actionFileClose, &QAction::triggered, this, &ClintWindow::fileClose);
   connect(m_actionFileQuit, &QAction::triggered, qApp, &QApplication::quit);
@@ -74,9 +76,10 @@ void ClintWindow::fileOpen() {
   QString fileName = QFileDialog::getOpenFileName(this, "Open file", QString(), "OpenScop files (*.scop);;C/C++ sources (*.c *.cpp *.cxx)", &selectedFilter);
   if (fileName.isNull())
     return;
-  const char *cFileName = QFile::encodeName(fileName).constData();
+  char *cFileName = strdup(QFile::encodeName(fileName).constData());
   QString fileNameNoPath = QFileInfo(fileName).fileName();
   FILE *file = fopen(cFileName, "r");
+  free(cFileName);
   if (!file) {
     QMessageBox::critical(this, QString(), QString("Could not open %1 for reading").arg(fileNameNoPath), QMessageBox::Ok, QMessageBox::Ok);
     return;
@@ -106,9 +109,13 @@ void ClintWindow::fileOpen() {
   setCentralWidget(m_projection->widget());
 
   m_fileOpen = true;
+  m_actionFileClose->setEnabled(true);
 }
 
 void ClintWindow::fileClose() {
+  if (!m_fileOpen)
+    return;
+
   setWindowTitle("Clint: Chunky Loop INTerface");
 
   setCentralWidget(nullptr);
@@ -120,4 +127,5 @@ void ClintWindow::fileClose() {
   m_projection = nullptr;
 
   m_fileOpen = false;
+  m_actionFileClose->setEnabled(false);
 }
