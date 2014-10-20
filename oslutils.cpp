@@ -41,37 +41,6 @@ osl_relation_p oslApplyScattering(const std::vector<osl_relation_p> &domains,
   std::transform(std::begin(scatterings), std::end(scatterings), std::back_inserter(scattering),
                  std::bind(&osl_relation_nclone, std::placeholders::_1, 1));
 
-  int domainMaxNbLocalDim = 0, scatteringMaxNbLocalDim = 0;
-  for (osl_relation_p domain_union_part : domain) {
-    if (domainMaxNbLocalDim < domain_union_part->nb_local_dims) {
-      domainMaxNbLocalDim = domain_union_part->nb_local_dims;
-    }
-  }
-  for (osl_relation_p scattering_union_part : scattering) {
-    if (scatteringMaxNbLocalDim < scattering_union_part->nb_local_dims) {
-      scatteringMaxNbLocalDim = scattering_union_part->nb_local_dims;
-    }
-  }
-
-  for (osl_relation_p domain_union_part : domain) {
-    // Make space for local dimensions (move current to the end).
-    for (int i = 0; i < scatteringMaxNbLocalDim; i++) {
-      osl_relation_insert_blank_column(domain_union_part,
-                                       1 + domain_union_part->nb_input_dims);
-    }
-    domain_union_part->nb_local_dims += scatteringMaxNbLocalDim;
-  }
-
-  for (osl_relation_p scattering_union_part : scattering) {
-    // Make space for extra local dimensions (leave current at the beginning).
-    for (int i = 0; i < domainMaxNbLocalDim; i++) {
-      osl_relation_insert_blank_column(scattering_union_part,
-                                       scattering_union_part->nb_columns - 1 -
-                                       scattering_union_part->nb_parameters);
-    }
-    scattering_union_part->nb_local_dims += domainMaxNbLocalDim;
-  }
-
   osl_relation_p applied_domain = nullptr;
   osl_relation_p result = nullptr;
   // Cartesian product of unions of relations
@@ -115,7 +84,7 @@ osl_relation_p oslApplyScattering(const std::vector<osl_relation_p> &domains,
       osl_relation_p result_union_part = osl_relation_concat_constraints(domain_part, scattering_part);
       result_union_part->nb_output_dims = scattering_union_part->nb_input_dims + scattering_union_part->nb_output_dims;
       result_union_part->nb_input_dims = 0;
-      result_union_part->nb_local_dims = domain_union_part->nb_local_dims;
+      result_union_part->nb_local_dims = domain_union_part->nb_local_dims + scattering_union_part->nb_local_dims;
       result_union_part->nb_parameters = domain_union_part->nb_parameters;
       result_union_part->type = OSL_TYPE_DOMAIN;
       result_union_part->next = nullptr;
