@@ -59,7 +59,7 @@ void VizCoordinateSystem::setMinMax(int horizontalMinimum, int horizontalMaximum
     double offset = VIZ_POLYHEDRON_OFFSET * static_cast<double>(i);
     vph->setPos(offset + (vph->localHorizontalMin() - horizontalMinimum + 1) * VIZ_POINT_DISTANCE,
                 -(offset + (vph->localVerticalMin() - verticalMinimum + 1) * VIZ_POINT_DISTANCE));
-    vph->setZValue(-i);
+    vph->setZValue(m_polyhedra.size() + 1 - i);
   }
 }
 
