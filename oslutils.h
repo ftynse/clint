@@ -7,6 +7,8 @@
 
 #include <clan/clan.h>
 
+#include <candl/candl.h>
+
 #include <functional>
 #include <map>
 #include <tuple>
@@ -15,6 +17,16 @@
 /// OpenScop linked-list foreach
 #define LL_FOREACH(var, container) \
   for (var = container; var != nullptr; var = var->next)
+
+template <typename T>
+T *oslListLast(T *container) {
+  if (container == nullptr)
+    return nullptr;
+  while (container->next != nullptr) {
+    container = container->next;
+  }
+  return container;
+}
 
 template <typename T, typename Func, typename... Args>
 T *oslListTransform(T *container, Func f, Args... args) {
@@ -74,7 +86,7 @@ inline void oslListForeach(T *container, Func f, Args... args) {
 
 template <typename T, typename Func, typename... Args>
 void oslListForeachSingle(T *container, Func f, Args... args) {
-  auto function = [&](T *ptr, Args... a) -> typename std::result_of<Func>::type {
+  auto function = [&](T *ptr, Args... a) {
     oslListNoSeqCall(ptr, f, a...);
   };
   oslListForeach(container, function, args...);
@@ -112,6 +124,33 @@ T *oslListFromVector(const std::vector<T *> &vector) {
   }
 }
 
+template <typename T>
+int oslListIndexOf(T *container, T *element) {
+  int index = 0;
+  bool found = false;
+  for (T *container_part = container; container_part != nullptr; container_part = container_part->next) {
+    if (container_part == element) {
+      found = true;
+      break;
+    }
+    ++index;
+  }
+  if (!found)
+    return -1;
+  return index;
+}
+
+template <typename T>
+T *oslListAt(T *container, int index) {
+  int counter = 0;
+  for (T *container_part = container; container_part != nullptr; container_part = container_part->next) {
+    if (counter == index)
+      return container_part;
+    counter++;
+  }
+  return nullptr;
+}
+
 
 osl_relation_p oslApplyScattering(osl_statement_p stmt);
 osl_relation_p oslApplyScattering(osl_statement_p stmt, const std::vector<int> &beta);
@@ -142,7 +181,12 @@ typedef std::map<std::vector<int>,
                  std::tuple<osl_scop_p, osl_statement_p, osl_relation_p>
                 > BetaMap;
 
+typedef std::multimap<
+                 std::pair<std::vector<int>, std::vector<int>>,
+                 osl_dependence_p> DependenceMap;
+
 BetaMap oslBetaMap(osl_scop_p scop);
+DependenceMap oslDependenceMap(osl_scop_p scop);
 
 // FIXME: we use Clay to access betas; when this functionality is moved to OSL, switch!
 std::vector<int> betaFromClay(clay_array_p beta);
@@ -157,4 +201,6 @@ inline std::vector<int> betaExtract(osl_relation_p relation) {
 
 osl_scop_p oslFromCCode(FILE *file);
 osl_scop_p oslFromCCode(char *code);
+
+osl_dependence_p oslScopDependence(osl_scop_p scop);
 #endif // OSLUTILS_H

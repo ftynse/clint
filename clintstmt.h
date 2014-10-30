@@ -25,6 +25,13 @@ public:
   }
 
   std::vector<ClintStmtOccurrence *> occurences() const;
+
+  ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const {
+    auto iterator = m_occurrences.find(beta);
+    if (iterator == std::end(m_occurrences))
+      return nullptr;
+    return iterator->second;
+  }
 signals:
 
 public slots:

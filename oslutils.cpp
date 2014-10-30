@@ -203,20 +203,6 @@ clay_array_p clayBetaFromVector(const std::vector<int> &betaVector) {
   return beta;
 }
 
-BetaMap oslBetaMap(osl_scop_p scop) {
-  BetaMap betaMap;
-  oslListNoSeqCall(scop, [&betaMap](osl_scop_p single_scop) {
-    oslListForeach(single_scop->statement, [single_scop,&betaMap](osl_statement_p stmt) {
-      oslListForeach(stmt->scattering, [single_scop,stmt,&betaMap](osl_relation_p relation) {
-        clay_array_p beta = clay_beta_extract(relation);
-        betaMap[betaFromClay(beta)] = std::make_tuple(single_scop, stmt, relation);
-        clay_array_free(beta);
-      });
-    });
-  });
-  return std::move(betaMap);
-}
-
 osl_scop_p oslFromCCode(FILE *file) {
   clan_options_p clan_opts = clan_options_malloc();
   clan_opts->castle = 0;
@@ -235,4 +221,104 @@ osl_scop_p oslFromCCode(char *code) {
   osl_scop_p clan_scop = oslFromCCode(file);
   fclose(file);
   return clan_scop;
+}
+
+osl_statement_p oslReifyStatement(osl_statement_p stmt, osl_relation_p scattering_part) {
+  osl_statement_p statement = osl_statement_nclone(stmt, 1);
+  if (stmt->scattering == nullptr)
+    return statement;
+
+  int scatteringIdx = oslListIndexOf(stmt->scattering, scattering_part);
+  CLINT_ASSERT(scatteringIdx != -1,
+               "Scattering part to reify must be present in the original statement");
+  if (scatteringIdx == 0) {
+    osl_relation_free(statement->scattering->next);
+    statement->scattering->next = nullptr;
+    return statement;
+  }
+  osl_relation_p relationToDelete = statement->scattering;
+  osl_relation_p previousScattering = oslListAt(relationToDelete, scatteringIdx - 1); // Checked for 0 before.
+  fprintf(stderr, "%d %p \n", scatteringIdx, previousScattering);
+  CLINT_ASSERT(previousScattering->next != nullptr, "Something weird happend with pointers");
+  statement->scattering = previousScattering->next;
+  previousScattering->next = previousScattering->next->next;
+  osl_relation_free(relationToDelete);
+  statement->scattering->next = nullptr;
+  return statement;
+}
+
+osl_dependence_p oslScopDependences(osl_scop_p scop) {
+  // TODO: this should be managed by a class that initializes Candl only once
+
+  candl_options_p candl_options = candl_options_malloc();
+  candl_options->fullcheck = 1;
+  candl_scop_usr_init(scop);
+  osl_dependence_p dependences = candl_dependence(scop, candl_options);
+  if (dependences)
+    candl_dependence_init_fields(scop, dependences);
+  candl_scop_usr_cleanup(scop);
+  candl_options_free(candl_options);
+  return dependences;
+}
+
+BetaMap oslBetaMap(osl_scop_p scop) {
+  BetaMap betaMap;
+  oslListNoSeqCall(scop, [&betaMap](osl_scop_p single_scop) {
+    oslListForeach(single_scop->statement, [single_scop,&betaMap](osl_statement_p stmt) {
+      oslListForeach(stmt->scattering, [single_scop,stmt,&betaMap](osl_relation_p relation) {
+        clay_array_p beta = clay_beta_extract(relation);
+        betaMap[betaFromClay(beta)] = std::make_tuple(single_scop, stmt, relation);
+        clay_array_free(beta);
+      });
+    });
+  });
+  return std::move(betaMap);
+}
+
+DependenceMap oslDependenceMap(osl_scop_p scop) {
+  // Set up dependences for a particular SCoP.
+  // TODO: Candl 0.6.2 does not support computing deps for multiple scops, nor does it support unions.
+  // This is a quite inefficient workaround for it, multiple clones of scop with subsequent removals:
+  // transform a scop with unions, to a scop without unions by introducing more statements.
+  // This function can be moved to Candl to support relation unions.
+  // It also requires to change the osl extensions so that it contains pointer to a scattering
+  // in addition to the statement.
+  DependenceMap dependenceMap;
+  oslListNoSeqCall(scop, [&dependenceMap](osl_scop_p single_scop) {
+    osl_scop_p noScatteringUnionScop = osl_scop_clone(single_scop);
+    osl_statement_p originalStatements = noScatteringUnionScop->statement;
+    osl_statement_p newStatements = nullptr;
+    osl_statement_p ptr = nullptr;
+    oslListForeachSingle(originalStatements, [&newStatements,&ptr](osl_statement_p stmt) {
+      oslListForeachSingle(stmt->scattering, [stmt,&newStatements,&ptr](osl_relation_p scattering) {
+        osl_statement_p reified = oslReifyStatement(stmt, scattering);
+        if (newStatements == nullptr) {
+          newStatements = reified;
+          ptr = reified;
+        } else {
+          ptr->next = reified;
+          ptr = ptr->next;
+        }
+      });
+    });
+    noScatteringUnionScop->statement = newStatements;
+    osl_statement_free(originalStatements);
+
+    osl_dependence_p dependence = oslScopDependences(noScatteringUnionScop);
+
+    oslListForeachSingle(dependence, [&dependenceMap](osl_dependence_p dep) {
+      CLINT_ASSERT(dep->stmt_source_ptr != nullptr,
+                   "Source statement pointer in the osl dependence must be defined");
+      CLINT_ASSERT(dep->stmt_target_ptr != nullptr,
+                   "Target statement pointer in the osl dependence must be defined");
+
+      std::vector<int> sourceBeta = betaExtract(dep->stmt_source_ptr->scattering);
+      std::vector<int> targetBeta = betaExtract(dep->stmt_target_ptr->scattering);
+      dep->stmt_source_ptr = nullptr;   // Set up nulls intentionally, the data will be deleted.
+      dep->stmt_target_ptr = nullptr;
+      dependenceMap.insert(std::make_pair(std::make_pair(sourceBeta, targetBeta), dep));
+    });
+    osl_scop_free(noScatteringUnionScop);
+  });
+  return std::move(dependenceMap);
 }

@@ -53,6 +53,10 @@ public:
     return m_statement->scop();
   }
 
+  const std::vector<int> &betaVector() const {
+    return m_betaVector;
+  }
+
   int minimumValue(int dimIdx) const;
   int maximumValue(int dimIdx) const;
 

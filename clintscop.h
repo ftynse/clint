@@ -9,13 +9,15 @@
 #include <unordered_set>
 #include <vector>
 
+class ClintDependence;
 class ClintStmt;
+class ClintStmtOccurrence;
 
-class ClintScop : public QObject
-{
+class ClintScop : public QObject {
   Q_OBJECT
 public:
   typedef std::map<std::vector<int>, ClintStmt *> VizBetaMap;
+  typedef std::multimap<std::pair<std::vector<int>, std::vector<int>>, ClintDependence *> ClintDependenceMap;
 
   explicit ClintScop(osl_scop_p scop, ClintProgram *parent = nullptr);
 
@@ -34,6 +36,16 @@ public:
 
   std::unordered_set<ClintStmt *> statements() const;
 
+  ClintStmt *statement(const std::vector<int> &beta) const {
+    auto iterator = m_vizBetaMap.find(beta);
+    if (iterator == std::end(m_vizBetaMap))
+      return nullptr;
+    return iterator->second;
+  }
+
+  ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
+
+  void createDependences(osl_scop_p scop);
 signals:
 
 public slots:
@@ -45,6 +57,7 @@ private:
 //  std::vector<VizStatement *> statements_;
   // statements = unique values of m_vizBetaMap
   VizBetaMap m_vizBetaMap;
+  ClintDependenceMap m_dependenceMap;
 };
 
 #endif // CLINTSCOP_H
