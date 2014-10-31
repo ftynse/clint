@@ -19,6 +19,9 @@ void ClintScop::createDependences(osl_scop_p scop) {
 
     ClintDependence *clintDep = new ClintDependence(dep, source, target, this);
     m_dependenceMap.emplace(betas, clintDep);
+    if (source == target) {
+      m_internalDeps.emplace(source, clintDep);
+    }
   }
 }
 
@@ -52,4 +55,14 @@ ClintStmtOccurrence *ClintScop::occurrence(const std::vector<int> &beta) const {
   if (stmt == nullptr)
     return nullptr;
   return stmt->occurrence(beta);
+}
+
+std::unordered_set<ClintDependence *>
+ClintScop::internalDependences(ClintStmtOccurrence *occurrence) const {
+  auto range = m_internalDeps.equal_range(occurrence);
+  std::unordered_set<ClintDependence *> result;
+  for (auto element = range.first; element != range.second; element++) {
+    result.emplace(element->second);
+  }
+  return std::move(result);
 }

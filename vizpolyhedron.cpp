@@ -19,6 +19,8 @@ void VizPolyhedron::setPointVisiblePos(VizPoint *vp, int x, int y) {
 void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points,
                                        int horizontalMin,
                                        int verticalMin) {
+  // FIXME: this function re-adds points if called twice; document or change this behavior
+  CLINT_ASSERT(m_points.size() == 0, "Funciton may not be called twice for the same object");
   m_localHorizontalMin = horizontalMin;
   m_localVerticalMin   = verticalMin;
   for (const std::vector<int> &point : points) {
@@ -44,6 +46,57 @@ void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points,
     // Or it can be reconstructed using respective parent polyhedron and coodrinate system
   }
   recomputeShape();
+}
+
+void VizPolyhedron::setInternalDependences(const std::vector<std::vector<int>> &dependences) {
+  // Internal dependences are have even number of coordinates since dimensionality
+  // of target and source domains are equal (they come from the same statement occurrence).
+  for (const std::vector<int> &dep : dependences) {
+    std::pair<int, int> sourceCoordinates {VizPoint::NO_COORD, VizPoint::NO_COORD};
+    std::pair<int, int> targetCoordinates {VizPoint::NO_COORD, VizPoint::NO_COORD};
+    if (dep.size() == 0) {
+      // TODO: figure out what to do with such dependence
+      continue;
+    } else if (dep.size() == 2) {
+      sourceCoordinates.first = dep[0];
+      targetCoordinates.first = dep[1];
+    } else if (dep.size() == 4) {
+      sourceCoordinates.first = dep[0];
+      sourceCoordinates.second = dep[1];
+      targetCoordinates.first = dep[2];
+      targetCoordinates.second = dep[3];
+    } else {
+      CLINT_UNREACHABLE;
+    }
+
+    // FIXME: this is very inefficient.  Change storage of points to a map by original coodinates.
+    VizPoint *sourcePoint = nullptr,
+             *targetPoint = nullptr;
+    for (VizPoint *vp : m_points) {
+      if (vp->originalCoordinates() == sourceCoordinates) {
+        sourcePoint = vp;
+      }
+      if (vp->originalCoordinates() == targetCoordinates) {
+        targetPoint = vp;
+      }
+      if (targetPoint && sourcePoint) {
+        break;
+      }
+    }
+
+    if (!targetPoint || !sourcePoint) {
+      qDebug() << "Could not find point corresponding to "
+               << sourceCoordinates.first << sourceCoordinates.second << " -> "
+               << targetCoordinates.first << targetCoordinates.second;
+      continue;
+    } else {
+
+    }
+
+    VizDepArrow *depArrow = VizDepArrow::pointLink(sourcePoint->pos(), targetPoint->pos());
+    depArrow->setParentItem(this);
+    m_deps.insert(depArrow);
+  }
 }
 
 std::vector<VizPoint *> VizPolyhedron::convexHull() const {

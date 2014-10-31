@@ -5,6 +5,7 @@
 #include <QPainterPath>
 
 #include "vizcoordinatesystem.h"
+#include "vizdeparrow.h"
 #include "clintprogram.h"
 #include "clintscop.h"
 #include "clintstmt.h"
@@ -41,6 +42,7 @@ public:
   }
 
   void setProjectedPoints(std::vector<std::vector<int>> &&points, int horizontalMin, int verticalMin);
+  void setInternalDependences(const std::vector<std::vector<int>> &dependences);
 
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
   QRectF boundingRect() const;
@@ -59,6 +61,7 @@ private:
   // update boundingRect and shape functions accordingly.
 
   std::unordered_set<VizPoint *> m_points;
+  std::unordered_set<VizDepArrow *> m_deps;
   int m_localHorizontalMin = 0;
   int m_localVerticalMin   = 0;
 

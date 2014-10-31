@@ -18,6 +18,7 @@ class ClintScop : public QObject {
 public:
   typedef std::map<std::vector<int>, ClintStmt *> VizBetaMap;
   typedef std::multimap<std::pair<std::vector<int>, std::vector<int>>, ClintDependence *> ClintDependenceMap;
+  typedef std::multimap<ClintStmtOccurrence *, ClintDependence *> ClintOccurrenceDeps;
 
   explicit ClintScop(osl_scop_p scop, ClintProgram *parent = nullptr);
 
@@ -44,7 +45,7 @@ public:
   }
 
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
-
+  std::unordered_set<ClintDependence *> internalDependences(ClintStmtOccurrence *occurrence) const;
   void createDependences(osl_scop_p scop);
 signals:
 
@@ -58,6 +59,7 @@ private:
   // statements = unique values of m_vizBetaMap
   VizBetaMap m_vizBetaMap;
   ClintDependenceMap m_dependenceMap;
+  ClintOccurrenceDeps m_internalDeps;
 };
 
 #endif // CLINTSCOP_H
