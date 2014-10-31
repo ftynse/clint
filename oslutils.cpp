@@ -223,27 +223,45 @@ osl_scop_p oslFromCCode(char *code) {
   return clan_scop;
 }
 
+template <typename T>
+void oslListOnlyElement(T **container, int index) {
+  if (index < 0 || container == nullptr || *container == nullptr)
+    return;
+  if (index == 0) {
+    osl_relation_free((*container)->next);
+    (*container)->next = nullptr;
+    return;
+  }
+  osl_relation_p elementsToDelete = *container;
+  osl_relation_p previousElement = oslListAt(elementsToDelete, index - 1); // Checked for 0 before.
+  CLINT_ASSERT(previousElement->next != nullptr, "Something weird happend with pointers");
+  *container = previousElement->next;
+  previousElement->next = previousElement->next->next;
+  osl_relation_free(elementsToDelete);
+  (*container)->next = nullptr;
+}
+
 osl_statement_p oslReifyStatement(osl_statement_p stmt, osl_relation_p scattering_part) {
   osl_statement_p statement = osl_statement_nclone(stmt, 1);
-  if (stmt->scattering == nullptr)
+  if (stmt->scattering == nullptr || stmt->scattering->next == nullptr)
     return statement;
 
   int scatteringIdx = oslListIndexOf(stmt->scattering, scattering_part);
   CLINT_ASSERT(scatteringIdx != -1,
                "Scattering part to reify must be present in the original statement");
-  if (scatteringIdx == 0) {
-    osl_relation_free(statement->scattering->next);
-    statement->scattering->next = nullptr;
+  oslListOnlyElement(&statement->scattering, scatteringIdx);
+  return statement;
+}
+
+osl_statement_p oslReifyStatementDomain(osl_statement_p stmt, osl_relation_p domain_part) {
+  osl_statement_p statement = osl_statement_nclone(stmt, 1);
+  if (stmt->domain == nullptr || stmt->domain->next == nullptr)
     return statement;
-  }
-  osl_relation_p relationToDelete = statement->scattering;
-  osl_relation_p previousScattering = oslListAt(relationToDelete, scatteringIdx - 1); // Checked for 0 before.
-  fprintf(stderr, "%d %p \n", scatteringIdx, previousScattering);
-  CLINT_ASSERT(previousScattering->next != nullptr, "Something weird happend with pointers");
-  statement->scattering = previousScattering->next;
-  previousScattering->next = previousScattering->next->next;
-  osl_relation_free(relationToDelete);
-  statement->scattering->next = nullptr;
+
+  int domainIdx = oslListIndexOf(stmt->domain, domain_part);
+  CLINT_ASSERT(domainIdx != -1,
+               "Domain part to reify must be present in the original statement");
+  oslListOnlyElement(&statement->domain, domainIdx);
   return statement;
 }
 
@@ -276,35 +294,40 @@ BetaMap oslBetaMap(osl_scop_p scop) {
 }
 
 DependenceMap oslDependenceMap(osl_scop_p scop) {
-  // Set up dependences for a particular SCoP.
   // TODO: Candl 0.6.2 does not support computing deps for multiple scops, nor does it support unions.
   // This is a quite inefficient workaround for it, multiple clones of scop with subsequent removals:
   // transform a scop with unions, to a scop without unions by introducing more statements.
   // This function can be moved to Candl to support relation unions.
   // It also requires to change the osl extensions so that it contains pointer to a scattering
   // in addition to the statement.
+  // Since dependence domain does not have beta-vectors, it is safe to convert unions to separate
+  // statements -- this will not result in beta-vector collisions.
   DependenceMap dependenceMap;
   oslListNoSeqCall(scop, [&dependenceMap](osl_scop_p single_scop) {
-    osl_scop_p noScatteringUnionScop = osl_scop_clone(single_scop);
-    osl_statement_p originalStatements = noScatteringUnionScop->statement;
+    osl_scop_p noUnionScop = osl_scop_clone(single_scop);
+    osl_statement_p originalStatements = noUnionScop->statement;
     osl_statement_p newStatements = nullptr;
     osl_statement_p ptr = nullptr;
     oslListForeachSingle(originalStatements, [&newStatements,&ptr](osl_statement_p stmt) {
       oslListForeachSingle(stmt->scattering, [stmt,&newStatements,&ptr](osl_relation_p scattering) {
-        osl_statement_p reified = oslReifyStatement(stmt, scattering);
-        if (newStatements == nullptr) {
-          newStatements = reified;
-          ptr = reified;
-        } else {
-          ptr->next = reified;
-          ptr = ptr->next;
-        }
+        osl_statement_p stmtNoScatUnion = oslReifyStatement(stmt, scattering);
+        oslListForeachSingle(stmtNoScatUnion->domain,
+                             [&stmtNoScatUnion,&newStatements,&ptr](osl_relation_p domain) {
+          osl_statement_p stmtNoUnion = oslReifyStatementDomain(stmtNoScatUnion, domain);
+          if (newStatements == nullptr) {
+            newStatements = stmtNoUnion;
+            ptr = stmtNoUnion;
+          } else {
+            ptr->next = stmtNoUnion;
+            ptr = ptr->next;
+          }
+        });
       });
     });
-    noScatteringUnionScop->statement = newStatements;
+    noUnionScop->statement = newStatements;
     osl_statement_free(originalStatements);
 
-    osl_dependence_p dependence = oslScopDependences(noScatteringUnionScop);
+    osl_dependence_p dependence = oslScopDependences(noUnionScop);
 
     oslListForeachSingle(dependence, [&dependenceMap](osl_dependence_p dep) {
       CLINT_ASSERT(dep->stmt_source_ptr != nullptr,
@@ -318,7 +341,7 @@ DependenceMap oslDependenceMap(osl_scop_p scop) {
       dep->stmt_target_ptr = nullptr;
       dependenceMap.insert(std::make_pair(std::make_pair(sourceBeta, targetBeta), dep));
     });
-    osl_scop_free(noScatteringUnionScop);
+    osl_scop_free(noUnionScop);
   });
   return std::move(dependenceMap);
 }
