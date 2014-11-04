@@ -8,6 +8,12 @@
 #include <map>
 #include <utility>
 
+inline void fillDimensionNames(char **strings, std::vector<std::string> &dimensionNames) {
+  for (char **str = strings; str != nullptr && *str != nullptr; str++) {
+    dimensionNames.emplace_back(*str);
+  }
+}
+
 ClintStmt::ClintStmt(osl_statement_p stmt, ClintScop *parent) :
   QObject(parent), m_scop(parent), m_statement(stmt) {
 
@@ -19,6 +25,40 @@ ClintStmt::ClintStmt(osl_statement_p stmt, ClintScop *parent) :
       m_occurrences[betaVector] = vso;
     }
   });
+
+  // Get dimension names for the statement.
+  //   Try to find iterator names in either body or extbody.
+  void *bodyGeneric = osl_generic_lookup(stmt->extension, OSL_URI_BODY);
+  void *extbodyGeneric = osl_generic_lookup(stmt->extension, OSL_URI_EXTBODY);
+  void *namesGeneric = osl_generic_lookup(stmt->extension, OSL_URI_SCATNAMES);
+  osl_body_p body = nullptr;
+  if (bodyGeneric) {
+    body = static_cast<osl_body_p>(bodyGeneric);
+  } else if (extbodyGeneric) {
+    osl_extbody_p extbody = static_cast<osl_extbody_p>(extbodyGeneric);
+    body = extbody->body;
+  }
+
+  //   If iterators found, use them.  Create default names otherwise.
+  // FIXME(osl): we have multiple places where iterator names are placed
+  // body, extbody's body and scatnames.
+  if (body && body->iterators) {
+    fillDimensionNames(body->iterators->string, m_dimensionNames);
+  } else if (namesGeneric) {
+    osl_strings_p betaIterators = static_cast<osl_scatnames_p>(namesGeneric)->names;
+    for (int i = 1, e = osl_strings_size(betaIterators); i < e; i += 2) {
+      m_dimensionNames.emplace_back(betaIterators->string[i]);
+    }
+  } else {
+    int nbIterators = 0;
+    oslListForeach(stmt->domain, [&nbIterators](osl_relation_p domain) mutable {
+      nbIterators = std::max(nbIterators, domain->nb_output_dims);
+    });
+    // Create at least 1 name of each type to avoid weird memory allocations.
+    osl_names_p names = osl_names_generate("p", 1, "i", nbIterators, "y", 1, "z", 1, "l", 1);
+    fillDimensionNames(names->iterators->string, m_dimensionNames);
+    osl_names_free(names);
+  }
 }
 
 std::vector<ClintStmtOccurrence *> ClintStmt::occurences() const {

@@ -131,6 +131,8 @@ private:
   int m_verticalMax   = 0;
 
   QFont m_font;
+  QString m_horizontalName;
+  QString m_verticalName;
 };
 
 #endif // VIZCOORDINATESYSTEM_H

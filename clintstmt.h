@@ -32,6 +32,15 @@ public:
       return nullptr;
     return iterator->second;
   }
+
+  std::string dimensionName(int dimension) const {
+    CLINT_ASSERT(dimension >= 0, "Dimension index should be positive");
+    if (dimension < m_dimensionNames.size())
+      return m_dimensionNames[dimension];
+    CLINT_UNREACHABLE;
+    return std::string("??");
+  }
+
 signals:
 
 public slots:
@@ -40,6 +49,7 @@ private:
   ClintScop *m_scop;
   osl_statement_p m_statement;
   std::map<std::vector<int>, ClintStmtOccurrence *> m_occurrences;
+  std::vector<std::string> m_dimensionNames;
 };
 
 #endif // CLINTSTMT_H

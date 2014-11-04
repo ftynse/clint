@@ -33,7 +33,23 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
   if (points.size() == 0)
     return false;
 
-  // TODO: set up iterator names
+  // Add iterator variable names to the list.
+  if (m_horizontalAxisVisible) {
+    const char *horizontalName = occurrence->statement()->dimensionName(m_horizontalDimensionIdx).c_str();
+    if (m_horizontalName.size() == 0) {
+      m_horizontalName = QString(horizontalName);
+    } else {
+      m_horizontalName += QString(",%1").arg(horizontalName);
+    }
+  }
+  if (m_verticalAxisVisible) {
+    const char *verticalName = occurrence->statement()->dimensionName(m_verticalDimensionIdx).c_str();
+    if (m_verticalName.size() == 0) {
+      m_verticalName = QString(verticalName);
+    } else {
+      m_verticalName += QString(",%1").arg(verticalName);
+    }
+  }
 
   int occurrenceHorizontalMin = occurrence->minimumValue(m_horizontalDimensionIdx);
   int occurrenceVerticalMin   = occurrence->minimumValue(m_verticalDimensionIdx);
@@ -107,6 +123,14 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
                         fm.lineSpacing(),
                         Qt::AlignHCenter | Qt::AlignBottom | Qt::TextDontClip, ticText);
     }
+
+    // Draw label.
+    int pos = (3 + m_horizontalMax - m_horizontalMin) * VIZ_POINT_DISTANCE;
+    painter->drawText(pos - VIZ_POINT_DISTANCE / 2.,
+                      ticMargin(),
+                      fm.width(m_horizontalName),
+                      fm.lineSpacing(),
+                      Qt::AlignHCenter | Qt::AlignBottom | Qt::TextDontClip, m_horizontalName);
   }
 
   if (m_verticalAxisVisible) {
@@ -133,6 +157,15 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
                         VIZ_POINT_DISTANCE,
                         Qt::AlignVCenter | Qt::AlignRight | Qt::TextDontClip, ticText);
     }
+
+    // Draw label.
+    int pos = -(3 + m_verticalMax - m_verticalMin) * VIZ_POINT_DISTANCE;
+    int textWidth = fm.width(m_verticalName);
+    painter->drawText(-textWidth - ticMargin(),
+                      pos - VIZ_POINT_DISTANCE / 2.,
+                      textWidth,
+                      VIZ_POINT_DISTANCE,
+                      Qt::AlignVCenter | Qt::AlignRight | Qt::TextDontClip, m_verticalName);
   }
 }
 
