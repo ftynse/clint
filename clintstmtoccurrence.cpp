@@ -17,10 +17,6 @@ ClintStmtOccurrence::ClintStmtOccurrence(osl_statement_p stmt, const std::vector
 
   m_betaVector.reserve(betaVector.size());
   std::copy(std::begin(betaVector), std::end(betaVector), std::back_inserter(m_betaVector));
-
-  // FIXME: -2 is a value for NO_DIMENSION from VizCoordinateSystem.  Promote.
-  m_cachedDimMins[-2] = 0;
-  m_cachedDimMaxs[-2] = 0;
 }
 
 bool operator < (const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs) {
@@ -147,7 +143,7 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
 }
 
 int ClintStmtOccurrence::minimumValue(int dimIdx) const {
-  if (dimIdx >= dimensionality())
+  if (dimIdx >= dimensionality() || dimIdx < 0)
     return 0;
   if (m_cachedDimMins.count(dimIdx) == 0) {
     projectOn(dimIdx, INT_MAX);
@@ -158,7 +154,7 @@ int ClintStmtOccurrence::minimumValue(int dimIdx) const {
 }
 
 int ClintStmtOccurrence::maximumValue(int dimIdx) const {
-  if (dimIdx >= dimensionality())
+  if (dimIdx >= dimensionality() || dimIdx < 0)
     return 0;
   if (m_cachedDimMaxs.count(dimIdx) == 0) {
     projectOn(dimIdx, INT_MAX);
