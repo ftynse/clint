@@ -91,7 +91,7 @@ include_directories(${Qt5Core_INCLUDE_DIRS})
 aux_source_directory(. SRC_LIST)
 add_executable(${PROJECT_NAME} ${SRC_LIST} macros.h)
 
-qt5_use_modules(${PROJECT_NAME} Widgets Gui Core)
+qt5_use_modules(${PROJECT_NAME} Widgets Gui Core Xml Svg)
 
 target_link_libraries(${PROJECT_NAME} ${OSL_LIBRARY})
 target_link_libraries(${PROJECT_NAME} ${ISL_LIBRARY})
