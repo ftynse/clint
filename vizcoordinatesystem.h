@@ -6,9 +6,6 @@
 #include <QObject>
 #include <QSet>
 
-// FIXME: hardcoded value of distance between points.
-#define VIZ_POINT_RADIUS   4
-
 #include "clintprogram.h"
 #include "clintscop.h"
 #include "clintstmt.h"

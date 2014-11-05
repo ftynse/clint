@@ -1,11 +1,17 @@
 #include "vizdeparrow.h"
-#include "vizcoordinatesystem.h" // FIXME: needed for macros, when moved to config, remove
+#include "vizpolyhedron.h"
+#include "vizprojection.h"
 
 #include <QtGui>
 #include <QtWidgets>
 
-VizDepArrow::VizDepArrow(QGraphicsItem *parent) :
+VizDepArrow::VizDepArrow(QPointF source, QPointF target, QGraphicsItem *parent) :
   QGraphicsItem(parent) {
+
+  m_polyhedron = qgraphicsitem_cast<VizPolyhedron *>(parent);
+  CLINT_ASSERT(m_polyhedron != nullptr,
+               "Dependence arrow should belong to a polyhedron");
+  pointLink(source, target);
 }
 
 void VizDepArrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
@@ -22,17 +28,17 @@ QRectF VizDepArrow::boundingRect() const {
          m_arrowHead.boundingRect();
 }
 
-VizDepArrow *VizDepArrow::pointLink(QPointF source, QPointF target) {
-  VizDepArrow *arrow = new VizDepArrow;
-  arrow->m_arrowLine = QLineF(source, target);
-  qreal length = arrow->m_arrowLine.length();
-  QLineF displacementLine = QLineF(arrow->m_arrowLine);
-  displacementLine.setLength(VIZ_POINT_RADIUS);
+void VizDepArrow::pointLink(QPointF source, QPointF target) {
+  const double pointRadius =
+      m_polyhedron->coordinateSystem()->projection()->vizProperties()->pointRadius();
+  m_arrowLine = QLineF(source, target);
+  qreal length = m_arrowLine.length();
+  QLineF displacementLine = QLineF(m_arrowLine);
+  displacementLine.setLength(pointRadius);
   // Now p2 of displacement line has the coordinates p1 of the shorter line should have.
-  arrow->m_arrowLine.setLength(length - 2. * VIZ_POINT_RADIUS);
-  arrow->m_arrowLine.setP1(displacementLine.p2());
+  m_arrowLine.setLength(length - 2. * pointRadius);
+  m_arrowLine.setP1(displacementLine.p2());
 
   // TODO: draw a proper arrow here
-  arrow->m_arrowHead.addEllipse(arrow->m_arrowLine.p2(), 0.3 * VIZ_POINT_RADIUS, 0.3 * VIZ_POINT_RADIUS);
-  return arrow;
+  m_arrowHead.addEllipse(m_arrowLine.p2(), 0.3 * pointRadius, 0.3 * pointRadius);
 }

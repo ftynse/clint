@@ -5,17 +5,23 @@
 #include <QLineF>
 #include <QPainterPath>
 
+#include "vizproperties.h"
+
+class VizPolyhedron;
+
 class VizDepArrow : public QGraphicsItem {
 public:
-  VizDepArrow(QGraphicsItem *parent = nullptr);
+  VizDepArrow(QPointF source, QPointF target, QGraphicsItem *parent = nullptr);
 
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
   QRectF boundingRect() const;
 
-  static VizDepArrow *pointLink(QPointF source, QPointF target);
 private:
+  void pointLink(QPointF source, QPointF target);
+
   QLineF m_arrowLine;
   QPainterPath m_arrowHead;
+  VizPolyhedron *m_polyhedron;
 };
 
 #endif // VIZDEPARROW_H
