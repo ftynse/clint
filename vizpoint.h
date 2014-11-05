@@ -16,26 +16,26 @@ class VizPoint : public QGraphicsObject
 public:
   const static int NO_COORD = INT_MAX;
 
-  explicit VizPoint(QGraphicsItem *parent = 0);
+  explicit VizPoint(VizPolyhedron *polyhedron);
 
   VizPolyhedron *polyhedron() const {
-    return polyhedron_;
+    return m_polyhedron;
   }
 
   ClintStmt *statement() const {
-    return polyhedron_->statement();
+    return m_polyhedron->statement();
   }
 
   ClintScop *scop() const {
-    return polyhedron_->scop();
+    return m_polyhedron->scop();
   }
 
   ClintProgram *program() const {
-    return polyhedron_->program();
+    return m_polyhedron->program();
   }
 
   VizCoordinateSystem *coordinateSystem() const {
-    return polyhedron_->coordinateSystem();
+    return m_polyhedron->coordinateSystem();
   }
 
   void setOriginalCoordinates(int horizontal = NO_COORD, int vertical = NO_COORD);
@@ -66,7 +66,7 @@ signals:
 public slots:
 
 private:
-  VizPolyhedron *polyhedron_;
+  VizPolyhedron *m_polyhedron;
   QVector<int> alphaBetaVector;
   // These coordinates do not define point position on the coordinate system
   // or in the polyhedron.  The position is relative to the axes intersection

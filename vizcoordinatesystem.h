@@ -7,25 +7,22 @@
 #include <QSet>
 
 // FIXME: hardcoded value of distance between points.
-#define VIZ_POLYHEDRON_OFFSET 4.0
-#define CLINT_UNDEFINED -1ULL
 #define VIZ_POINT_RADIUS   4
-#define VIZ_POINT_DISTANCE 16
 
 #include "clintprogram.h"
 #include "clintscop.h"
 #include "clintstmt.h"
-#include "vizpolyhedron.h"
+#include "vizproperties.h"
 
 class VizPolyhedron;
+class VizProjection;
 
 class VizCoordinateSystem : public QGraphicsObject {
   Q_OBJECT
 public:
-  const static size_t NO_DIMENSION = static_cast<size_t>(-2);
-
-  explicit VizCoordinateSystem(size_t horizontalDimensionIdx = NO_DIMENSION,
-                               size_t verticalDimensionIdx = NO_DIMENSION,
+  explicit VizCoordinateSystem(VizProjection *projection,
+                               size_t horizontalDimensionIdx = VizProperties::NO_DIMENSION,
+                               size_t verticalDimensionIdx = VizProperties::NO_DIMENSION,
                                QGraphicsItem *parent = nullptr);
 
   QSet<ClintScop *> visibleScops() {
@@ -39,6 +36,10 @@ public:
 
   const ClintProgram *program() const {
     return m_program;
+  }
+
+  VizProjection *projection() const {
+    return m_projection;
   }
 
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
@@ -89,17 +90,9 @@ public:
               vertical.first, vertical.second);
   }
 
-  int horizontalAxisLength() const {
-    return (m_horizontalMax - m_horizontalMin + 3) * VIZ_POINT_DISTANCE;
-  }
-
-  int verticalAxisLength() const {
-    return (m_verticalMax - m_verticalMin + 3) * VIZ_POINT_DISTANCE;
-  }
-
-  int ticMargin() const {
-    return 2 * VIZ_POINT_RADIUS;
-  }
+  int horizontalAxisLength() const;
+  int verticalAxisLength() const;
+  int ticMargin() const;
 
 signals:
 
@@ -108,9 +101,10 @@ public slots:
 private:
   std::vector<VizPolyhedron *> m_polyhedra;
   ClintProgram *m_program;
+  VizProjection *m_projection;
 
-  size_t m_horizontalDimensionIdx = CLINT_UNDEFINED;
-  size_t m_verticalDimensionIdx   = CLINT_UNDEFINED;
+  size_t m_horizontalDimensionIdx = VizProperties::UNDEFINED_DIMENSION;
+  size_t m_verticalDimensionIdx   = VizProperties::UNDEFINED_DIMENSION;
 
   bool m_horizontalAxisVisible = true;
   bool m_verticalAxisVisible   = true;

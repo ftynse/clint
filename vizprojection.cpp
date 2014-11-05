@@ -10,14 +10,20 @@
 #include <map>
 #include <vector>
 
-// FIXME: hardcoded margin value
-const double coordinateSystemMargin = 5.0;
-
 VizProjection::VizProjection(int horizontalDimensionIdx, int verticalDimensionIdx, QObject *parent) :
   QObject(parent), m_horizontalDimensionIdx(horizontalDimensionIdx), m_verticalDimensionIdx(verticalDimensionIdx) {
 
   m_scene = new QGraphicsScene;
   m_view = new QGraphicsView(m_scene);
+
+  m_vizProperties = new VizProperties(this);
+  connect(m_vizProperties, &VizProperties::vizPropertyChanged,
+          this, &VizProjection::updateProjection);
+}
+
+void VizProjection::updateProjection() {
+  updateSceneLayout();
+  m_view->update();
 }
 
 inline bool partialBetaEquals(const std::vector<int> &original, const std::vector<int> &beta,
@@ -29,12 +35,13 @@ inline bool partialBetaEquals(const std::vector<int> &original, const std::vecto
 
 void VizProjection::createCoordinateSystem(int dimensionality) {
   VizCoordinateSystem *vcs;
-  vcs = new VizCoordinateSystem(m_horizontalDimensionIdx < dimensionality ?
+  vcs = new VizCoordinateSystem(this,
+                                m_horizontalDimensionIdx < dimensionality ?
                                   m_horizontalDimensionIdx :
-                                  VizCoordinateSystem::NO_DIMENSION,
+                                  VizProperties::NO_DIMENSION,
                                 m_verticalDimensionIdx < dimensionality ?
                                   m_verticalDimensionIdx :
-                                  VizCoordinateSystem::NO_DIMENSION);
+                                  VizProperties::NO_DIMENSION);
   m_coordinateSystems.back().push_back(vcs);
   m_scene->addItem(vcs);
 }
@@ -85,11 +92,11 @@ void VizProjection::projectScop(ClintScop *vscop) {
     vcs = m_coordinateSystems.back().back();
     visibleCS = vcs->projectStatementOccurrence(occurrence) || visibleCS;
     visiblePile = visiblePile || visibleCS;
-    if (m_horizontalDimensionIdx != VizCoordinateSystem::NO_DIMENSION) {
+    if (m_horizontalDimensionIdx != VizProperties::NO_DIMENSION) {
       horizontalMin = occurrence->minimumValue(m_horizontalDimensionIdx);
       horizontalMax = occurrence->maximumValue(m_horizontalDimensionIdx);
     }
-    if (m_verticalDimensionIdx != VizCoordinateSystem::NO_DIMENSION) {
+    if (m_verticalDimensionIdx != VizProperties::NO_DIMENSION) {
       verticalMin = occurrence->minimumValue(m_verticalDimensionIdx);
       verticalMax = occurrence->maximumValue(m_verticalDimensionIdx);
     }
@@ -136,9 +143,9 @@ void VizProjection::updateSceneLayout() {
       VizCoordinateSystem *vcs = m_coordinateSystems[col][row];
       QRectF bounding = vcs->boundingRect();
       vcs->setPos(horizontalOffset, -verticalOffset);
-      verticalOffset += bounding.height() + coordinateSystemMargin;
+      verticalOffset += bounding.height() + m_vizProperties->coordinateSystemMargin();
       maximumWidth = std::max(maximumWidth, bounding.width());
     }
-    horizontalOffset += maximumWidth + coordinateSystemMargin;
+    horizontalOffset += maximumWidth + m_vizProperties->coordinateSystemMargin();
   }
 }

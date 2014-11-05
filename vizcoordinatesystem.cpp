@@ -1,5 +1,6 @@
 #include "vizcoordinatesystem.h"
 #include "vizpolyhedron.h"
+#include "vizprojection.h"
 #include "clintstmtoccurrence.h"
 #include "clintdependence.h"
 #include "oslutils.h"
@@ -9,12 +10,12 @@
 #include <QtGui>
 #include <QtWidgets>
 
-VizCoordinateSystem::VizCoordinateSystem(size_t horizontalDimensionIdx, size_t verticalDimensionIdx, QGraphicsItem *parent) :
-  QGraphicsObject(parent), m_horizontalDimensionIdx(horizontalDimensionIdx), m_verticalDimensionIdx(verticalDimensionIdx) {
+VizCoordinateSystem::VizCoordinateSystem(VizProjection *projection, size_t horizontalDimensionIdx, size_t verticalDimensionIdx, QGraphicsItem *parent) :
+  QGraphicsObject(parent), m_projection(projection), m_horizontalDimensionIdx(horizontalDimensionIdx), m_verticalDimensionIdx(verticalDimensionIdx) {
 
-  if (m_horizontalDimensionIdx == NO_DIMENSION)
+  if (m_horizontalDimensionIdx == VizProperties::NO_DIMENSION)
     m_horizontalAxisVisible = false;
-  if (m_verticalDimensionIdx == NO_DIMENSION)
+  if (m_verticalDimensionIdx == VizProperties::NO_DIMENSION)
     m_verticalAxisVisible = false;
 
   m_font = qApp->font();  // Setting up default font for the view.  Can be adjusted afterwards.
@@ -77,15 +78,16 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
 
 void VizCoordinateSystem::setMinMax(int horizontalMinimum, int horizontalMaximum,
                                     int verticalMinimum, int verticalMaximum) {
+  const double pointDistance = m_projection->vizProperties()->pointDistance();
   m_horizontalMin = horizontalMinimum;
   m_horizontalMax = horizontalMaximum;
   m_verticalMin   = verticalMinimum;
   m_verticalMax   = verticalMaximum;
   for (size_t i = 0, iend = m_polyhedra.size(); i < iend; i++) {
     VizPolyhedron *vph = m_polyhedra.at(i);
-    double offset = VIZ_POLYHEDRON_OFFSET * static_cast<double>(i);
-    vph->setPos(offset + (vph->localHorizontalMin() - horizontalMinimum + 1) * VIZ_POINT_DISTANCE,
-                -(offset + (vph->localVerticalMin() - verticalMinimum + 1) * VIZ_POINT_DISTANCE));
+    double offset = m_projection->vizProperties()->polyhedronOffset() * i;
+    vph->setPos(offset + (vph->localHorizontalMin() - horizontalMinimum + 1) * pointDistance,
+                -(offset + (vph->localVerticalMin() - verticalMinimum + 1) * pointDistance));
     vph->setZValue(m_polyhedra.size() + 1 - i);
   }
 }
@@ -93,6 +95,9 @@ void VizCoordinateSystem::setMinMax(int horizontalMinimum, int horizontalMaximum
 void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
   Q_UNUSED(option);
   Q_UNUSED(widget);
+
+  const double pointRadius = m_projection->vizProperties()->pointRadius();
+  const double pointDistance = m_projection->vizProperties()->pointDistance();
 
   QFontMetrics fm = painter->fontMetrics();
   painter->setBrush(Qt::black);
@@ -107,26 +112,26 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
     // Draw arrow.
     QPolygonF triangle;
     triangle.append(QPointF(length, 0));
-    triangle.append(QPointF(length - 2 * VIZ_POINT_RADIUS, VIZ_POINT_RADIUS));
-    triangle.append(QPointF(length - 2 * VIZ_POINT_RADIUS, -VIZ_POINT_RADIUS));
+    triangle.append(QPointF(length - 2 * pointRadius, pointRadius));
+    triangle.append(QPointF(length - 2 * pointRadius, -pointRadius));
     triangle.append(triangle.front());
     painter->drawConvexPolygon(triangle);
 
     // Draw tics.
     for (int i = m_horizontalMin; i <= m_horizontalMax; i++) {
-      int pos = (1 + (i - m_horizontalMin)) * VIZ_POINT_DISTANCE;
-      painter->drawLine(pos, -VIZ_POINT_RADIUS / 2., pos, VIZ_POINT_RADIUS / 2.);
+      int pos = (1 + (i - m_horizontalMin)) * pointDistance;
+      painter->drawLine(pos, -pointRadius / 2., pos, pointRadius / 2.);
       QString ticText = QString("%1").arg(i);
-      painter->drawText(pos - VIZ_POINT_DISTANCE / 2.,
+      painter->drawText(pos - pointDistance / 2.,
                         ticMargin(),
-                        VIZ_POINT_DISTANCE,
+                        pointDistance,
                         fm.lineSpacing(),
                         Qt::AlignHCenter | Qt::AlignBottom | Qt::TextDontClip, ticText);
     }
 
     // Draw label.
-    int pos = (3 + m_horizontalMax - m_horizontalMin) * VIZ_POINT_DISTANCE;
-    painter->drawText(pos - VIZ_POINT_DISTANCE / 2.,
+    int pos = (3 + m_horizontalMax - m_horizontalMin) * pointDistance;
+    painter->drawText(pos - pointDistance / 2.,
                       ticMargin(),
                       fm.width(m_horizontalName),
                       fm.lineSpacing(),
@@ -140,31 +145,31 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
     // Draw arrow.
     QPolygonF triangle;
     triangle.append(QPointF(0, -length));
-    triangle.append(QPointF(VIZ_POINT_RADIUS, -length + 2 * VIZ_POINT_RADIUS));
-    triangle.append(QPointF(-VIZ_POINT_RADIUS, -length + 2 * VIZ_POINT_RADIUS));
+    triangle.append(QPointF(pointRadius, -length + 2 * pointRadius));
+    triangle.append(QPointF(-pointRadius, -length + 2 * pointRadius));
     triangle.append(triangle.front());
     painter->drawConvexPolygon(triangle);
 
     // Draw tics.
     for (int i = m_verticalMin; i <= m_verticalMax; i++) {
-      int pos = -(1 + (i - m_verticalMin)) * VIZ_POINT_DISTANCE;
-      painter->drawLine(-VIZ_POINT_RADIUS / 2., pos, VIZ_POINT_RADIUS / 2., pos);
+      int pos = -(1 + (i - m_verticalMin)) * pointDistance;
+      painter->drawLine(-pointRadius / 2., pos, pointRadius / 2., pos);
       QString ticText = QString("%1").arg(i);
       int textWidth = fm.width(ticText);
       painter->drawText(-textWidth - ticMargin(),
-                        pos - VIZ_POINT_DISTANCE / 2.,
+                        pos - pointDistance / 2.,
                         textWidth,
-                        VIZ_POINT_DISTANCE,
+                        pointDistance,
                         Qt::AlignVCenter | Qt::AlignRight | Qt::TextDontClip, ticText);
     }
 
     // Draw label.
-    int pos = -(3 + m_verticalMax - m_verticalMin) * VIZ_POINT_DISTANCE;
+    int pos = -(3 + m_verticalMax - m_verticalMin) * pointDistance;
     int textWidth = fm.width(m_verticalName);
     painter->drawText(-textWidth - ticMargin(),
-                      pos - VIZ_POINT_DISTANCE / 2.,
+                      pos - pointDistance / 2.,
                       textWidth,
-                      VIZ_POINT_DISTANCE,
+                      pointDistance,
                       Qt::AlignVCenter | Qt::AlignRight | Qt::TextDontClip, m_verticalName);
   }
 }
@@ -186,4 +191,16 @@ QRectF VizCoordinateSystem::boundingRect() const {
   left -= ticWidth;
   height += ticMargin() + fm.height();
   return QRectF(left, top, width, height) | childrenBoundingRect();
+}
+
+int VizCoordinateSystem::horizontalAxisLength() const {
+  return (m_horizontalMax - m_horizontalMin + 3) * m_projection->vizProperties()->pointDistance();
+}
+
+int VizCoordinateSystem::verticalAxisLength() const {
+  return (m_verticalMax - m_verticalMin + 3) * m_projection->vizProperties()->pointDistance();
+}
+
+int VizCoordinateSystem::ticMargin() const {
+  return 2 * m_projection->vizProperties()->pointRadius();
 }

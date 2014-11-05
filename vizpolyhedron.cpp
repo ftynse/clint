@@ -1,6 +1,7 @@
 #include "macros.h"
 #include "vizpolyhedron.h"
 #include "vizpoint.h"
+#include "vizprojection.h"
 
 #include <QtGui>
 #include <QtWidgets>
@@ -8,12 +9,14 @@
 #include <algorithm>
 #include <vector>
 
-VizPolyhedron::VizPolyhedron(QGraphicsItem *parent) :
-  QGraphicsObject(parent) {
+VizPolyhedron::VizPolyhedron(VizCoordinateSystem *vcs) :
+  QGraphicsObject(vcs), m_coordinateSystem(vcs) {
 }
 
 void VizPolyhedron::setPointVisiblePos(VizPoint *vp, int x, int y) {
-  vp->setPos(x * VIZ_POINT_DISTANCE, -y * VIZ_POINT_DISTANCE);
+  const double pointDistance =
+      m_coordinateSystem->projection()->vizProperties()->pointDistance();
+  vp->setPos(x * pointDistance, -y * pointDistance);
 }
 
 void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points,
@@ -215,6 +218,8 @@ std::vector<VizPoint *> VizPolyhedron::convexHull() const {
 }
 
 QPolygonF VizPolyhedron::computePolygon() const {
+  const double pointDistance =
+      m_coordinateSystem->projection()->vizProperties()->pointDistance();
   std::vector<VizPoint *> points = convexHull();
 
   QPolygonF polygon;
@@ -225,11 +230,11 @@ QPolygonF VizPolyhedron::computePolygon() const {
            x2 = x - m_localHorizontalMin - 0.5,
            y1 = -(y - m_localVerticalMin + 0.5),
            y2 = -(y - m_localVerticalMin - 0.5);
-    polygon.append(QPointF(x1 * VIZ_POINT_DISTANCE, y1 * VIZ_POINT_DISTANCE));
-    polygon.append(QPointF(x1 * VIZ_POINT_DISTANCE, y2 * VIZ_POINT_DISTANCE));
-    polygon.append(QPointF(x2 * VIZ_POINT_DISTANCE, y2 * VIZ_POINT_DISTANCE));
-    polygon.append(QPointF(x2 * VIZ_POINT_DISTANCE, y1 * VIZ_POINT_DISTANCE));
-    polygon.append(QPointF(x1 * VIZ_POINT_DISTANCE, y1 * VIZ_POINT_DISTANCE));
+    polygon.append(QPointF(x1 * pointDistance, y1 * pointDistance));
+    polygon.append(QPointF(x1 * pointDistance, y2 * pointDistance));
+    polygon.append(QPointF(x2 * pointDistance, y2 * pointDistance));
+    polygon.append(QPointF(x2 * pointDistance, y1 * pointDistance));
+    polygon.append(QPointF(x1 * pointDistance, y1 * pointDistance));
     return polygon;
   }
 
@@ -255,8 +260,8 @@ QPolygonF VizPolyhedron::computePolygon() const {
   }
 
   for (const std::pair<double, double> &point : polygonPoints) {
-    polygon.append(QPointF((point.first - m_localHorizontalMin) * VIZ_POINT_DISTANCE,
-                           -(point.second - m_localVerticalMin) * VIZ_POINT_DISTANCE));
+    polygon.append(QPointF((point.first - m_localHorizontalMin) * pointDistance,
+                           -(point.second - m_localVerticalMin) * pointDistance));
   }
   polygon.append(polygon.front());
 
@@ -264,18 +269,20 @@ QPolygonF VizPolyhedron::computePolygon() const {
 }
 
 void VizPolyhedron::recomputeShape() {
+  const double pointDistance =
+      m_coordinateSystem->projection()->vizProperties()->pointDistance();
   std::vector<VizPoint *> points = convexHull();
   m_polyhedronShape = QPainterPath();
 
   // Special case for one-point polyhedron
   if (points.size() == 1) {
     QPointF center = mapToCoordinates(points.front());
-    m_polyhedronShape.addRoundedRect(center.x() - VIZ_POINT_DISTANCE / 2.0,
-                                     center.y() - VIZ_POINT_DISTANCE / 2.0,
-                                     VIZ_POINT_DISTANCE,
-                                     VIZ_POINT_DISTANCE,
-                                     VIZ_POINT_DISTANCE / 4.0,
-                                     VIZ_POINT_DISTANCE / 4.0);
+    m_polyhedronShape.addRoundedRect(center.x() - pointDistance / 2.0,
+                                     center.y() - pointDistance / 2.0,
+                                     pointDistance,
+                                     pointDistance,
+                                     pointDistance / 4.0,
+                                     pointDistance / 4.0);
     return;
   }
   // Even for a two-point polyhedron, convex hull would contain the first of them
@@ -313,9 +320,9 @@ void VizPolyhedron::recomputeShape() {
     int x, y;
     std::tie(x, y) = pointScatteredCoordsReal(points[centerIdx]);
     QPointF rotationCenter = mapToCoordinates(points[centerIdx]);
-    QRectF arcRect(rotationCenter.x() - VIZ_POINT_DISTANCE / 2.0,
-                   rotationCenter.y() - VIZ_POINT_DISTANCE / 2.0,
-                   VIZ_POINT_DISTANCE, VIZ_POINT_DISTANCE);
+    QRectF arcRect(rotationCenter.x() - pointDistance / 2.0,
+                   rotationCenter.y() - pointDistance / 2.0,
+                   pointDistance, pointDistance);
     QLineF l1(rotationCenter, targetPoint);
     QLineF l2(rotationCenter, nextPoint);
     qreal angle = l1.angle();
@@ -348,4 +355,11 @@ std::pair<int, int> VizPolyhedron::pointScatteredCoordsReal(const VizPoint *vp) 
   if (coords.first == VizPoint::NO_COORD) coords.first = 0;
   if (coords.second == VizPoint::NO_COORD) coords.second = 0;
   return std::move(coords);
+}
+
+QPointF VizPolyhedron::mapToCoordinates(double x, double y) const {
+  const double pointDistance =
+    m_coordinateSystem->projection()->vizProperties()->pointDistance();
+  return QPointF((x - m_localHorizontalMin) * pointDistance,
+                 -(y - m_localVerticalMin) * pointDistance);
 }

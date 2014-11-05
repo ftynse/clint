@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "vizcoordinatesystem.h"
+#include "vizproperties.h"
 
 class VizProjection : public QObject
 {
@@ -19,13 +20,19 @@ public:
   }
 
   void projectScop(ClintScop *vscop);
+
+  /*inline*/ const VizProperties *vizProperties() const {
+    return m_vizProperties;
+  }
 signals:
 
 public slots:
+  void updateProjection();
 
 private:
   QGraphicsView *m_view;
   QGraphicsScene *m_scene;
+  VizProperties *m_vizProperties;
 
   // Outer index = column index;
   // Inner index = row index within the given column

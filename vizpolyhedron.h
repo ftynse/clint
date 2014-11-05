@@ -15,14 +15,14 @@ class VizPoint;
 class VizPolyhedron : public QGraphicsObject {
   Q_OBJECT
 public:
-  explicit VizPolyhedron(QGraphicsItem *parent = 0);
+  explicit VizPolyhedron(VizCoordinateSystem *vcs);
 
   ClintStmt *statement() const {
     return statement_;
   }
 
   VizCoordinateSystem *coordinateSystem() const {
-    return coordinateSystem_;
+    return m_coordinateSystem;
   }
 
   ClintScop *scop() const {
@@ -54,7 +54,7 @@ public slots:
 
 private:
   ClintStmt *statement_;
-  VizCoordinateSystem *coordinateSystem_;
+  VizCoordinateSystem *m_coordinateSystem;
   QPainterPath m_polyhedronShape;
 
   // TODO: introduce a QPolygon that corresponds to the convex hull for all the child points
@@ -71,10 +71,7 @@ private:
   QPolygonF computePolygon() const;
   void recomputeShape();
 
-  QPointF mapToCoordinates(double x, double y) const {
-    return QPointF((x - m_localHorizontalMin) * VIZ_POINT_DISTANCE,
-                   -(y - m_localVerticalMin) * VIZ_POINT_DISTANCE);
-  }
+  QPointF mapToCoordinates(double x, double y) const;
 
   QPointF mapToCoordinates(std::pair<double, double> coords) const {
     return mapToCoordinates(coords.first, coords.second);

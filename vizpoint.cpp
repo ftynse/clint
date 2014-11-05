@@ -1,23 +1,28 @@
 #include <QtGui>
 #include <QtWidgets>
 #include "vizpoint.h"
+#include "vizprojection.h"
 
 const int VizPoint::NO_COORD;
 
-VizPoint::VizPoint(QGraphicsItem *parent) :
-  QGraphicsObject(parent) {
+VizPoint::VizPoint(VizPolyhedron *polyhedron) :
+  QGraphicsObject(polyhedron), m_polyhedron(polyhedron) {
 }
 
 void VizPoint::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
   Q_UNUSED(option);
   Q_UNUSED(widget);
   painter->save();
-  painter->drawEllipse(QPoint(0, 0), VIZ_POINT_RADIUS, VIZ_POINT_RADIUS);
+  const double radius =
+      m_polyhedron->coordinateSystem()->projection()->vizProperties()->pointRadius();
+  painter->drawEllipse(QPointF(0, 0), radius, radius);
   painter->restore();
 }
 
 QRectF VizPoint::boundingRect() const {
-  return QRectF(-VIZ_POINT_RADIUS, -VIZ_POINT_RADIUS, 2*VIZ_POINT_RADIUS, 2*VIZ_POINT_RADIUS);
+  const double radius =
+      m_polyhedron->coordinateSystem()->projection()->vizProperties()->pointRadius();
+  return QRectF(-radius, -radius, 2*radius, 2*radius);
 }
 
 QPainterPath VizPoint::shape() const {
