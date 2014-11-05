@@ -28,7 +28,7 @@ QRectF VizDepArrow::boundingRect() const {
   // lies on the arrow line, pointRadius pixels after the arrow line ends.
   const double pointRadius =
       m_polyhedron->coordinateSystem()->projection()->vizProperties()->pointRadius();
-  QLineF diagonal(m_arrowHead);
+  QLineF diagonal(m_arrowLine);
   diagonal.setLength(diagonal.length() + pointRadius);
   return QRectF(m_arrowLine.p1(), m_arrowLine.p2());
 }
