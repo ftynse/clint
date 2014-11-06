@@ -7,6 +7,8 @@ const int VizPoint::NO_COORD;
 
 VizPoint::VizPoint(VizPolyhedron *polyhedron) :
   QGraphicsObject(polyhedron), m_polyhedron(polyhedron) {
+
+  setFlag(QGraphicsItem::ItemIsSelectable);
 }
 
 void VizPoint::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
@@ -29,6 +31,15 @@ QPainterPath VizPoint::shape() const {
   QPainterPath path;
   path.addEllipse(boundingRect());
   return path;
+}
+
+QVariant VizPoint::itemChange(GraphicsItemChange change, const QVariant &value) {
+  if (change == QGraphicsItem::ItemSelectedHasChanged) {
+    recursionBarrier(m_selectionChangeBarrier, [this,value]() {
+      coordinateSystem()->projection()->selectionManager()->pointSelectionChanged(this, value.toBool());
+    });
+  }
+  return QGraphicsItem::itemChange(change, value);
 }
 
 void VizPoint::setOriginalCoordinates(int horizontal, int vertical) {

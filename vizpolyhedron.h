@@ -10,6 +10,19 @@
 #include "clintscop.h"
 #include "clintstmt.h"
 
+#include <QtWidgets>
+#include <QtGui>
+
+template <typename Func, typename... Args,
+          std::enable_if_t<std::is_void<typename std::result_of<Func(Args...)>::type>::value> * = nullptr>
+void recursionBarrier(bool &flag, Func f, Args... args) {
+  if (!flag) {
+    flag = true;
+    f(args...);
+    flag = false;
+  }
+}
+
 class VizPoint;
 
 class VizPolyhedron : public QGraphicsObject {
@@ -47,6 +60,7 @@ public:
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
   QRectF boundingRect() const;
   QPainterPath shape() const;
+  QVariant itemChange(GraphicsItemChange change, const QVariant &value);
 
 signals:
 
@@ -57,13 +71,12 @@ private:
   VizCoordinateSystem *m_coordinateSystem;
   QPainterPath m_polyhedronShape;
 
-  // TODO: introduce a QPolygon that corresponds to the convex hull for all the child points
-  // update boundingRect and shape functions accordingly.
-
   std::unordered_set<VizPoint *> m_points;
   std::unordered_set<VizDepArrow *> m_deps;
   int m_localHorizontalMin = 0;
   int m_localVerticalMin   = 0;
+
+  bool m_selectionChangeBarrier = false;
 
   void setPointVisiblePos(VizPoint *vp, int x, int y);
   static std::pair<int, int> pointScatteredCoordsReal(const VizPoint *vp);

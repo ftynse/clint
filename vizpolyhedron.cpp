@@ -2,6 +2,7 @@
 #include "vizpolyhedron.h"
 #include "vizpoint.h"
 #include "vizprojection.h"
+#include "vizselectionmanager.h"
 
 #include <QtGui>
 #include <QtWidgets>
@@ -11,6 +12,8 @@
 
 VizPolyhedron::VizPolyhedron(VizCoordinateSystem *vcs) :
   QGraphicsObject(vcs), m_coordinateSystem(vcs) {
+
+  setFlag(QGraphicsItem::ItemIsSelectable);
 }
 
 void VizPolyhedron::setPointVisiblePos(VizPoint *vp, int x, int y) {
@@ -334,9 +337,13 @@ void VizPolyhedron::recomputeShape() {
 }
 
 void VizPolyhedron::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-  Q_UNUSED(option);
   Q_UNUSED(widget);
   painter->save();
+  if (option->state & QStyle::State_Selected) {
+    QPen fatPen = QPen(painter->pen());
+    fatPen.setWidth(painter->pen().widthF() * 2.0);
+    painter->setPen(fatPen);
+  }
   painter->drawPath(m_polyhedronShape);
   painter->restore();
 }
@@ -347,6 +354,15 @@ QRectF VizPolyhedron::boundingRect() const {
 
 QPainterPath VizPolyhedron::shape() const {
   return m_polyhedronShape;
+}
+
+QVariant VizPolyhedron::itemChange(GraphicsItemChange change, const QVariant &value) {
+  if (change == QGraphicsItem::ItemSelectedHasChanged) {
+    recursionBarrier(m_selectionChangeBarrier, [this,value]() {
+      m_coordinateSystem->projection()->selectionManager()->polyhedronSelectionChanged(this, value.toBool());
+    });
+  }
+  return QGraphicsItem::itemChange(change, value);
 }
 
 std::pair<int, int> VizPolyhedron::pointScatteredCoordsReal(const VizPoint *vp) {

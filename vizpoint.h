@@ -60,6 +60,7 @@ public:
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
   QRectF boundingRect() const;
   QPainterPath shape() const;
+  QVariant itemChange(GraphicsItemChange change, const QVariant &value);
 
 signals:
 
@@ -75,6 +76,8 @@ private:
   int m_originalVertical    = NO_COORD;
   int m_scatteredHorizontal = NO_COORD;
   int m_scatteredVertical   = NO_COORD;
+
+  bool m_selectionChangeBarrier = false;
 };
 
 #endif // VIZPOINT_H

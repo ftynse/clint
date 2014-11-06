@@ -19,6 +19,8 @@ VizProjection::VizProjection(int horizontalDimensionIdx, int verticalDimensionId
   m_vizProperties = new VizProperties(this);
   connect(m_vizProperties, &VizProperties::vizPropertyChanged,
           this, &VizProjection::updateProjection);
+
+  m_selectionManager = new VizSelectionManager(this);
 }
 
 void VizProjection::updateProjection() {

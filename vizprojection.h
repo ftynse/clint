@@ -9,6 +9,7 @@
 
 #include "vizcoordinatesystem.h"
 #include "vizproperties.h"
+#include "vizselectionmanager.h"
 
 class VizProjection : public QObject
 {
@@ -23,6 +24,10 @@ public:
 
   /*inline*/ const VizProperties *vizProperties() const {
     return m_vizProperties;
+  }
+
+  /*inline*/ VizSelectionManager *selectionManager() const {
+    return m_selectionManager;
   }
 signals:
 
@@ -40,6 +45,8 @@ private:
   std::vector<std::vector<VizCoordinateSystem *>> m_coordinateSystems;
   int m_horizontalDimensionIdx;
   int m_verticalDimensionIdx;
+
+  VizSelectionManager *m_selectionManager;
 
   void createCoordinateSystem(int dimensionality);
   void updateSceneLayout();
