@@ -35,9 +35,7 @@ QPainterPath VizPoint::shape() const {
 
 QVariant VizPoint::itemChange(GraphicsItemChange change, const QVariant &value) {
   if (change == QGraphicsItem::ItemSelectedHasChanged) {
-    recursionBarrier(m_selectionChangeBarrier, [this,value]() {
-      coordinateSystem()->projection()->selectionManager()->pointSelectionChanged(this, value.toBool());
-    });
+    coordinateSystem()->projection()->selectionManager()->pointSelectionChanged(this, value.toBool());
   }
   return QGraphicsItem::itemChange(change, value);
 }

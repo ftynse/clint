@@ -13,16 +13,6 @@
 #include <QtWidgets>
 #include <QtGui>
 
-template <typename Func, typename... Args,
-          std::enable_if_t<std::is_void<typename std::result_of<Func(Args...)>::type>::value> * = nullptr>
-void recursionBarrier(bool &flag, Func f, Args... args) {
-  if (!flag) {
-    flag = true;
-    f(args...);
-    flag = false;
-  }
-}
-
 class VizPoint;
 
 class VizPolyhedron : public QGraphicsObject {

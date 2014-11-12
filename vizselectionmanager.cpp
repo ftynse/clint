@@ -8,11 +8,33 @@
 
 #include <algorithm>
 
+class BarrierRAII {
+public:
+  explicit BarrierRAII(bool *flag) : m_flagPtr(flag) {
+    *m_flagPtr = true;
+  }
+
+  BarrierRAII(const BarrierRAII &) = delete;
+
+  ~BarrierRAII() {
+    *m_flagPtr = false;
+  }
+
+private:
+  bool *m_flagPtr;
+};
+
 VizSelectionManager::VizSelectionManager(QObject *parent) :
   QObject(parent) {
 }
 
 void VizSelectionManager::polyhedronSelectionChanged(VizPolyhedron *polyhedron, bool selected) {
+  // Ignore selection changes triggered by the manager itself.
+  if (m_selectionBarrier)
+    return;
+  BarrierRAII ba(&m_selectionBarrier);
+  (void) ba;
+
   if (!selected) {
     m_selectedPolyhedra.erase(polyhedron);
     return;

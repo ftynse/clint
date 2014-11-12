@@ -43,6 +43,8 @@ private:
   ConflictPolicy m_conflictPolicy = ConflictPolicy::ClearOld;
   TypeConflictPolicy m_typeConflictPolicy = TypeConflictPolicy::ClearOld;
 
+  bool m_selectionBarrier = false;
+
   template <typename T>
   void clearSelection(std::unordered_set<T *> &selection) {
     for (T *element : selection) {

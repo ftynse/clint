@@ -358,9 +358,7 @@ QPainterPath VizPolyhedron::shape() const {
 
 QVariant VizPolyhedron::itemChange(GraphicsItemChange change, const QVariant &value) {
   if (change == QGraphicsItem::ItemSelectedHasChanged) {
-    recursionBarrier(m_selectionChangeBarrier, [this,value]() {
-      m_coordinateSystem->projection()->selectionManager()->polyhedronSelectionChanged(this, value.toBool());
-    });
+    m_coordinateSystem->projection()->selectionManager()->polyhedronSelectionChanged(this, value.toBool());
   }
   return QGraphicsItem::itemChange(change, value);
 }
