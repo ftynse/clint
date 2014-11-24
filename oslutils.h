@@ -188,7 +188,7 @@ typedef std::multimap<
 BetaMap oslBetaMap(osl_scop_p scop);
 DependenceMap oslDependenceMap(osl_scop_p scop);
 
-// FIXME: we use Clay to access betas; when this functionality is moved to OSL, switch!
+// FIXME(osl): we use Clay to access betas; when this functionality is moved to OSL, switch!
 std::vector<int> betaFromClay(clay_array_p beta);
 clay_array_p clayBetaFromVector(const std::vector<int> &betaVector);
 

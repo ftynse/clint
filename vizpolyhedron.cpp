@@ -11,8 +11,8 @@
 #include <algorithm>
 #include <vector>
 
-VizPolyhedron::VizPolyhedron(VizCoordinateSystem *vcs) :
-  QGraphicsObject(vcs), m_coordinateSystem(vcs) {
+VizPolyhedron::VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSystem *vcs) :
+  QGraphicsObject(vcs), m_occurrence(occurrence), m_coordinateSystem(vcs) {
 
   setFlag(QGraphicsItem::ItemIsSelectable);
   setFlag(QGraphicsItem::ItemIsMovable);

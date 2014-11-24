@@ -19,7 +19,7 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
     clay_array_add(array, transformation.constantAmount());
     clay_list_add(list, array);
     err = clay_shift(scop, ClayBeta(transformation.target()), transformation.depth(), list, m_options);
-    clay_list_free(list); // List cleans inner arrays too.
+    clay_list_free(list); // List cleans inner arrays, too.
   }
     break;
   case Transformation::Kind::Skew:
@@ -61,6 +61,7 @@ std::vector<int> ClayTransformer::transformedBeta(const std::vector<int> &beta, 
 std::vector<int> ClayTransformer::originalBeta(const std::vector<int> &beta, const Transformation &transformation) {
   std::vector<int> tBeta(beta);
   switch (transformation.kind()) {
+  case Transformation::Kind::Fuse:
     if (beta > transformation.target()) {
       tBeta[transformation.depth()] += 1;
     }

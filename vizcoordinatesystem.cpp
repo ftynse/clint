@@ -56,7 +56,7 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
   int occurrenceHorizontalMax = occurrence->maximumValue(m_horizontalDimensionIdx);
   int occurrenceVerticalMin   = occurrence->minimumValue(m_verticalDimensionIdx);
   int occurrenceVerticalMax   = occurrence->maximumValue(m_verticalDimensionIdx);
-  VizPolyhedron *vp = new VizPolyhedron(this);
+  VizPolyhedron *vp = new VizPolyhedron(occurrence, this);
   vp->setProjectedPoints(std::move(points),
                          occurrenceHorizontalMin,
                          occurrenceHorizontalMax,

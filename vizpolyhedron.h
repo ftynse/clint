@@ -9,6 +9,7 @@
 #include "clintprogram.h"
 #include "clintscop.h"
 #include "clintstmt.h"
+#include "clintstmtoccurrence.h"
 
 #include <QtWidgets>
 #include <QtGui>
@@ -18,10 +19,14 @@ class VizPoint;
 class VizPolyhedron : public QGraphicsObject {
   Q_OBJECT
 public:
-  explicit VizPolyhedron(VizCoordinateSystem *vcs);
+  explicit VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSystem *vcs);
+
+  ClintStmtOccurrence *occurrence() const {
+    return m_occurrence;
+  }
 
   ClintStmt *statement() const {
-    return statement_;
+    return m_occurrence->statement();
   }
 
   VizCoordinateSystem *coordinateSystem() const {
@@ -29,11 +34,11 @@ public:
   }
 
   ClintScop *scop() const {
-    return statement_->scop();
+    return m_occurrence->scop();
   }
 
   ClintProgram *program() const {
-    return statement_->program();
+    return m_occurrence->program();
   }
 
   int localHorizontalMin() const {
@@ -81,7 +86,7 @@ signals:
 public slots:
 
 private:
-  ClintStmt *statement_;
+  ClintStmtOccurrence *m_occurrence;
   VizCoordinateSystem *m_coordinateSystem;
   QPainterPath m_polyhedronShape;
 

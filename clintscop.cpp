@@ -41,6 +41,12 @@ ClintScop::ClintScop(osl_scop_p scop, ClintProgram *parent) :
   m_fixedContext = oslRelationFixAllParameters(m_scop_part->context, 4);
 
   createDependences(scop);
+
+  m_transformer = new ClayTransformer;
+}
+
+ClintScop::~ClintScop() {
+  delete m_transformer;
 }
 
 std::unordered_set<ClintStmt *> ClintScop::statements() const {
