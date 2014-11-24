@@ -1,6 +1,7 @@
 #include <QtWidgets>
 #include <QApplication>
 
+#include "clintbeta.h"
 #include "clintwindow.h"
 
 #include "enumerator.h"
@@ -44,8 +45,10 @@ void enumerationTest() {
 
 } // end anonymous namespace
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
+
+  qRegisterMetaType<ClintBeta>();
+
   QApplication app(argc, argv);
   ClintWindow window;
   window.showMaximized();
