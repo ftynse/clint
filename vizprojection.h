@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "vizcoordinatesystem.h"
+#include "vizmanipulationmanager.h"
 #include "vizproperties.h"
 #include "vizselectionmanager.h"
 
@@ -29,6 +30,15 @@ public:
   /*inline*/ VizSelectionManager *selectionManager() const {
     return m_selectionManager;
   }
+
+  /*inline*/ VizManipulationManager *manipulationManager() const {
+    return m_manipulationManager;
+  }
+
+  void updateColumnHorizontalMinMax(VizCoordinateSystem *coordinateSystem, int minOffset, int maxOffset);
+  void ensureFitsHorizontally(VizCoordinateSystem *coordinateSystem, int minimum, int maximum);
+  void ensureFitsVertically(VizCoordinateSystem *coordinateSystem, int minimum, int maximum);
+
 signals:
 
 public slots:
@@ -47,6 +57,7 @@ private:
   int m_verticalDimensionIdx;
 
   VizSelectionManager *m_selectionManager;
+  VizManipulationManager *m_manipulationManager;
 
   void createCoordinateSystem(int dimensionality);
   void updateSceneLayout();

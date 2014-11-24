@@ -53,16 +53,20 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
   }
 
   int occurrenceHorizontalMin = occurrence->minimumValue(m_horizontalDimensionIdx);
+  int occurrenceHorizontalMax = occurrence->maximumValue(m_horizontalDimensionIdx);
   int occurrenceVerticalMin   = occurrence->minimumValue(m_verticalDimensionIdx);
+  int occurrenceVerticalMax   = occurrence->maximumValue(m_verticalDimensionIdx);
   VizPolyhedron *vp = new VizPolyhedron(this);
   vp->setProjectedPoints(std::move(points),
                          occurrenceHorizontalMin,
-                         occurrenceVerticalMin);
+                         occurrenceHorizontalMax,
+                         occurrenceVerticalMin,
+                         occurrenceVerticalMax);
   m_polyhedra.push_back(vp);
   setMinMax(std::min(occurrenceHorizontalMin, m_horizontalMin),
-            std::max(occurrence->maximumValue(m_horizontalDimensionIdx), m_horizontalMax),
+            std::max(occurrenceHorizontalMax, m_horizontalMax),
             std::min(occurrenceVerticalMin, m_verticalMin),
-            std::max(occurrence->maximumValue(m_verticalDimensionIdx), m_verticalMax));
+            std::max(occurrenceVerticalMax, m_verticalMax));
 
   // Setting up internal dependences.
   std::unordered_set<ClintDependence *> dependences =

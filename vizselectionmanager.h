@@ -26,6 +26,10 @@ public:
     ClearOld
   };
 
+  const std::unordered_set<VizPolyhedron *> &selectedPolyhedra() const {
+    return m_selectedPolyhedra;
+  }
+
 signals:
   void selectionChanged();
 

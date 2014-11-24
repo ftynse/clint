@@ -87,6 +87,14 @@ public:
               vertical.first, vertical.second);
   }
 
+  void minMax(int &horizontalMinimum, int &horizontalMaximum,
+              int &verticalMinimum, int &verticalMaximum) {
+    horizontalMinimum = m_horizontalMin;
+    horizontalMaximum = m_horizontalMax;
+    verticalMinimum = m_verticalMin;
+    verticalMaximum = m_verticalMax;
+  }
+
   int horizontalAxisLength() const;
   int verticalAxisLength() const;
   int ticMargin() const;

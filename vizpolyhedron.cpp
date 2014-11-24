@@ -1,4 +1,5 @@
 #include "macros.h"
+#include "vizmanipulationmanager.h"
 #include "vizpolyhedron.h"
 #include "vizpoint.h"
 #include "vizprojection.h"
@@ -14,6 +15,8 @@ VizPolyhedron::VizPolyhedron(VizCoordinateSystem *vcs) :
   QGraphicsObject(vcs), m_coordinateSystem(vcs) {
 
   setFlag(QGraphicsItem::ItemIsSelectable);
+  setFlag(QGraphicsItem::ItemIsMovable);
+  setFlag(QGraphicsItem::ItemSendsGeometryChanges);
 }
 
 void VizPolyhedron::setPointVisiblePos(VizPoint *vp, int x, int y) {
@@ -24,11 +27,15 @@ void VizPolyhedron::setPointVisiblePos(VizPoint *vp, int x, int y) {
 
 void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points,
                                        int horizontalMin,
-                                       int verticalMin) {
+                                       int horiontalMax,
+                                       int verticalMin,
+                                       int verticalMax) {
   // FIXME: this function re-adds points if called twice; document or change this behavior
   CLINT_ASSERT(m_points.size() == 0, "Funciton may not be called twice for the same object");
   m_localHorizontalMin = horizontalMin;
+  m_localHorizontalMax = horiontalMax;
   m_localVerticalMin   = verticalMin;
+  m_localVerticalMax   = verticalMax;
   for (const std::vector<int> &point : points) {
     VizPoint *vp = new VizPoint(this);
     if (point.size() == 0) {
@@ -361,6 +368,39 @@ QVariant VizPolyhedron::itemChange(GraphicsItemChange change, const QVariant &va
     m_coordinateSystem->projection()->selectionManager()->polyhedronSelectionChanged(this, value.toBool());
   }
   return QGraphicsItem::itemChange(change, value);
+}
+
+void VizPolyhedron::mousePressEvent(QGraphicsSceneMouseEvent *event) {
+  // Only left click.
+  if (event->button() == Qt::LeftButton) {
+    CLINT_ASSERT(m_wasPressed == false, "Button pressed twice without being released.");
+    m_wasPressed = true;
+    m_pressPos = pos();
+    coordinateSystem()->projection()->manipulationManager()->polyhedronAboutToMove(this);
+  }
+
+  return QGraphicsItem::mousePressEvent(event);
+}
+
+void VizPolyhedron::mouseMoveEvent(QGraphicsSceneMouseEvent *event) {
+
+  if (m_wasPressed) {
+    QPointF displacement = pos() - m_pressPos;
+    VizManipulationManager *vmm = coordinateSystem()->projection()->manipulationManager();
+    vmm->polyhedronMoving(this, displacement);
+  }
+
+  return QGraphicsItem::mouseMoveEvent(event);
+}
+
+void VizPolyhedron::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
+  if (event->button() == Qt::LeftButton) {
+    CLINT_ASSERT(m_wasPressed == true, "Button released without being pressed.");
+    m_wasPressed = false;
+    m_pressPos = QPointF(+0.0, +0.0);
+    coordinateSystem()->projection()->manipulationManager()->polyhedronHasMoved(this);
+  }
+  return QGraphicsItem::mouseReleaseEvent(event);
 }
 
 std::pair<int, int> VizPolyhedron::pointScatteredCoordsReal(const VizPoint *vp) {

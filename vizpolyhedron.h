@@ -44,13 +44,37 @@ public:
     return m_localVerticalMin;
   }
 
-  void setProjectedPoints(std::vector<std::vector<int>> &&points, int horizontalMin, int verticalMin);
+  int localHorizontalMax() const {
+    return m_localHorizontalMax;
+  }
+
+  int localVerticalMax() const {
+    return m_localVerticalMax;
+  }
+
+  void setProjectedPoints(std::vector<std::vector<int>> &&points,
+                          int horizontalMin, int horizontalMax,
+                          int verticalMin, int verticalMax);
   void setInternalDependences(const std::vector<std::vector<int>> &dependences);
 
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
   QRectF boundingRect() const;
   QPainterPath shape() const;
   QVariant itemChange(GraphicsItemChange change, const QVariant &value);
+  void mousePressEvent(QGraphicsSceneMouseEvent *event);
+  void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
+  void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
+
+  void setPos(const QPointF &position) {
+    if (m_wasPressed) {
+      m_pressPos = position;
+    } else {
+      QGraphicsObject::setPos(position);
+    }
+  }
+  void setPos(qreal x, qreal y) {
+    setPos(QPointF(x, y));
+  }
 
 signals:
 
@@ -65,8 +89,13 @@ private:
   std::unordered_set<VizDepArrow *> m_deps;
   int m_localHorizontalMin = 0;
   int m_localVerticalMin   = 0;
+  int m_localHorizontalMax = 0;
+  int m_localVerticalMax   = 0;
 
   bool m_selectionChangeBarrier = false;
+
+  bool m_wasPressed = false;
+  QPointF m_pressPos;
 
   void setPointVisiblePos(VizPoint *vp, int x, int y);
   static std::pair<int, int> pointScatteredCoordsReal(const VizPoint *vp);

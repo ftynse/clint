@@ -21,11 +21,12 @@ VizProjection::VizProjection(int horizontalDimensionIdx, int verticalDimensionId
           this, &VizProjection::updateProjection);
 
   m_selectionManager = new VizSelectionManager(this);
+  m_manipulationManager = new VizManipulationManager(this);
 }
 
 void VizProjection::updateProjection() {
   updateSceneLayout();
-  m_view->update();
+  m_view->viewport()->update();
 }
 
 inline bool partialBetaEquals(const std::vector<int> &original, const std::vector<int> &beta,
@@ -134,6 +135,91 @@ void VizProjection::projectScop(ClintScop *vscop) {
     m_coordinateSystems.pop_back();
   }
   updateSceneLayout();
+}
+
+void VizProjection::updateColumnHorizontalMinMax(VizCoordinateSystem *coordinateSystem, int minOffset, int maxOffset) {
+  size_t column = static_cast<size_t>(-1);
+  int columnMin;
+  int columnMax;
+  for (size_t col = 0, col_end = m_coordinateSystems.size(); col < col_end; col++) {
+    std::vector<VizCoordinateSystem *> pile = m_coordinateSystems.at(col);
+    columnMin = INT_MAX;
+    columnMax = INT_MIN;
+    for (size_t row = 0, row_end = pile.size(); row < row_end; row++) {
+      int hmin, hmax, vmin, vmax;
+      VizCoordinateSystem *cs = pile.at(row);
+      cs->minMax(hmin, hmax, vmin, vmax);
+      if (cs == coordinateSystem) {
+        column = col;
+        hmin += minOffset; // FIXME: coordinate system may contain mulitple polyhedra, only one of which is moved...
+        hmax += maxOffset;
+      }
+      columnMin = std::min(columnMin, hmin);
+      columnMax = std::max(columnMax, hmax);
+    }
+    // Found, no further iteration needed.
+    if (column == col) {
+      break;
+    }
+  }
+  CLINT_ASSERT(column != static_cast<size_t>(-1), "Polyhedron not found in the coordinate system");
+
+  std::vector<VizCoordinateSystem *> pile = m_coordinateSystems.at(column);
+  for (size_t row = 0, row_end = pile.size(); row < row_end; row++) {
+    VizCoordinateSystem *cs = pile.at(row);
+    int hmin, hmax, vmin, vmax;
+    cs->minMax(hmin, hmax, vmin, vmax);
+    cs->setMinMax(columnMin, columnMax, vmin, vmax);
+  }
+  updateProjection();
+}
+
+void VizProjection::ensureFitsHorizontally(VizCoordinateSystem *coordinateSystem, int minimum, int maximum) {
+  size_t column = static_cast<size_t>(-1);
+  int columnMin;
+  int columnMax;
+  for (size_t col = 0, col_end = m_coordinateSystems.size(); col < col_end; col++) {
+    std::vector<VizCoordinateSystem *> pile = m_coordinateSystems.at(col);
+    columnMin = INT_MAX;
+    columnMax = INT_MIN;
+    for (size_t row = 0, row_end = pile.size(); row < row_end; row++) {
+     int hmin, hmax, vmin, vmax;
+     VizCoordinateSystem *cs = pile.at(row);
+     cs->minMax(hmin, hmax, vmin, vmax);
+      if (cs == coordinateSystem) {
+        column = col;
+      }
+      columnMin = std::min(columnMin, hmin);
+      columnMax = std::max(columnMax, hmax);
+    }
+    // Found, no further iteration needed.
+    if (column == col) {
+      break;
+    }
+  }
+  CLINT_ASSERT(column != static_cast<size_t>(-1), "Polyhedron not found in the coordinate system");
+
+  columnMin = std::min(columnMin, minimum);
+  columnMax = std::max(columnMax, maximum);
+
+  std::vector<VizCoordinateSystem *> pile = m_coordinateSystems.at(column);
+  for (size_t row = 0, row_end = pile.size(); row < row_end; row++) {
+    VizCoordinateSystem *cs = pile.at(row);
+    int hmin, hmax, vmin, vmax;
+    cs->minMax(hmin, hmax, vmin, vmax);
+    cs->setMinMax(columnMin, columnMax, vmin, vmax); // FIXME: provide functionality for horizontalMinMax separately
+  }
+  updateProjection();
+}
+
+void VizProjection::ensureFitsVertically(VizCoordinateSystem *coordinateSystem, int minimum, int maximum) {
+  int hmin, hmax, vmin, vmax;
+  coordinateSystem->minMax(hmin, hmax, vmin, vmax);
+  vmin = std::min(vmin, minimum);
+  vmax = std::max(vmax, maximum);
+  coordinateSystem->setMinMax(hmin, hmax, vmin, vmax);
+
+  updateProjection();
 }
 
 void VizProjection::updateSceneLayout() {
