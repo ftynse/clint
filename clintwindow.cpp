@@ -34,9 +34,24 @@ QWidget *clintInterfaceMockup() {
 ClintWindow::ClintWindow(QWidget *parent) :
   QMainWindow(parent) {
 
+  QString filename;
+  QStringList args = qApp->arguments();
+  for (int i = 0; i < args.size(); i++) {
+    if (!args[i].startsWith("--") && !args[i].endsWith("clint")) {
+      if (filename.length() != 0) {
+        QMessageBox::warning(this, "Multiple files to open", "Extra file to open is ignored", QMessageBox::Ok, QMessageBox::Ok);
+        continue;
+      }
+      filename = args[i];
+    }
+  }
+
   setWindowTitle("Clint: Chunky Loop INTerface");
   setupActions();
   setupMenus();
+  if (filename.length() != 0) {
+    openFileByName(filename);
+  }
 }
 
 void ClintWindow::setupActions() {
@@ -76,6 +91,28 @@ void ClintWindow::fileOpen() {
   QString fileName = QFileDialog::getOpenFileName(this, "Open file", QString(), "OpenScop files (*.scop);;C/C++ sources (*.c *.cpp *.cxx)", &selectedFilter);
   if (fileName.isNull())
     return;
+  openFileByName(fileName);
+}
+
+void ClintWindow::fileClose() {
+  if (!m_fileOpen)
+    return;
+
+  setWindowTitle("Clint: Chunky Loop INTerface");
+
+  setCentralWidget(nullptr);
+  m_program->setParent(nullptr);
+  delete m_program;
+  m_program = nullptr;
+  m_projection->setParent(nullptr);
+  delete m_projection;
+  m_projection = nullptr;
+
+  m_fileOpen = false;
+  m_actionFileClose->setEnabled(false);
+}
+
+void ClintWindow::openFileByName(QString fileName) {
   char *cFileName = strdup(QFile::encodeName(fileName).constData());
   QString fileNameNoPath = QFileInfo(fileName).fileName();
   FILE *file = fopen(cFileName, "r");
@@ -86,9 +123,11 @@ void ClintWindow::fileOpen() {
   }
 
   osl_scop_p scop = nullptr;
-  if (selectedFilter.compare("OpenScop files (*.scop)") == 0) {
+  if (fileName.endsWith(".scop")) {
     scop = osl_scop_read(file);
-  } else if (selectedFilter.compare("C/C++ sources (*.c *.cpp *.cxx)") == 0){
+  } else if (fileName.endsWith(".c") ||
+             fileName.endsWith(".cpp") ||
+             fileName.endsWith(".cxx")) {
     scop = oslFromCCode(file);
   } else {
     CLINT_UNREACHABLE;
@@ -110,22 +149,4 @@ void ClintWindow::fileOpen() {
 
   m_fileOpen = true;
   m_actionFileClose->setEnabled(true);
-}
-
-void ClintWindow::fileClose() {
-  if (!m_fileOpen)
-    return;
-
-  setWindowTitle("Clint: Chunky Loop INTerface");
-
-  setCentralWidget(nullptr);
-  m_program->setParent(nullptr);
-  delete m_program;
-  m_program = nullptr;
-  m_projection->setParent(nullptr);
-  delete m_projection;
-  m_projection = nullptr;
-
-  m_fileOpen = false;
-  m_actionFileClose->setEnabled(false);
 }

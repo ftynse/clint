@@ -18,6 +18,7 @@ signals:
 public slots:
   void fileOpen();
   void fileClose();
+  void openFileByName(QString fileName);
 
 private:
   QAction *m_actionFileOpen;
