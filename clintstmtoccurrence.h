@@ -60,7 +60,11 @@ public:
   int minimumValue(int dimIdx) const;
   int maximumValue(int dimIdx) const;
 
+  void resetOccurrence(osl_statement_p stmt, const std::vector<int> &betaVector);
+
 signals:
+  void pointsChanged();
+  void betaChanged();
 
 public slots:
 

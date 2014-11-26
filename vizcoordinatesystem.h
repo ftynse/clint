@@ -99,6 +99,7 @@ public:
   int verticalAxisLength() const;
   int ticMargin() const;
 
+  void polyhedronUpdated(VizPolyhedron *polyhedron);
 signals:
 
 public slots:
@@ -132,6 +133,8 @@ private:
   QFont m_font;
   QString m_horizontalName;
   QString m_verticalName;
+
+  void updatePolyhedraPositions();
 };
 
 #endif // VIZCOORDINATESYSTEM_H

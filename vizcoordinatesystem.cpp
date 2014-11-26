@@ -80,20 +80,45 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
   return true;
 }
 
+void VizCoordinateSystem::updatePolyhedraPositions() {
+  const double pointDistance = m_projection->vizProperties()->pointDistance();
+  for (size_t i = 0, iend = m_polyhedra.size(); i < iend; i++) {
+    VizPolyhedron *vph = m_polyhedra.at(i);
+    double offset = m_projection->vizProperties()->polyhedronOffset() * i;
+    vph->setPos(offset + (vph->localHorizontalMin() - m_horizontalMin + 1) * pointDistance,
+                -(offset + (vph->localVerticalMin() - m_verticalMin + 1) * pointDistance));
+    vph->setZValue(m_polyhedra.size() + 1 - i);
+  }
+}
+
+void VizCoordinateSystem::polyhedronUpdated(VizPolyhedron *polyhedron) {
+  const double pointDistance = m_projection->vizProperties()->pointDistance();
+  auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);
+  CLINT_ASSERT(it != std::end(m_polyhedra),
+               "Polyhedron updated does not belong to the coordinate system");
+  double offset = m_projection->vizProperties()->polyhedronOffset() * (it - std::begin(m_polyhedra));
+
+  // check (assert) if the actual position corresponds to the computed one;
+  QPointF expected;
+  expected.rx() = offset + (polyhedron->localHorizontalMin() - m_horizontalMin + 1) * pointDistance;
+  expected.ry() = -(offset + (polyhedron->localVerticalMin() - m_verticalMin + 1) * pointDistance);
+
+  double horzDiff = expected.x() - polyhedron->pos().x();
+  double vertDiff = expected.y() - polyhedron->pos().y();
+  CLINT_ASSERT(fabs(vertDiff) * 2. <= pointDistance, "Polyhedron position mismatch");
+  CLINT_ASSERT(fabs(horzDiff) * 2. <= pointDistance, "Polyhedron position mismatch");
+
+  // update it to fit in the grid (todo animation)
+  polyhedron->setPos(expected);
+}
+
 void VizCoordinateSystem::setMinMax(int horizontalMinimum, int horizontalMaximum,
                                     int verticalMinimum, int verticalMaximum) {
-  const double pointDistance = m_projection->vizProperties()->pointDistance();
   m_horizontalMin = horizontalMinimum;
   m_horizontalMax = horizontalMaximum;
   m_verticalMin   = verticalMinimum;
   m_verticalMax   = verticalMaximum;
-  for (size_t i = 0, iend = m_polyhedra.size(); i < iend; i++) {
-    VizPolyhedron *vph = m_polyhedra.at(i);
-    double offset = m_projection->vizProperties()->polyhedronOffset() * i;
-    vph->setPos(offset + (vph->localHorizontalMin() - horizontalMinimum + 1) * pointDistance,
-                -(offset + (vph->localVerticalMin() - verticalMinimum + 1) * pointDistance));
-    vph->setZValue(m_polyhedra.size() + 1 - i);
-  }
+  updatePolyhedraPositions();
 }
 
 void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {

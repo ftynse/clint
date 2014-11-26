@@ -28,7 +28,7 @@ public:
 
   // Accessors
   ClintProgram *program() const {
-    return program_;
+    return m_program;
   }
 
   const VizBetaMap &vizBetaMap() const {
@@ -58,12 +58,7 @@ public:
     m_transformationSeq.groups.push_back(tg);
   }
 
-  void executeTransformationSequence() {
-    m_transformer->apply(m_scop_part, m_transformationSeq);
-    osl_scop_print(stderr, m_scop_part);
-    m_transformationSeq.groups.clear(); // Execute sequence and "forget" about it.
-    // TODO: keep the original scop and transformation sequence; apply it before generating points.
-  }
+  void executeTransformationSequence();
 
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
   std::unordered_set<ClintDependence *> internalDependences(ClintStmtOccurrence *occurrence) const;
@@ -74,8 +69,8 @@ public slots:
 
 private:
 
-  osl_scop_p m_scop_part;
-  ClintProgram *program_;
+  osl_scop_p m_scopPart;
+  ClintProgram *m_program;
   osl_relation_p m_fixedContext;
 //  std::vector<VizStatement *> statements_;
   // statements = unique values of m_vizBetaMap

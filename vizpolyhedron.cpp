@@ -17,6 +17,8 @@ VizPolyhedron::VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSyste
   setFlag(QGraphicsItem::ItemIsSelectable);
   setFlag(QGraphicsItem::ItemIsMovable);
   setFlag(QGraphicsItem::ItemSendsGeometryChanges);
+
+  connect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
 }
 
 void VizPolyhedron::setPointVisiblePos(VizPoint *vp, int x, int y) {
@@ -59,6 +61,68 @@ void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points,
     // Or it can be reconstructed using respective parent polyhedron and coodrinate system
   }
   recomputeShape();
+}
+
+void VizPolyhedron::occurrenceChanged() {
+  int horizontalDim = coordinateSystem()->horizontalDimensionIdx();
+  int verticalDim   = coordinateSystem()->verticalDimensionIdx();
+  std::vector<std::vector<int>> points =
+      occurrence()->projectOn(horizontalDim, verticalDim);
+  m_localHorizontalMin = occurrence()->minimumValue(horizontalDim);
+  m_localHorizontalMax = occurrence()->maximumValue(horizontalDim);
+  m_localVerticalMin   = occurrence()->minimumValue(verticalDim);
+  m_localVerticalMax   = occurrence()->maximumValue(verticalDim);
+
+  double pointDistance = coordinateSystem()->projection()->vizProperties()->pointDistance();
+
+  // We assume the number of points is the same?
+  int unmatchedNewPoints = 0;
+  std::unordered_set<VizPoint *> matchedPoints;
+  for (const std::vector<int> &point : points) {
+    std::pair<int, int> originalCoordinates  {VizPoint::NO_COORD, VizPoint::NO_COORD};
+    std::pair<int, int> scatteredCoordinates {VizPoint::NO_COORD, VizPoint::NO_COORD};
+    if (point.size() == 0) {
+      CLINT_ASSERT(points.size() == 1, "Only one zero-dimensional point per polyhedron is allowed");
+    } else if (point.size() == 2) {
+      scatteredCoordinates.first = point[0];
+      originalCoordinates.first = point[1];
+    } else if (point.size() == 4) {
+      scatteredCoordinates.first = point[0];
+      scatteredCoordinates.second = point[1];
+      originalCoordinates.first = point[2];
+      originalCoordinates.second = point[3];
+    } else {
+      CLINT_UNREACHABLE;
+    }
+    VizPoint *vp = this->point(originalCoordinates);
+    if (vp == nullptr) {
+      ++unmatchedNewPoints;
+    } else {
+      vp->setScatteredCoordinates(scatteredCoordinates); // FIXME: no ifndef
+      std::pair<int, int> realScatteredCoords = pointScatteredCoordsReal(vp);
+      realScatteredCoords.first -= m_localHorizontalMin;
+      realScatteredCoords.second -= m_localVerticalMin;
+      QPointF position = vp->pos();
+      position /= pointDistance;
+      std::pair<int, int> visibleScatteredCoords {position.x(), -position.y()}; // inverted vertical axis
+      CLINT_ASSERT(realScatteredCoords == visibleScatteredCoords,
+                   "Point projected to a different position than it is visible");
+      matchedPoints.insert(vp);
+    }
+  }
+  CLINT_ASSERT(unmatchedNewPoints == 0, "All new points should match old points by original coordinates"); // Not true with ISS
+  CLINT_ASSERT(matchedPoints.size() == m_points.size(), "Not all old points were matched");
+  coordinateSystem()->polyhedronUpdated(this);
+}
+
+VizPoint *VizPolyhedron::point(std::pair<int, int> &originalCoordinates) const {
+  // FIXME: change this when points are stored as a map by original coordinates
+  for (VizPoint *vp : m_points) {
+    if (vp->originalCoordinates() == originalCoordinates) {
+      return vp;
+    }
+  }
+  return nullptr;
 }
 
 void VizPolyhedron::setInternalDependences(const std::vector<std::vector<int>> &dependences) {
@@ -346,6 +410,7 @@ void VizPolyhedron::recomputeShape() {
 void VizPolyhedron::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
   Q_UNUSED(widget);
   painter->save();
+  painter->setRenderHint(QPainter::Antialiasing);
   if (option->state & QStyle::State_Selected) {
     QPen fatPen = QPen(painter->pen());
     fatPen.setWidth(painter->pen().widthF() * 2.0);
@@ -400,7 +465,7 @@ void VizPolyhedron::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
     m_pressPos = QPointF(+0.0, +0.0);
     coordinateSystem()->projection()->manipulationManager()->polyhedronHasMoved(this);
   }
-  return QGraphicsItem::mouseReleaseEvent(event);
+  QGraphicsItem::mouseReleaseEvent(event);
 }
 
 std::pair<int, int> VizPolyhedron::pointScatteredCoordsReal(const VizPoint *vp) {

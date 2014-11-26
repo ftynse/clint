@@ -75,26 +75,37 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
   CLINT_ASSERT(m_polyhedron == polyhedron, "Signaled end of polyhedron movement that was never initiated");
   m_polyhedron = nullptr;
   TransformationGroup group;
-  if (m_horzOffset != 0) {
-    emit movedHorizontally(m_horzOffset);
-
+  if (m_horzOffset != 0 || m_vertOffset != 0) {
     // TODO: move this code to transformation manager
     // we need transformation manager to keep three different views in sync
     const std::unordered_set<VizPolyhedron *> &selectedPolyhedra =
         polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
     CLINT_ASSERT(std::find(std::begin(selectedPolyhedra), std::end(selectedPolyhedra), polyhedron) != std::end(selectedPolyhedra),
                  "The active polyhedra is not selected");
+
+    // TODO: vertical should be ignored (and movement forbidden) for 1D coordinate systems
     for (VizPolyhedron *vp : selectedPolyhedra) {
       const std::vector<int> beta = vp->occurrence()->betaVector();
-      int depth = vp->coordinateSystem()->horizontalDimensionIdx() + 1;
-      int amount = m_horzOffset;
-      Transformation transformation = Transformation::consantShift(beta, depth, amount);
-      group.transformations.push_back(transformation);
+      int horzDepth = vp->coordinateSystem()->horizontalDimensionIdx() + 1;
+      int horzAmount = m_horzOffset;
+      int vertDepth = vp->coordinateSystem()->verticalDimensionIdx() + 1;
+      int vertAmount = m_vertOffset;
+      if (m_horzOffset != 0) {
+        Transformation transformation = Transformation::consantShift(beta, horzDepth, -horzAmount);
+        group.transformations.push_back(transformation);
+      }
+      if (m_vertOffset != 0) {
+        Transformation transformation = Transformation::consantShift(beta, vertDepth, -vertAmount);
+        group.transformations.push_back(transformation);
+      }
       CLINT_ASSERT(vp->scop() == polyhedron->scop(), "All statement occurrences in the transformation group must be in the same scop");
     }
+
+    if (m_horzOffset != 0)
+      emit movedHorizontally(m_horzOffset);
+    if (m_vertOffset != 0)
+      emit movedVertically(m_vertOffset);
   }
-  if (m_vertOffset != 0)
-    emit movedVertically(m_vertOffset);
 
   if (!group.transformations.empty()) {
     polyhedron->scop()->transformed(group);

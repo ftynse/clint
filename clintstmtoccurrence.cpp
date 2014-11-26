@@ -7,6 +7,14 @@
 ClintStmtOccurrence::ClintStmtOccurrence(osl_statement_p stmt, const std::vector<int> &betaVector,
                                      ClintStmt *parent) :
   QObject(parent), m_oslStatement(stmt), m_statement(parent) {
+  resetOccurrence(stmt, betaVector);
+}
+
+void ClintStmtOccurrence::resetOccurrence(osl_statement_p stmt, const std::vector<int> &betaVector) {
+  bool differentBeta = (m_betaVector == betaVector);
+  m_oslScatterings.clear();
+  m_betaVector.clear();
+
   oslListForeach(stmt->scattering, [this,&betaVector](osl_relation_p scattering) {
     if (betaExtract(scattering) == betaVector) {
       m_oslScatterings.push_back(scattering);
@@ -17,6 +25,11 @@ ClintStmtOccurrence::ClintStmtOccurrence(osl_statement_p stmt, const std::vector
 
   m_betaVector.reserve(betaVector.size());
   std::copy(std::begin(betaVector), std::end(betaVector), std::back_inserter(m_betaVector));
+
+  emit pointsChanged();
+  if (differentBeta) {
+    emit betaChanged();
+  }
 }
 
 bool operator < (const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs) {
