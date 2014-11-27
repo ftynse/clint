@@ -75,11 +75,11 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
   CLINT_ASSERT(m_polyhedron == polyhedron, "Signaled end of polyhedron movement that was never initiated");
   m_polyhedron = nullptr;
   TransformationGroup group;
+  const std::unordered_set<VizPolyhedron *> &selectedPolyhedra =
+      polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
   if (m_horzOffset != 0 || m_vertOffset != 0) {
     // TODO: move this code to transformation manager
     // we need transformation manager to keep three different views in sync
-    const std::unordered_set<VizPolyhedron *> &selectedPolyhedra =
-        polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
     CLINT_ASSERT(std::find(std::begin(selectedPolyhedra), std::end(selectedPolyhedra), polyhedron) != std::end(selectedPolyhedra),
                  "The active polyhedra is not selected");
 
@@ -105,6 +105,10 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
       emit movedHorizontally(m_horzOffset);
     if (m_vertOffset != 0)
       emit movedVertically(m_vertOffset);
+  } else {
+    for (VizPolyhedron *vp : selectedPolyhedra) {
+      vp->coordinateSystem()->polyhedronUpdated(vp);
+    }
   }
 
   if (!group.transformations.empty()) {

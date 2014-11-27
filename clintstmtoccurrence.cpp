@@ -12,21 +12,34 @@ ClintStmtOccurrence::ClintStmtOccurrence(osl_statement_p stmt, const std::vector
 
 void ClintStmtOccurrence::resetOccurrence(osl_statement_p stmt, const std::vector<int> &betaVector) {
   bool differentBeta = (m_betaVector == betaVector);
-  m_oslScatterings.clear();
+  bool differentPoints = false;
+  std::vector<osl_relation_p> oslScatterings;
   m_betaVector.clear();
 
-  oslListForeach(stmt->scattering, [this,&betaVector](osl_relation_p scattering) {
+  oslListForeach(stmt->scattering, [this,&betaVector,&oslScatterings,&differentPoints](osl_relation_p scattering) {
     if (betaExtract(scattering) == betaVector) {
-      m_oslScatterings.push_back(scattering);
+      oslScatterings.push_back(scattering);
+      // Check if the scattering relation is equal to any other old scattering relation in this occurrence.
+      // If it is not, than this occurrence was indeed affected by the transformation and should send corresponding updates.
+      if (!differentPoints) {
+        auto found = std::find_if(std::begin(m_oslScatterings), std::end(m_oslScatterings), [scattering](auto it) {
+          return osl_relation_equal(it, scattering);
+        });
+        differentPoints = differentPoints || found == std::end(m_oslScatterings);
+      }
     }
   });
+  m_oslScatterings.clear();
+  m_oslScatterings = oslScatterings;
   CLINT_ASSERT(m_oslScatterings.size() != 0,
                "Trying to create an occurrence for the inexistent beta-vector");
 
   m_betaVector.reserve(betaVector.size());
   std::copy(std::begin(betaVector), std::end(betaVector), std::back_inserter(m_betaVector));
 
-  emit pointsChanged();
+  if (differentPoints) {
+    emit pointsChanged();
+  }
   if (differentBeta) {
     emit betaChanged();
   }
