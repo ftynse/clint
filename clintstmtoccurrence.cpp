@@ -122,11 +122,18 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
 void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &points,
                                       int horizontalDimIdx, int verticalDimIdx) const {
   // Initialize with extreme values for min and max unless already computed for previous polyhedron
-  size_t pointSize = points.front().size();
   int horizontalMin, horizontalMax, verticalMin = 0, verticalMax = 0;
   if (horizontalDimIdx == -2) {
     return;
   }
+  if (points.size() == 0) {
+    m_cachedDimMins[horizontalDimIdx] = 0;
+    m_cachedDimMaxs[horizontalDimIdx] = 0;
+    m_cachedDimMins[verticalDimIdx] = 0;
+    m_cachedDimMaxs[verticalDimIdx] = 0;
+    return;
+  }
+  size_t pointSize = points.front().size();
   switch (pointSize) {
   case 4:
     verticalMin   = INT_MAX;

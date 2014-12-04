@@ -5,6 +5,11 @@
 
 #include <clay/beta.h>
 
+#include <candl/candl.h>
+#include <candl/options.h>
+#include <candl/dependence.h>
+#include <candl/scop.h>
+
 #include <algorithm>
 #include <vector>
 #include <functional>

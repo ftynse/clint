@@ -62,7 +62,7 @@ void VizDepArrow::pointLink(QPointF source, QPointF target) {
                  90 - (angle * 180) / M_PI,
                  2 * (angle * 180) / M_PI);
   QTransform transform;
-  transform.rotate(m_arrowLine.angle() + 180);
+  transform.rotate(90 - m_arrowLine.angle());
   headPath = transform.map(headPath);
   transform.reset();
   transform.translate(m_arrowLine.p2().x(), m_arrowLine.p2().y());
