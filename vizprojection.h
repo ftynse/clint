@@ -70,6 +70,14 @@ public:
   VizCoordinateSystem *ensureCoordinateSystem(IsCsResult csAt, int dimensionality);
   VizCoordinateSystem *createCoordinateSystem(int dimensionality);
 
+  void paintProjection(QPainter *painter) {
+    m_scene->render(painter);
+  }
+
+  QSize projectionSize() const {
+    return m_scene->itemsBoundingRect().size().toSize();
+  }
+
 signals:
 
 public slots:

@@ -18,11 +18,13 @@ signals:
 public slots:
   void fileOpen();
   void fileClose();
+  void fileSaveSvg();
   void openFileByName(QString fileName);
 
 private:
   QAction *m_actionFileOpen;
   QAction *m_actionFileClose;
+  QAction *m_actionFileSaveSvg;
   QAction *m_actionFileQuit;
   QMenuBar *m_menuBar;
 

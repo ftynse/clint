@@ -1,6 +1,7 @@
 #include <QtCore>
 #include <QtGui>
 #include <QtWidgets>
+#include <QtSvg>
 
 #include "vizprojection.h"
 #include "clintwindow.h"
@@ -57,6 +58,7 @@ ClintWindow::ClintWindow(QWidget *parent) :
 void ClintWindow::setupActions() {
   m_actionFileOpen = new QAction(QIcon::fromTheme("document-open"), "Open...", this);
   m_actionFileClose = new QAction("Close", this);
+  m_actionFileSaveSvg = new QAction("Save as SVG", this);
   m_actionFileQuit = new QAction(QIcon::fromTheme("application-exit"), "Quit", this);
 
   m_actionFileOpen->setShortcut(QKeySequence::Open);
@@ -67,6 +69,7 @@ void ClintWindow::setupActions() {
 
   connect(m_actionFileOpen, &QAction::triggered, this, &ClintWindow::fileOpen);
   connect(m_actionFileClose, &QAction::triggered, this, &ClintWindow::fileClose);
+  connect(m_actionFileSaveSvg, &QAction::triggered, this, &ClintWindow::fileSaveSvg);
   connect(m_actionFileQuit, &QAction::triggered, qApp, &QApplication::quit);
 }
 
@@ -74,6 +77,7 @@ void ClintWindow::setupMenus() {
   m_menuBar = new QMenuBar(this);
   QMenu *fileMenu = new QMenu("File");
   fileMenu->addAction(m_actionFileOpen);
+  fileMenu->addAction(m_actionFileSaveSvg);
   fileMenu->addAction(m_actionFileClose);
   fileMenu->addSeparator();
   fileMenu->addAction(m_actionFileQuit);
@@ -110,6 +114,24 @@ void ClintWindow::fileClose() {
 
   m_fileOpen = false;
   m_actionFileClose->setEnabled(false);
+}
+
+void ClintWindow::fileSaveSvg() {
+  if (!m_fileOpen)
+    return;
+
+  QString fileName = QFileDialog::getSaveFileName(this, "Save SVG image", QString(), "Scalable Vector Graphics (*.svg)");
+  if (fileName.isNull())
+    return;
+
+  QSvgGenerator *generator = new QSvgGenerator;
+  generator->setFileName(fileName);
+  generator->setSize(m_projection->projectionSize());
+  QPainter *painter = new QPainter(generator);
+  m_projection->paintProjection(painter);
+
+  delete painter;
+  delete generator;
 }
 
 void ClintWindow::openFileByName(QString fileName) {
