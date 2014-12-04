@@ -54,10 +54,10 @@ public slots:
   void setCoordinateSystemMargin(double margin);
 
 private:
-  double m_polyhedronOffset       = 4.0;
-  double m_pointRadius            = 4.0;
-  double m_pointDistance          = 16.0;
-  double m_coordinateSystemMargin = 5.0;
+  double m_polyhedronOffset       = 8.0;
+  double m_pointRadius            = 8.0;
+  double m_pointDistance          = 32.0;
+  double m_coordinateSystemMargin = 10.0;
 };
 
 #endif // VIZPROPERTIES_H

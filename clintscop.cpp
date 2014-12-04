@@ -38,7 +38,7 @@ ClintScop::ClintScop(osl_scop_p scop, ClintProgram *parent) :
   });
 
   // FIXME: hardcoded parameter value
-  m_fixedContext = oslRelationFixAllParameters(m_scopPart->context, 4);
+  m_fixedContext = oslRelationFixAllParameters(m_scopPart->context, 6);
 
   createDependences(scop);
 
