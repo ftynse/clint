@@ -62,6 +62,15 @@ public:
                           int verticalMin, int verticalMax);
   void setInternalDependences(const std::vector<std::vector<int>> &dependences);
 
+  void reparent(VizCoordinateSystem *vcs) {
+    if (vcs == m_coordinateSystem)
+      return;
+    m_coordinateSystem = vcs;
+    setParent(vcs);
+    QPointF scenePosition = scenePos();
+    setPos(vcs->mapFromScene(scenePosition));
+  }
+
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
   QRectF boundingRect() const;
   QPainterPath shape() const;
@@ -101,6 +110,7 @@ private:
   bool m_selectionChangeBarrier = false;
 
   bool m_wasPressed = false;
+  bool m_wasControlPressed = false;
   QPointF m_pressPos;
 
   void setPointVisiblePos(VizPoint *vp, int x, int y);

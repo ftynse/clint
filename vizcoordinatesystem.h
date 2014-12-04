@@ -66,6 +66,8 @@ public:
     return m_verticalDimensionIdx;
   }
 
+  QRectF coordinateSystemRect() const;
+
   bool projectStatementOccurrence(ClintStmtOccurrence *occurrence);
 
   void extendHorizontally(int minimum, int maximum) {

@@ -29,6 +29,124 @@ void VizProjection::updateProjection() {
   m_view->viewport()->update();
 }
 
+VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
+  bool found = false;
+  size_t pileIndex = static_cast<size_t>(-1);
+  IsCsResult result;
+  for (size_t i = 0, ei = m_coordinateSystems.size(); i < ei; i++) {
+    const std::vector<VizCoordinateSystem *> &pile = m_coordinateSystems.at(i);
+    VizCoordinateSystem *coordinateSystem = pile.front();
+    if (point.x() < coordinateSystem->pos().x()) {
+      found = true;
+      // hypothetical pile found
+      if (i == 0) {
+        // add before first pile
+        result.m_action = IsCsAction::InsertPile;
+        result.m_pile = 0;
+        return result;
+      } else {
+        VizCoordinateSystem *previousCS = m_coordinateSystems.at(i - 1).front();
+        QRectF csRect = previousCS->coordinateSystemRect();
+        double csRight = previousCS->pos().x() + (csRect.width() + csRect.left());
+        if (point.x() < csRight) {
+          // within pile (i - 1)
+          pileIndex = i - 1;
+        } else {
+          // add between piles (i - 1) and (i)
+          result.m_action = IsCsAction::InsertPile;
+          result.m_pile = i;
+        }
+      }
+      break;
+    }
+  }
+
+  if (!found) {
+    VizCoordinateSystem *coordinateSystem = m_coordinateSystems.back().front();
+    QRectF csRect = coordinateSystem->coordinateSystemRect();
+    double csRight = coordinateSystem->pos().x() + (csRect.width() + csRect.left());
+    if (point.x() < csRight) {
+      // within last pile
+      pileIndex = m_coordinateSystems.size() - 1;
+    } else {
+      // add after last pile
+      result.m_action = IsCsAction::InsertPile;
+      result.m_pile = m_coordinateSystems.size();
+      return result;
+    }
+  }
+
+  CLINT_ASSERT(pileIndex != static_cast<size_t>(-1), "Pile was neither found, nor created");
+
+  result.m_pile = pileIndex;
+
+  std::vector<VizCoordinateSystem *> pile = m_coordinateSystems.at(pileIndex);
+  for (size_t i = 0, ei = pile.size(); i < ei; i++) {
+    VizCoordinateSystem *coordinateSystem = pile.at(i);
+    QRectF csRect = coordinateSystem->coordinateSystemRect();
+    double csBottom = coordinateSystem->pos().y() + (csRect.height() + csRect.top());
+    if (point.y() > csBottom) {
+      if (i == 0) {
+        // add before first cs
+        result.m_action = IsCsAction::InsertCS;
+        result.m_coordinateSystem = 0;
+        return result;
+      } else {
+        VizCoordinateSystem *previousCS = pile.at(i - 1);
+        if (point.y() > previousCS->pos().y()) {
+          // within cs (i - 1)
+          result.m_action = IsCsAction::Found;
+          result.m_vcs = previousCS;
+          result.m_coordinateSystem = i - 1;
+          return result;
+        } else {
+          // add between cs (i-1) and (i)
+          result.m_action = IsCsAction::InsertCS;
+          result.m_coordinateSystem = i;
+          return result;
+        }
+      }
+      break;
+    }
+  }
+
+  VizCoordinateSystem *coordinateSystem = pile.back();
+  if (point.y() > coordinateSystem->pos().y()) {
+    // within last cs
+    result.m_action = IsCsAction::Found;
+    result.m_vcs = coordinateSystem;
+    result.m_coordinateSystem = m_coordinateSystems.size() - 1;
+  } else {
+    // add after last cs
+    result.m_action = IsCsAction::InsertCS;
+    result.m_coordinateSystem = pile.size();
+  }
+  return result;
+}
+
+VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult csAt, int dimensionality) {
+  VizCoordinateSystem *vcs = nullptr;
+  switch (csAt.action()) {
+  case IsCsAction::Found:
+    return csAt.coordinateSystem();
+    break;
+  case IsCsAction::InsertPile:
+    vcs = createCoordinateSystem(dimensionality);
+    m_coordinateSystems.insert(std::next(std::begin(m_coordinateSystems), csAt.pileIdx()),
+                               std::vector<VizCoordinateSystem *> {vcs});
+    return vcs;
+    break;
+  case IsCsAction::InsertCS:
+    CLINT_ASSERT(csAt.pileIdx() < m_coordinateSystems.size(), "Inserting CS in a non-existent pile");
+    vcs = createCoordinateSystem(dimensionality);
+    std::vector<VizCoordinateSystem *> &pile = m_coordinateSystems.at(csAt.pileIdx());
+    pile.insert(std::next(std::begin(pile), csAt.coordinateSystemIdx()), createCoordinateSystem(dimensionality));
+    return vcs;
+    break;
+  }
+  CLINT_UNREACHABLE;
+}
+
 inline bool partialBetaEquals(const std::vector<int> &original, const std::vector<int> &beta,
                               size_t from, size_t to) {
   return std::equal(std::begin(original) + from,
@@ -36,7 +154,7 @@ inline bool partialBetaEquals(const std::vector<int> &original, const std::vecto
                     std::begin(beta) + from);
 }
 
-void VizProjection::createCoordinateSystem(int dimensionality) {
+VizCoordinateSystem *VizProjection::createCoordinateSystem(int dimensionality) {
   VizCoordinateSystem *vcs;
   vcs = new VizCoordinateSystem(this,
                                 m_horizontalDimensionIdx < dimensionality ?
@@ -45,6 +163,12 @@ void VizProjection::createCoordinateSystem(int dimensionality) {
                                 m_verticalDimensionIdx < dimensionality ?
                                   m_verticalDimensionIdx :
                                   VizProperties::NO_DIMENSION);
+
+  return vcs;
+}
+
+void VizProjection::appendCoordinateSystem(int dimensionality) {
+  VizCoordinateSystem *vcs = createCoordinateSystem(dimensionality);
   m_coordinateSystems.back().push_back(vcs);
   m_scene->addItem(vcs);
 }
@@ -83,12 +207,12 @@ void VizProjection::projectScop(ClintScop *vscop) {
       columnMinMax.emplace_back(std::make_pair(INT_MAX, INT_MIN));
       csMinMax.emplace_back();
       csMinMax.back().emplace_back(std::make_pair(INT_MAX, INT_MIN));
-      createCoordinateSystem(occurrence->dimensionality());
+      appendCoordinateSystem(occurrence->dimensionality());
       visiblePile = false;
       visibleCS = false;
     } else if (difference < m_verticalDimensionIdx + 1 &&
                visibleCS) {
-      createCoordinateSystem(occurrence->dimensionality());
+      appendCoordinateSystem(occurrence->dimensionality());
       csMinMax.back().emplace_back(std::make_pair(INT_MAX, INT_MIN));
       visibleCS = false;
     }

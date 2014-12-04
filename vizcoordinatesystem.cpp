@@ -222,6 +222,12 @@ QRectF VizCoordinateSystem::boundingRect() const {
   return QRectF(left, top, width, height) | childrenBoundingRect();
 }
 
+QRectF VizCoordinateSystem::coordinateSystemRect() const {
+  int width  = horizontalAxisLength();
+  int height = verticalAxisLength();
+  return QRectF(0, -height, width, height);
+}
+
 int VizCoordinateSystem::horizontalAxisLength() const {
   return (m_horizontalMax - m_horizontalMin + 3) * m_projection->vizProperties()->pointDistance();
 }

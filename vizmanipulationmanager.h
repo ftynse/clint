@@ -24,12 +24,17 @@ public slots:
   void polyhedronMoving(VizPolyhedron *polyhedron, QPointF displacement);
   void polyhedronHasMoved(VizPolyhedron *polyhedron);
 
+  void polyhedronAboutToDetach(VizPolyhedron *polyhedron);
+  void polyhedronDetaching(QPointF position);
+  void polyhedronHasDetached(VizPolyhedron *polyhedron);
+
 private:
   VizPolyhedron *m_polyhedron = nullptr;
   VizPoint *m_point = nullptr;
   VizCoordinateSystem *m_coordinateSystem = nullptr;
 
   int m_horzOffset, m_vertOffset;
+  bool m_detached;
 
   void ensureTargetConsistency();
 };

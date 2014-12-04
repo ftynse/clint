@@ -39,6 +39,37 @@ public:
   void ensureFitsHorizontally(VizCoordinateSystem *coordinateSystem, int minimum, int maximum);
   void ensureFitsVertically(VizCoordinateSystem *coordinateSystem, int minimum, int maximum);
 
+
+  enum class IsCsAction { Found, InsertPile, InsertCS };
+
+  class IsCsResult {
+  public:
+    IsCsAction action() const {
+      return m_action;
+    }
+    size_t pileIdx() const {
+      return m_pile;
+    }
+    size_t coordinateSystemIdx() const {
+      return m_coordinateSystem;
+    }
+    VizCoordinateSystem *coordinateSystem() const {
+      return m_vcs;
+    }
+
+  private:
+    IsCsAction m_action;
+    VizCoordinateSystem *m_vcs = nullptr;
+    size_t m_pile;   // in case InsertPile, insert before this index; if index >= size, insert after the last; in case InsertCS, index of the pile to insert to
+    size_t m_coordinateSystem;
+
+    friend class VizProjection;
+  };
+
+  VizProjection::IsCsResult isCoordinateSystem(QPointF point);
+  VizCoordinateSystem *ensureCoordinateSystem(IsCsResult csAt, int dimensionality);
+  VizCoordinateSystem *createCoordinateSystem(int dimensionality);
+
 signals:
 
 public slots:
@@ -59,7 +90,7 @@ private:
   VizSelectionManager *m_selectionManager;
   VizManipulationManager *m_manipulationManager;
 
-  void createCoordinateSystem(int dimensionality);
+  void appendCoordinateSystem(int dimensionality);
   void updateSceneLayout();
 };
 

@@ -116,3 +116,52 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
     polyhedron->scop()->executeTransformationSequence();
   }
 }
+
+
+void VizManipulationManager::polyhedronAboutToDetach(VizPolyhedron *polyhedron) {
+  CLINT_ASSERT(m_polyhedron == nullptr, "Active polyhedron is already being manipulated");
+  m_polyhedron = polyhedron;
+  ensureTargetConsistency();
+
+  CLINT_ASSERT(m_polyhedron->coordinateSystem()->coordinateSystemRect().contains(polyhedron->pos()),
+               "Coordinate system rectangle does not contain the polyhedron");
+  m_detached = false;
+
+  QPointF position = polyhedron->coordinateSystem()->mapToParent(polyhedron->pos());
+  VizProjection::IsCsResult r = polyhedron->coordinateSystem()->projection()->isCoordinateSystem(position);
+  CLINT_ASSERT(r.action() == VizProjection::IsCsAction::Found && r.coordinateSystem() == polyhedron->coordinateSystem(),
+               "Polyhedron position is not found in the coordinate system it actually belongs to");
+}
+
+void VizManipulationManager::polyhedronDetaching(QPointF position) {
+  QRectF mainRect = m_polyhedron->coordinateSystem()->coordinateSystemRect();
+  if (!mainRect.contains(position)) {
+    if (!m_detached) {
+      qDebug() << "detached";
+    }
+    m_detached = true;
+  }
+}
+
+void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
+  CLINT_ASSERT(m_polyhedron == polyhedron, "Signaled end of polyhedron movement that was never initiated");
+  m_polyhedron = nullptr;
+
+  const std::unordered_set<VizPolyhedron *> &selectedPolyhedra =
+      polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
+  CLINT_ASSERT(std::find(std::begin(selectedPolyhedra), std::end(selectedPolyhedra), polyhedron) != std::end(selectedPolyhedra),
+               "The active polyhedra is not selected");
+  if (m_detached) {
+    QPointF position = polyhedron->coordinateSystem()->mapToParent(polyhedron->pos());
+    VizProjection::IsCsResult r = polyhedron->coordinateSystem()->projection()->isCoordinateSystem(position);
+    int dimensionality = -1;
+    for (VizPolyhedron *vp : selectedPolyhedra) {
+      dimensionality = std::max(dimensionality, vp->occurrence()->dimensionality());
+    }
+    VizCoordinateSystem *cs = polyhedron->coordinateSystem()->projection()->ensureCoordinateSystem(r, dimensionality);
+    for (VizPolyhedron *vp : selectedPolyhedra) {
+      vp->reparent(cs);
+    }
+  }
+}
+

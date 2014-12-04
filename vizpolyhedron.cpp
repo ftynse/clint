@@ -439,31 +439,42 @@ void VizPolyhedron::mousePressEvent(QGraphicsSceneMouseEvent *event) {
   // Only left click.
   if (event->button() == Qt::LeftButton) {
     CLINT_ASSERT(m_wasPressed == false, "Button pressed twice without being released.");
-    m_wasPressed = true;
     m_pressPos = pos();
-    coordinateSystem()->projection()->manipulationManager()->polyhedronAboutToMove(this);
+    if (event->modifiers() & Qt::ControlModifier) {
+      m_wasControlPressed = true;
+      coordinateSystem()->projection()->manipulationManager()->polyhedronAboutToDetach(this);
+    } else {
+      m_wasPressed = true;
+      coordinateSystem()->projection()->manipulationManager()->polyhedronAboutToMove(this);
+    }
   }
 
-  return QGraphicsItem::mousePressEvent(event);
+  QGraphicsItem::mousePressEvent(event);
 }
 
 void VizPolyhedron::mouseMoveEvent(QGraphicsSceneMouseEvent *event) {
-
+  QPointF displacement = pos() - m_pressPos;
+  VizManipulationManager *vmm = coordinateSystem()->projection()->manipulationManager();
   if (m_wasPressed) {
-    QPointF displacement = pos() - m_pressPos;
-    VizManipulationManager *vmm = coordinateSystem()->projection()->manipulationManager();
     vmm->polyhedronMoving(this, displacement);
+  } else if (m_wasControlPressed) {
+    vmm->polyhedronDetaching(pos());
   }
 
-  return QGraphicsItem::mouseMoveEvent(event);
+  QGraphicsItem::mouseMoveEvent(event);
 }
 
 void VizPolyhedron::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
   if (event->button() == Qt::LeftButton) {
-    CLINT_ASSERT(m_wasPressed == true, "Button released without being pressed.");
-    m_wasPressed = false;
+    CLINT_ASSERT(m_wasPressed || m_wasControlPressed, "Button released without being pressed.");
     m_pressPos = QPointF(+0.0, +0.0);
-    coordinateSystem()->projection()->manipulationManager()->polyhedronHasMoved(this);
+    if (m_wasPressed) {
+      coordinateSystem()->projection()->manipulationManager()->polyhedronHasMoved(this);
+    } else if (m_wasControlPressed) {
+      coordinateSystem()->projection()->manipulationManager()->polyhedronHasDetached(this);
+    }
+    m_wasPressed = false;
+    m_wasControlPressed = false;
   }
   QGraphicsItem::mouseReleaseEvent(event);
 }
