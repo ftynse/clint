@@ -66,8 +66,8 @@ public:
     if (vcs == m_coordinateSystem)
       return;
     m_coordinateSystem = vcs;
-    setParent(vcs);
     QPointF scenePosition = scenePos();
+    setParentItem(vcs);
     setPos(vcs->mapFromScene(scenePosition));
   }
 

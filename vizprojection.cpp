@@ -55,6 +55,7 @@ VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
           // add between piles (i - 1) and (i)
           result.m_action = IsCsAction::InsertPile;
           result.m_pile = i;
+          return result;
         }
       }
       break;
@@ -91,8 +92,8 @@ VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
         return result;
       } else {
         VizCoordinateSystem *previousCS = pile.at(i - 1);
-        QRectF csRect = coordinateSystem->coordinateSystemRect();
-        double csTop = coordinateSystem->pos().y() - csRect.height();
+        QRectF csRect = previousCS->coordinateSystemRect();
+        double csTop = previousCS->pos().y() - csRect.height();
         if (point.y() > csTop) {
           // within cs (i - 1)
           result.m_action = IsCsAction::Found;
@@ -136,13 +137,15 @@ VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult csAt, int 
     vcs = createCoordinateSystem(dimensionality);
     m_coordinateSystems.insert(std::next(std::begin(m_coordinateSystems), csAt.pileIdx()),
                                std::vector<VizCoordinateSystem *> {vcs});
+    updateProjection();
     return vcs;
     break;
   case IsCsAction::InsertCS:
     CLINT_ASSERT(csAt.pileIdx() < m_coordinateSystems.size(), "Inserting CS in a non-existent pile");
     vcs = createCoordinateSystem(dimensionality);
     std::vector<VizCoordinateSystem *> &pile = m_coordinateSystems.at(csAt.pileIdx());
-    pile.insert(std::next(std::begin(pile), csAt.coordinateSystemIdx()), createCoordinateSystem(dimensionality));
+    pile.insert(std::next(std::begin(pile), csAt.coordinateSystemIdx()), vcs);
+    updateProjection();
     return vcs;
     break;
   }
@@ -166,13 +169,13 @@ VizCoordinateSystem *VizProjection::createCoordinateSystem(int dimensionality) {
                                   m_verticalDimensionIdx :
                                   VizProperties::NO_DIMENSION);
 
+  m_scene->addItem(vcs);
   return vcs;
 }
 
 void VizProjection::appendCoordinateSystem(int dimensionality) {
   VizCoordinateSystem *vcs = createCoordinateSystem(dimensionality);
   m_coordinateSystems.back().push_back(vcs);
-  m_scene->addItem(vcs);
 }
 
 void VizProjection::projectScop(ClintScop *vscop) {
