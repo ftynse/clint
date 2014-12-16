@@ -110,7 +110,7 @@ private:
   bool m_selectionChangeBarrier = false;
 
   bool m_wasPressed = false;
-  bool m_wasControlPressed = false;
+  bool m_wasShiftPressed = false;
   QPointF m_pressPos;
 
   void setPointVisiblePos(VizPoint *vp, int x, int y);
