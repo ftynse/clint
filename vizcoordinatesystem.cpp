@@ -91,6 +91,29 @@ void VizCoordinateSystem::updatePolyhedraPositions() {
   }
 }
 
+void VizCoordinateSystem::resetPolyhedronPos(VizPolyhedron *polyhedron) {
+  auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);
+  CLINT_ASSERT(it != std::end(m_polyhedra),
+               "Polyhedron updated does not belong to the coordinate system");
+  const double pointDistance = m_projection->vizProperties()->pointDistance();
+  ssize_t idx = std::distance(std::begin(m_polyhedra), it);
+  double offset = m_projection->vizProperties()->polyhedronOffset() * idx;
+  polyhedron->setPos(offset + (polyhedron->localHorizontalMin() - m_horizontalMin + 1) * pointDistance,
+              -(offset + (polyhedron->localVerticalMin() - m_verticalMin + 1) * pointDistance));
+  polyhedron->setZValue(m_polyhedra.size() + 1 - idx);
+}
+
+void VizCoordinateSystem::reparentPolyhedron(VizPolyhedron *polyhedron) {
+  VizCoordinateSystem *oldCS = polyhedron->coordinateSystem();
+  if (oldCS == this)
+    return;
+  oldCS->m_polyhedra.erase(std::find(std::begin(oldCS->m_polyhedra),
+                                     std::end(oldCS->m_polyhedra),
+                                     polyhedron));
+  m_polyhedra.push_back(polyhedron);
+  polyhedron->reparent(this);
+}
+
 void VizCoordinateSystem::polyhedronUpdated(VizPolyhedron *polyhedron) {
   const double pointDistance = m_projection->vizProperties()->pointDistance();
   auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);

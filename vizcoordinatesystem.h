@@ -102,6 +102,8 @@ public:
   int ticMargin() const;
 
   void polyhedronUpdated(VizPolyhedron *polyhedron);
+  void resetPolyhedronPos(VizPolyhedron *polyhedron);
+  void reparentPolyhedron(VizPolyhedron *polyhedron);
 signals:
 
 public slots:

@@ -136,9 +136,6 @@ void VizManipulationManager::polyhedronAboutToDetach(VizPolyhedron *polyhedron) 
 void VizManipulationManager::polyhedronDetaching(QPointF position) {
   QRectF mainRect = m_polyhedron->coordinateSystem()->coordinateSystemRect();
   if (!mainRect.contains(position)) {
-    if (!m_detached) {
-      qDebug() << "detached";
-    }
     m_detached = true;
   }
 }
@@ -159,9 +156,22 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       dimensionality = std::max(dimensionality, vp->occurrence()->dimensionality());
     }
     VizCoordinateSystem *cs = polyhedron->coordinateSystem()->projection()->ensureCoordinateSystem(r, dimensionality);
+    int hmin = INT_MAX, hmax = INT_MIN, vmin = INT_MAX, vmax = INT_MIN; // TODO: frequent functionality, should be extracted?
+    // FIXME: all these assumes only all polyhedra belong to the same coordiante system.?
     for (VizPolyhedron *vp : selectedPolyhedra) {
-      vp->reparent(cs);
+      cs->reparentPolyhedron(vp);
+      if (r.action() != VizProjection::IsCsAction::Found) {
+        cs->resetPolyhedronPos(polyhedron);
+      }
+      // TODO: otherwise, shift it to the position it ended up graphically
+      hmin = std::min(hmin, vp->localHorizontalMin());
+      hmax = std::max(hmax, vp->localHorizontalMax());
+      vmin = std::min(vmin, vp->localVerticalMin());
+      vmax = std::max(vmax, vp->localVerticalMax());
     }
+    // TODO: provide functionality for both simultaneously with a single repaint (setMinMax?)
+    cs->projection()->ensureFitsHorizontally(cs, hmin, hmax);
+    cs->projection()->ensureFitsVertically(cs, vmin, vmax);
   }
 }
 
