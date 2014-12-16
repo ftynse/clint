@@ -97,6 +97,10 @@ public:
     verticalMaximum = m_verticalMax;
   }
 
+  bool isEmpty() const {
+    return m_polyhedra.empty();
+  }
+
   int horizontalAxisLength() const;
   int verticalAxisLength() const;
   int ticMargin() const;

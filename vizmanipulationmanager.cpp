@@ -159,6 +159,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
     int hmin = INT_MAX, hmax = INT_MIN, vmin = INT_MAX, vmax = INT_MIN; // TODO: frequent functionality, should be extracted?
     // FIXME: all these assumes only all polyhedra belong to the same coordiante system.?
     for (VizPolyhedron *vp : selectedPolyhedra) {
+      VizCoordinateSystem *oldCS = vp->coordinateSystem();
       cs->reparentPolyhedron(vp);
       if (r.action() != VizProjection::IsCsAction::Found) {
         cs->resetPolyhedronPos(polyhedron);
@@ -168,6 +169,9 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       hmax = std::max(hmax, vp->localHorizontalMax());
       vmin = std::min(vmin, vp->localVerticalMin());
       vmax = std::max(vmax, vp->localVerticalMax());
+      if (oldCS->isEmpty()) {
+        oldCS->projection()->deleteCoordinateSystem(oldCS);
+      }
     }
     // TODO: provide functionality for both simultaneously with a single repaint (setMinMax?)
     cs->projection()->ensureFitsHorizontally(cs, hmin, hmax);

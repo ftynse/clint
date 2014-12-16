@@ -152,6 +152,29 @@ VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult csAt, int 
   CLINT_UNREACHABLE;
 }
 
+void VizProjection::deleteCoordinateSystem(VizCoordinateSystem *vcs) {
+  size_t pileIdx = static_cast<size_t>(-1);
+  size_t csIdx   = static_cast<size_t>(-1);
+  for (size_t i = 0; i < m_coordinateSystems.size(); ++i) {
+    for (size_t j = 0; j < m_coordinateSystems[i].size(); ++j) {
+      if (m_coordinateSystems[i][j] == vcs) {
+        pileIdx = i;
+        csIdx = j;
+        break;
+      }
+    }
+  }
+  CLINT_ASSERT(pileIdx != static_cast<size_t>(-1),
+               "Coordinate sytem does not belong to the projection it is being removed from");
+  vcs->setParentItem(nullptr);
+  m_coordinateSystems[pileIdx].erase(std::begin(m_coordinateSystems[pileIdx]) + csIdx);
+  if (m_coordinateSystems[pileIdx].empty()) {
+    m_coordinateSystems.erase(std::begin(m_coordinateSystems) + pileIdx);
+  }
+  delete vcs; // No parent now, so delete.
+  updateSceneLayout();
+}
+
 inline bool partialBetaEquals(const std::vector<int> &original, const std::vector<int> &beta,
                               size_t from, size_t to) {
   return std::equal(std::begin(original) + from,
