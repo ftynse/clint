@@ -127,26 +127,55 @@ VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
   return result;
 }
 
+VizCoordinateSystem *VizProjection::insertPile(IsCsResult csAt, int dimensionality) {
+  VizCoordinateSystem *vcs = createCoordinateSystem(dimensionality);
+  m_coordinateSystems.insert(std::next(std::begin(m_coordinateSystems), csAt.pileIdx()),
+                             std::vector<VizCoordinateSystem *> {vcs});
+  updateProjection();
+  return vcs;
+}
+
+VizCoordinateSystem *VizProjection::insertCs(IsCsResult csAt, int dimensionality) {
+  CLINT_ASSERT(csAt.pileIdx() < m_coordinateSystems.size(), "Inserting CS in a non-existent pile");
+  VizCoordinateSystem *vcs = createCoordinateSystem(dimensionality);
+  std::vector<VizCoordinateSystem *> &pile = m_coordinateSystems.at(csAt.pileIdx());
+  pile.insert(std::next(std::begin(pile), csAt.coordinateSystemIdx()), vcs);
+  updateProjection();
+  return vcs;
+}
+
 VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult csAt, int dimensionality) {
   VizCoordinateSystem *vcs = nullptr;
   switch (csAt.action()) {
   case IsCsAction::Found:
-    return csAt.coordinateSystem();
+    vcs = csAt.coordinateSystem();
+    if (vcs->horizontalDimensionIdx() == VizProperties::NO_DIMENSION) {
+      if (dimensionality >= m_horizontalDimensionIdx) {
+        // Target projection does not have horizontal dimension, but the polyhedron has and the projection covers it.
+        // -> create new pile
+        return insertPile(csAt, dimensionality);
+      } else {
+        CLINT_UNREACHABLE;
+      }
+    } else if (vcs->verticalDimensionIdx() == VizProperties::NO_DIMENSION) {
+      if (dimensionality >= m_verticalDimensionIdx) {
+        // Target projection does not have vertical dimension, but the polyhedron has and the projection covers it.
+        // -> create new cs
+        return insertCs(csAt, dimensionality);
+      } else {
+        // Do nothing (invisible in this projection)
+        CLINT_UNREACHABLE;
+      }
+    } else {
+
+    }
+    return vcs;
     break;
   case IsCsAction::InsertPile:
-    vcs = createCoordinateSystem(dimensionality);
-    m_coordinateSystems.insert(std::next(std::begin(m_coordinateSystems), csAt.pileIdx()),
-                               std::vector<VizCoordinateSystem *> {vcs});
-    updateProjection();
-    return vcs;
+    return insertPile(csAt, dimensionality);
     break;
   case IsCsAction::InsertCS:
-    CLINT_ASSERT(csAt.pileIdx() < m_coordinateSystems.size(), "Inserting CS in a non-existent pile");
-    vcs = createCoordinateSystem(dimensionality);
-    std::vector<VizCoordinateSystem *> &pile = m_coordinateSystems.at(csAt.pileIdx());
-    pile.insert(std::next(std::begin(pile), csAt.coordinateSystemIdx()), vcs);
-    updateProjection();
-    return vcs;
+    return insertCs(csAt, dimensionality);
     break;
   }
   CLINT_UNREACHABLE;

@@ -79,6 +79,8 @@ public:
     return m_scene->itemsBoundingRect().size().toSize();
   }
 
+  VizCoordinateSystem *insertPile(IsCsResult csAt, int dimensionality);
+  VizCoordinateSystem *insertCs(IsCsResult csAt, int dimensionality);
 signals:
 
 public slots:
