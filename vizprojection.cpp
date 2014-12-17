@@ -118,7 +118,7 @@ VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
     // within last cs
     result.m_action = IsCsAction::Found;
     result.m_vcs = coordinateSystem;
-    result.m_coordinateSystem = m_coordinateSystems.size() - 1;
+    result.m_coordinateSystem = m_coordinateSystems.at(pileIndex).size() - 1;
   } else {
     // add after last cs
     result.m_action = IsCsAction::InsertCS;
