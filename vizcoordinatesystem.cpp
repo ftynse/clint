@@ -21,20 +21,7 @@ VizCoordinateSystem::VizCoordinateSystem(VizProjection *projection, size_t horiz
   m_font = qApp->font();  // Setting up default font for the view.  Can be adjusted afterwards.
 }
 
-bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurrence) {
-  // Check if the axes are displayed properly.
-  CLINT_ASSERT((occurrence->dimensionality() > m_horizontalDimensionIdx) == m_horizontalAxisVisible,
-               "Projecting statement on the axis-less dimension");
-  CLINT_ASSERT((occurrence->dimensionality() > m_verticalDimensionIdx) == m_verticalAxisVisible,
-               "Projecting statement on the axis-less dimension");
-
-  std::vector<std::vector<int>> points = occurrence->projectOn(m_horizontalDimensionIdx,
-                                                               m_verticalDimensionIdx);
-
-  if (points.size() == 0)
-    return false;
-
-  // Add iterator variable names to the list.
+void VizCoordinateSystem::addAxisLabels(ClintStmtOccurrence *occurrence) {
   if (m_horizontalAxisVisible) {
     const char *horizontalName = occurrence->statement()->dimensionName(m_horizontalDimensionIdx).c_str();
     if (m_horizontalName.size() == 0) {
@@ -51,6 +38,31 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
       m_verticalName += QString(",%1").arg(verticalName);
     }
   }
+}
+
+void VizCoordinateSystem::regenerateAxisLabels() {
+  m_horizontalName.clear();
+  m_verticalName.clear();
+  for (VizPolyhedron *vp : m_polyhedra) {
+    addAxisLabels(vp->occurrence());
+  }
+}
+
+bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurrence) {
+  // Check if the axes are displayed properly.
+  CLINT_ASSERT((occurrence->dimensionality() > m_horizontalDimensionIdx) == m_horizontalAxisVisible,
+               "Projecting statement on the axis-less dimension");
+  CLINT_ASSERT((occurrence->dimensionality() > m_verticalDimensionIdx) == m_verticalAxisVisible,
+               "Projecting statement on the axis-less dimension");
+
+  std::vector<std::vector<int>> points = occurrence->projectOn(m_horizontalDimensionIdx,
+                                                               m_verticalDimensionIdx);
+
+  if (points.size() == 0)
+    return false;
+
+  // Add iterator variable names to the list.
+  addAxisLabels(occurrence);
 
   int occurrenceHorizontalMin = occurrence->minimumValue(m_horizontalDimensionIdx);
   int occurrenceHorizontalMax = occurrence->maximumValue(m_horizontalDimensionIdx);
@@ -111,6 +123,8 @@ void VizCoordinateSystem::reparentPolyhedron(VizPolyhedron *polyhedron) {
                                      std::end(oldCS->m_polyhedra),
                                      polyhedron));
   m_polyhedra.push_back(polyhedron);
+  addAxisLabels(polyhedron->occurrence());
+  oldCS->regenerateAxisLabels();
   polyhedron->reparent(this);
 }
 

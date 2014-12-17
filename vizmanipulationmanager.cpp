@@ -164,7 +164,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       if (r.action() != VizProjection::IsCsAction::Found) {
         cs->resetPolyhedronPos(polyhedron);
       }
-      // TODO: otherwise, shift it to the position it ended up graphically
+      // TODO: otherwise, shift it to the position it ended up graphically (reparent does it visually, but we must create a shift Transformation)
       hmin = std::min(hmin, vp->localHorizontalMin());
       hmax = std::max(hmax, vp->localHorizontalMax());
       vmin = std::min(vmin, vp->localVerticalMin());

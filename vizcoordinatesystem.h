@@ -143,6 +143,8 @@ private:
   QString m_verticalName;
 
   void updatePolyhedraPositions();
+  void addAxisLabels(ClintStmtOccurrence *occurrence);
+  void regenerateAxisLabels();
 };
 
 #endif // VIZCOORDINATESYSTEM_H
