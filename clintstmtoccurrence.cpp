@@ -90,8 +90,8 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
 
   // Get original and scattered iterator values depending on the axis displayed.
   std::vector<int> visibleDimensions;
-  bool projectHorizontal = dimensionality() > horizontalDimIdx;
-  bool projectVertical   = dimensionality() > verticalDimIdx;
+  bool projectHorizontal = (horizontalDimIdx != -2) && (dimensionality() > horizontalDimIdx); // FIXME: -2 is in VizProperties::NO_DIMENSION, but should be in a different class since it has nothing to do with viz
+  bool projectVertical   = (verticalDimIdx != -2) && (dimensionality() > verticalDimIdx);
   if (!projectHorizontal && !projectVertical) {
     // This is just a point, no actual enumeration needed.
     // All the dimensions being projected out, the result of enumeration is a single zero-dimensional point.
@@ -123,7 +123,7 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
                                       int horizontalDimIdx, int verticalDimIdx) const {
   // Initialize with extreme values for min and max unless already computed for previous polyhedron
   int horizontalMin, horizontalMax, verticalMin = 0, verticalMax = 0;
-  if (horizontalDimIdx == -2) {
+  if (horizontalDimIdx == -2) { // FIXME: -2 is in VizProperties::NO_DIMENSION
     return;
   }
   if (points.size() == 0) {
