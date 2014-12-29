@@ -33,8 +33,11 @@ private:
   VizPoint *m_point = nullptr;
   VizCoordinateSystem *m_coordinateSystem = nullptr;
 
+  int m_initCSHorizontalMin, m_initCSVerticalMin;
+
   int m_horzOffset, m_vertOffset;
   bool m_detached;
+  bool m_firstMovement = false;
 
   void ensureTargetConsistency();
 };

@@ -101,13 +101,16 @@ public:
     return m_polyhedra.empty();
   }
 
+
   int horizontalAxisLength() const;
   int verticalAxisLength() const;
   int ticMargin() const;
 
   void polyhedronUpdated(VizPolyhedron *polyhedron);
-  void resetPolyhedronPos(VizPolyhedron *polyhedron);
+  void setPolyhedronCoordinates(VizPolyhedron *polyhedron, int horizontal, int vertical,
+                                bool ignoreHorizontal = false, bool ignoreVertical = false);
   void reparentPolyhedron(VizPolyhedron *polyhedron);
+  void resetPolyhedronPos(VizPolyhedron *polyhedron);
 signals:
 
 public slots:

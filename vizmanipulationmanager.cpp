@@ -29,10 +29,24 @@ void VizManipulationManager::polyhedronAboutToMove(VizPolyhedron *polyhedron) {
 
   m_horzOffset = 0;
   m_vertOffset = 0;
+  m_firstMovement = true;
+
+  int hmax, vmax;
+  polyhedron->coordinateSystem()->minMax(m_initCSHorizontalMin, hmax, m_initCSVerticalMin, vmax);
 }
 
 void VizManipulationManager::polyhedronMoving(VizPolyhedron *polyhedron, QPointF displacement) {
   CLINT_ASSERT(polyhedron == m_polyhedron, "Another polyhedron is being manipulated");
+
+  if (m_firstMovement) {
+    m_firstMovement = false;
+    const std::unordered_set<VizPolyhedron *> &selectedPolyhedra =
+        polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
+    for (VizPolyhedron *vp : selectedPolyhedra) {
+      vp->setOverrideSetPos(true);
+    }
+  }
+
   VizCoordinateSystem *cs = polyhedron->coordinateSystem();
   const VizProperties *properties = cs->projection()->vizProperties();
   double absoluteDistanceX = displacement.x() / properties->pointDistance();
@@ -74,9 +88,13 @@ void VizManipulationManager::polyhedronMoving(VizPolyhedron *polyhedron, QPointF
 void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
   CLINT_ASSERT(m_polyhedron == polyhedron, "Signaled end of polyhedron movement that was never initiated");
   m_polyhedron = nullptr;
+  m_firstMovement = false;
   TransformationGroup group;
   const std::unordered_set<VizPolyhedron *> &selectedPolyhedra =
       polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
+  for (VizPolyhedron *vp : selectedPolyhedra) {
+    vp->setOverrideSetPos(false);
+  }
   if (m_horzOffset != 0 || m_vertOffset != 0) {
     // TODO: move this code to transformation manager
     // we need transformation manager to keep three different views in sync
@@ -97,6 +115,24 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
       if (m_vertOffset != 0) {
         Transformation transformation = Transformation::consantShift(beta, vertDepth, -vertAmount);
         group.transformations.push_back(transformation);
+      }
+
+      int hmin, hmax, vmin, vmax;
+      vp->coordinateSystem()->minMax(hmin, hmax, vmin, vmax);
+      // If the coordinate system was extended in the negative direction (minimum decreased)
+      // during this transformation AND the polyhedron is positioned at the lower extrema of
+      // the coordiante system, update its position.  Fixes the problem with big extensions of
+      // the CS if a polyhedron ends up outside coordinate system.
+      const bool fixHorizontal = hmin < m_initCSHorizontalMin &&
+                                 hmin >= (vp->localHorizontalMin() + m_horzOffset);
+      const bool fixVertical   = vmin < m_initCSVerticalMin &&
+                                 vmin >= (vp->localVerticalMin() + m_vertOffset);
+      if (fixHorizontal && fixVertical) {
+        vp->coordinateSystem()->setPolyhedronCoordinates(vp, hmin, vmin);
+      } else if (fixHorizontal) {
+        vp->coordinateSystem()->setPolyhedronCoordinates(vp, hmin, INT_MAX, false, true);
+      } else if (fixVertical) {
+        vp->coordinateSystem()->setPolyhedronCoordinates(vp, INT_MAX, vmin, true, false);
       }
       CLINT_ASSERT(vp->scop() == polyhedron->scop(), "All statement occurrences in the transformation group must be in the same scop");
     }

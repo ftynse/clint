@@ -103,16 +103,31 @@ void VizCoordinateSystem::updatePolyhedraPositions() {
   }
 }
 
-void VizCoordinateSystem::resetPolyhedronPos(VizPolyhedron *polyhedron) {
+void VizCoordinateSystem::setPolyhedronCoordinates(VizPolyhedron *polyhedron, int horizontal,
+                                                   int vertical, bool ignoreHorizontal,
+                                                   bool ignoreVertical) {
   auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);
   CLINT_ASSERT(it != std::end(m_polyhedra),
                "Polyhedron updated does not belong to the coordinate system");
+
   const double pointDistance = m_projection->vizProperties()->pointDistance();
   ssize_t idx = std::distance(std::begin(m_polyhedra), it);
   double offset = m_projection->vizProperties()->polyhedronOffset() * idx;
-  polyhedron->setPos(offset + (polyhedron->localHorizontalMin() - m_horizontalMin + 1) * pointDistance,
-              -(offset + (polyhedron->localVerticalMin() - m_verticalMin + 1) * pointDistance));
+  QPointF position = polyhedron->pos();
+  double hpos = ignoreHorizontal ?
+        position.x() :
+        offset + (horizontal - m_horizontalMin + 1) * pointDistance;
+  double vpos = ignoreVertical ?
+        position.y() :
+        -(offset + (vertical - m_verticalMin + 1) * pointDistance);
+  polyhedron->setPos(hpos, vpos);
   polyhedron->setZValue(m_polyhedra.size() + 1 - idx);
+}
+
+void VizCoordinateSystem::resetPolyhedronPos(VizPolyhedron *polyhedron) {
+  setPolyhedronCoordinates(polyhedron,
+                           polyhedron->localHorizontalMin(),
+                           polyhedron->localVerticalMin());
 }
 
 void VizCoordinateSystem::reparentPolyhedron(VizPolyhedron *polyhedron) {
