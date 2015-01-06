@@ -9,7 +9,7 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
     err = clay_fuse(scop, ClayBeta(transformation.target()), m_options);
     break;
   case Transformation::Kind::Split:
-    err = clay_split(scop, ClayBeta(transformation.target()), transformation.constantAmount(), m_options);
+    err = clay_split(scop, ClayBeta(transformation.target()), transformation.depth(), m_options);
     break;
   case Transformation::Kind::Shift:
   {
