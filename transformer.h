@@ -68,5 +68,51 @@ private:
   clay_options_p m_options;
 };
 
+class ClayScriptGenerator : public Transformer {
+public:
+  ClayScriptGenerator(std::ostream &stream) : m_stream(stream){}
+  ~ClayScriptGenerator() {}
+
+  void apply(osl_scop_p scop, const Transformation &transformation) override {
+    switch(transformation.kind()) {
+    case Transformation::Kind::Fuse:
+      m_stream << "fuse([";
+      outputVector(m_stream, transformation.target()) << "]);\n";
+      break;
+    case Transformation::Kind::Split:
+      m_stream << "split([";
+      outputVector(m_stream, transformation.target()) << "], " << transformation.depth() << ");\n";
+      break;
+    case Transformation::Kind::Reorder:
+      m_stream << "reorder([";
+      outputVector(m_stream, transformation.target()) << "], [";
+      outputVector(m_stream, transformation.order()) << "]);\n";
+      break;
+    case Transformation::Kind::Shift:
+      m_stream << "shift([";
+      outputVector(m_stream, transformation.target()) << "], "
+             << transformation.depth() << ", "
+             << "{" << transformation.constantAmount() << "});\n";
+    default:
+      m_stream << "###unkonwn transformation###\n";
+    }
+  }
+
+  std::vector<int> transformedBeta(const std::vector<int> &beta, const Transformation &transformation) override { return std::vector<int>(); }
+  std::vector<int> originalBeta(const std::vector<int> &beta, const Transformation &transformation) override { return std::vector<int>(); }
+
+private:
+  std::ostream &m_stream;
+
+  template <typename T>
+  std::ostream &outputVector(std::ostream &stream, const std::vector<T> &vector) {
+    if (vector.size() == 0)
+      return stream;
+
+    std::copy(std::begin(vector), std::end(vector) - 1, std::ostream_iterator<T>(stream, ", "));
+    stream << vector.back();
+    return stream;
+  }
+};
 
 #endif // TRANSFORMER_H
