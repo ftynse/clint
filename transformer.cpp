@@ -22,6 +22,9 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
     clay_list_free(list); // List cleans inner arrays, too.
   }
     break;
+  case Transformation::Kind::Reorder:
+    clay_reorder(scop, ClayBeta(transformation.target()), ClayBeta(transformation.order()), m_options);
+    break;
   case Transformation::Kind::Skew:
   {
     // TODO: skew transformation
@@ -71,4 +74,3 @@ std::vector<int> ClayTransformer::originalBeta(const std::vector<int> &beta, con
   }
   return std::move(tBeta);
 }
-
