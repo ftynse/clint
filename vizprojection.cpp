@@ -144,6 +144,21 @@ VizCoordinateSystem *VizProjection::insertCs(IsCsResult csAt, int dimensionality
   return vcs;
 }
 
+std::pair<size_t, size_t> VizProjection::csIndices(VizCoordinateSystem *vcs) const {
+  size_t pileIdx = static_cast<size_t>(-1);
+  size_t csIdx   = static_cast<size_t>(-1);
+  for (size_t i = 0; i < m_coordinateSystems.size(); ++i) {
+    for (size_t j = 0; j < m_coordinateSystems[i].size(); ++j) {
+      if (m_coordinateSystems[i][j] == vcs) {
+        pileIdx = i;
+        csIdx = j;
+        break;
+      }
+    }
+  }
+  return std::make_pair(pileIdx, csIdx);
+}
+
 VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult csAt, int dimensionality) {
   VizCoordinateSystem *vcs = nullptr;
   switch (csAt.action()) {
@@ -182,17 +197,8 @@ VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult csAt, int 
 }
 
 void VizProjection::deleteCoordinateSystem(VizCoordinateSystem *vcs) {
-  size_t pileIdx = static_cast<size_t>(-1);
-  size_t csIdx   = static_cast<size_t>(-1);
-  for (size_t i = 0; i < m_coordinateSystems.size(); ++i) {
-    for (size_t j = 0; j < m_coordinateSystems[i].size(); ++j) {
-      if (m_coordinateSystems[i][j] == vcs) {
-        pileIdx = i;
-        csIdx = j;
-        break;
-      }
-    }
-  }
+  size_t pileIdx, csIdx;
+  std::tie(pileIdx, csIdx) = csIndices(vcs);
   CLINT_ASSERT(pileIdx != static_cast<size_t>(-1),
                "Coordinate sytem does not belong to the projection it is being removed from");
   vcs->setParentItem(nullptr);

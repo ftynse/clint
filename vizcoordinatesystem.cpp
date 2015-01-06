@@ -92,6 +92,30 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
   return true;
 }
 
+std::vector<int> VizCoordinateSystem::betaPrefix() const {
+//  // FIXME: this works only for the first two dimensions, betas should be set up in construction
+//  bool enabled = ((m_horizontalAxisVisible && m_horizontalDimensionIdx == 0) || !m_horizontalAxisVisible) &&
+//                 ((m_verticalAxisVisible && m_verticalDimensionIdx == 1) || !m_verticalAxisVisible);
+//  CLINT_ASSERT(enabled, "Cannot find a correct beta-prefix, for a projection not on <0,1>");
+
+//  std::pair<size_t, size_t> indices = m_projection->csIndices(this);
+//  std::vector<int> beta;
+//  if (m_horizontalAxisVisible)
+//    beta.push_back(indices.first);
+//  else
+//    return beta;
+//  if (m_verticalAxisVisible)
+//    beta.push_back(indices.second);
+//  return beta;
+  CLINT_ASSERT(!isEmpty(), "Can't find a beta-prefix of an empty coordinate system");
+  VizPolyhedron *vp = m_polyhedra.front();
+  std::vector<int> beta = vp->occurrence()->betaVector();
+  if (vp->occurrence()->dimensionality() >= m_horizontalDimensionIdx) {
+    beta.erase(std::end(beta) - 1);
+  }
+  return beta;
+}
+
 void VizCoordinateSystem::updatePolyhedraPositions() {
   const double pointDistance = m_projection->vizProperties()->pointDistance();
   for (size_t i = 0, iend = m_polyhedra.size(); i < iend; i++) {

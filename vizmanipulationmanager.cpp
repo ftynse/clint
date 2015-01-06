@@ -176,9 +176,57 @@ void VizManipulationManager::polyhedronDetaching(QPointF position) {
   }
 }
 
+void VizManipulationManager::rearrangePiles2D(std::vector<int> &createdBeta, bool pileDeleted, TransformationGroup &group, int pileIdx, size_t pileNb) {
+  CLINT_ASSERT(createdBeta.size() >= 3, "Dimensionality mismatch");
+  std::vector<int> pileBeta(std::begin(createdBeta), std::end(createdBeta) - 2);
+  if (pileDeleted) {
+    if (pileIdx == pileBeta.back() || pileIdx == pileBeta.back() + 1) {
+      // Do nothing (cases DN1, DN2);
+    } else {
+      // Put before the given pile.
+      group.transformations.push_back(Transformation::putBefore(pileBeta, pileIdx, pileNb));
+    }
+  } else {
+    if (pileIdx == pileBeta.back()) {
+      // Do nothing (case KN2);
+    } else if (pileIdx > pileBeta.back()) {
+      // Put before, account for pile not being deleted.
+      group.transformations.push_back(Transformation::putBefore(pileBeta, pileIdx + 1, pileNb));
+    } else {
+      // Put before the given pile.
+      group.transformations.push_back(Transformation::putBefore(pileBeta, pileIdx, pileNb));
+    }
+  }
+}
+
+void VizManipulationManager::rearrangeCSs2D(int coordinateSystemIdx, bool csDeleted, std::vector<int> &createdBeta, size_t pileSize, TransformationGroup &group) {
+        // By analogy to insert pile.
+  CLINT_ASSERT(createdBeta.size() >= 2, "Dimensionality mismatch");
+  std::vector<int> csBeta(std::begin(createdBeta), std::end(createdBeta) - 1);
+  if (csDeleted) {
+    if (coordinateSystemIdx == csBeta.back() || coordinateSystemIdx == csBeta.back() + 1) {
+      // Do nothing.
+    } else {
+      group.transformations.push_back(Transformation::putBefore(csBeta, coordinateSystemIdx, pileSize));
+    }
+  } else {
+    if (coordinateSystemIdx == csBeta.back()) {
+      // Do nothing.
+    } else if (coordinateSystemIdx > csBeta.back()) {
+  // FIXME: hack
+  if (coordinateSystemIdx + 1 > pileSize)
+    coordinateSystemIdx = pileSize - 1;
+      group.transformations.push_back(Transformation::putBefore(csBeta, coordinateSystemIdx + 1, pileSize));
+    } else {
+      group.transformations.push_back(Transformation::putBefore(csBeta, coordinateSystemIdx, pileSize));
+    }
+  }
+}
+
 void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
   CLINT_ASSERT(m_polyhedron == polyhedron, "Signaled end of polyhedron movement that was never initiated");
   m_polyhedron = nullptr;
+  TransformationGroup group;
 
   const std::unordered_set<VizPolyhedron *> &selectedPolyhedra =
       polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
@@ -196,6 +244,21 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
     // FIXME: all these assumes only all polyhedra belong to the same coordiante system.?
     for (VizPolyhedron *vp : selectedPolyhedra) {
       VizCoordinateSystem *oldCS = vp->coordinateSystem();
+      size_t oldPileIdx, oldCsIdx;
+      // FIXME: works for normalized scops only
+      int lastPolyhedronIndex = oldCS->countPolyhedra();
+      std::tie(oldPileIdx, oldCsIdx) = oldCS->projection()->csIndices(oldCS);
+      int lastCSIndex = oldCS->projection()->pileCSNumber(oldPileIdx);
+      bool movedToAnotherCS = oldCS != cs; // split is needed if the polygon was moved to a different CS
+
+      if (!movedToAnotherCS) {
+        vp->coordinateSystem()->resetPolyhedronPos(vp);
+        continue;
+      }
+
+      bool csDeleted = false;
+      bool pileDeleted = false;
+
       cs->reparentPolyhedron(vp);
       if (r.action() != VizProjection::IsCsAction::Found) {
         cs->resetPolyhedronPos(polyhedron);
@@ -206,12 +269,312 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       vmin = std::min(vmin, vp->localVerticalMin());
       vmax = std::max(vmax, vp->localVerticalMax());
       if (oldCS->isEmpty()) {
+        csDeleted = true;
+        if (oldCS->projection()->pileCSNumber(oldPileIdx) == 1) {
+          pileDeleted = true;
+        }
+
         oldCS->projection()->deleteCoordinateSystem(oldCS);
       }
+
+      size_t pileNb = cs->projection()->pileNumber();
+
+      // Constructing transformation group.
+      const std::vector<int> &beta = vp->occurrence()->betaVector();
+      std::vector<int> createdBeta(beta);
+      bool splitHorizontal = false, splitVertical = false;
+
+      bool actionWithinPile = (r.action() == VizProjection::IsCsAction::Found ||
+                               r.action() == VizProjection::IsCsAction::InsertCS) && r.pileIdx() == oldPileIdx;
+      // Splitting the occurrence out.
+      if (!csDeleted) { // if coordinate system was deleted, no inner split needed
+        size_t csSize = oldCS->countPolyhedra() + 1; // it was already removed from CS
+        std::vector<int> splitBeta(beta);
+        splitBeta.push_back(424242);
+        qDebug() << "inner split" << csSize << QVector<int>::fromStdVector(splitBeta);
+        rearrangeCSs2D(csSize, true, splitBeta, csSize, group);
+        CLINT_ASSERT(csSize >= 2, "Split requested where it should not happen");
+        splitBeta.erase(std::end(splitBeta) - 1);
+        splitBeta.back() = csSize - 2;
+        group.transformations.push_back(Transformation::splitAfter(splitBeta));
+
+        splitVertical = true;
+      }
+      if (!pileDeleted && !actionWithinPile) { // if pile was deleted or fusion is done within a pile, no outer split needed
+        size_t pileSize = cs->projection()->pileCSNumber(oldPileIdx) + (csDeleted || !actionWithinPile ? 1 : 0); // if a cs was deleted, still account for it.
+        std::vector<int> splitBeta(beta);
+        // If inner split took place, the beta is changed.
+        if (splitVertical) {
+          splitBeta[splitBeta.size() - 2]++;
+          splitBeta[splitBeta.size() - 1] = 0;
+        }
+        qDebug() << "outer split" << pileSize << QVector<int>::fromStdVector(splitBeta);
+        rearrangeCSs2D(pileSize, true, splitBeta, pileSize, group);
+        CLINT_ASSERT(pileSize >= 2, "Split requested where it should not happen");
+        CLINT_ASSERT(splitBeta.size() >= 2, "Dimensionality mismatch");
+        splitBeta.erase(std::end(splitBeta) - 1);
+        splitBeta.back() = pileSize - 2;
+        group.transformations.push_back(Transformation::splitAfter(splitBeta));
+
+        splitHorizontal = true;
+      }
+
+//      if (movedToAnotherCS) {
+//        // Do splits on both dimensions (clay split "splits out" a part of the loop, we care about one occurrence only)
+//        std::vector<int> splitBeta(beta);
+//        std::vector<int> outerBeta(beta);
+//        outerBeta.erase(std::end(outerBeta) - 1); // <0,1> projection
+//        // FIXME: this assumes we work on <0, 1> projection
+//        if (lastPolyhedronIndex != 1 && // do not split nor reorder if it is the only occurrence
+//            vp->occurrence()->dimensionality() >= vp->coordinateSystem()->verticalDimensionIdx()) { // or if the dimension does not correspond to a loop
+//          if (beta.back() != lastPolyhedronIndex - 1) // do not reorder if it is the last already
+//            group.transformations.push_back(Transformation::putAfterLast(beta, lastPolyhedronIndex));
+//          splitBeta.back() = lastPolyhedronIndex - 2;
+//          group.transformations.push_back(Transformation::splitAfter(splitBeta));
+//          lastCSIndex++; // created a "virtual" CS, e.g. a beta vector for this CS, not the visual object.
+//          outerBeta.back() += 1;
+//          splitVertical = true;
+//        }
+
+//        qDebug() << "outer beta" << QVector<int>::fromStdVector(outerBeta) << lastCSIndex;
+//        if (lastCSIndex != 1 &&// do not split nor reorder if it is the only CS in a pile
+//            vp->occurrence()->dimensionality() >= vp->coordinateSystem()->horizontalDimensionIdx() &&
+//            lastPolyhedronIndex != 1) { // or if the dimension does not correspond to a loop
+//          if (outerBeta.back() != lastCSIndex - 1) // do not reorder if it is the last CS in the pile already
+//            group.transformations.push_back(Transformation::putAfterLast(outerBeta, lastCSIndex));
+//          outerBeta.back() = lastCSIndex - 2;
+//          if (lastPolyhedronIndex != 1 || !(r.action() == VizProjection::IsCsAction::Found && r.pileIdx() == oldPileIdx)) { // do not split if it is the only occurrence, and no pile is created
+//            group.transformations.push_back(Transformation::splitAfter(outerBeta));
+//            // do not need to do the following line, the pile was already created by the time pileNb was generated
+////            pileNb++; // created a "virtual" pile, e.g. a beta vector for this pile, not the visual object.
+//            splitHorizontal = true;
+//          }
+//          qDebug() << "did horizontal";
+//        }
+//      }
+
+//      CLINT_ASSERT(splitVertical ^ csDeleted, "cs flag mismatch");
+//      CLINT_ASSERT(splitHorizontal ^ pileDeleted, "pile flag mismatch");
+
+      if (vp->coordinateSystem()->isVerticalAxisVisible() && vp->coordinateSystem()->isHorizontalAxisVisible()) {
+        CLINT_ASSERT(createdBeta.size() >= 3, "Dimensionality mismatch");
+        if (splitHorizontal) {
+          qDebug() << "sh";
+          createdBeta[createdBeta.size() - 1] = 0;
+          createdBeta[createdBeta.size() - 2] = 0;
+          createdBeta[createdBeta.size() - 3] += 1;
+        } else if (splitVertical) {
+          qDebug() << "sv";
+          createdBeta[createdBeta.size() - 1] = 0;
+          createdBeta[createdBeta.size() - 2] += 1;
+        }
+      } else if (vp->coordinateSystem()->isHorizontalAxisVisible()) {
+        CLINT_ASSERT(createdBeta.size() >= 2, "Dimensionality mismatch");
+        if (splitHorizontal) {
+          createdBeta[createdBeta.size() - 1] = 0;
+          createdBeta[createdBeta.size() - 2] += 1;
+        }
+      } else if (!vp->coordinateSystem()->isVerticalAxisVisible() && !vp->coordinateSystem()->isHorizontalAxisVisible()) {
+        // Do nothing
+      } else {
+        CLINT_UNREACHABLE;
+      }
+
+      qDebug() << "beta update successful" << QVector<int>::fromStdVector(createdBeta);
+
+      size_t targetPileIdx, targetCSIdx;
+      std::tie(targetPileIdx, targetCSIdx) = cs->projection()->csIndices(cs);
+      // FIXME: considering only full 2d cases here now
+      CLINT_ASSERT(beta.size() == 3, "FIXME: cosidering only full 2d cases");
+
+      qDebug() << "targeting pile" << targetPileIdx << "cs" << targetCSIdx;
+
+      if (r.action() == VizProjection::IsCsAction::Found) {
+        // TODO: 1d case
+        // Fusion required.
+        std::vector<int> fuseBeta = cs->betaPrefix(); // if found, it contains at least one polygon (other than vp) with correct beta.
+        CLINT_ASSERT(fuseBeta[fuseBeta.size() - 1] == r.coordinateSystemIdx(), "Beta consistency violated");
+        CLINT_ASSERT(fuseBeta[fuseBeta.size() - 2] == r.pileIdx(), "Beta consistency violated");
+
+        size_t pileIdx = r.pileIdx();
+        if (pileDeleted && oldPileIdx < pileIdx) {
+          pileIdx--;
+          fuseBeta[fuseBeta.size() - 2]--;
+        }
+
+        // TODO: same for CS?
+        size_t csIdx = r.coordinateSystemIdx();
+        if (csDeleted && actionWithinPile && oldCsIdx < csIdx) {
+          csIdx--;
+          fuseBeta[fuseBeta.size() - 1]--;
+        }
+
+        // First, rearrange and fuse on the outer level.  For fusion's sake, put the statement after the pile to fuse with.
+        rearrangePiles2D(createdBeta, true, group, pileIdx + 1 + (pileDeleted ? 0 : 1), pileNb + (pileDeleted ? 0 : 1));
+        // Fuse if an outer (horizontal) split took place.
+        if (!actionWithinPile) {
+          qDebug() << "outer fuse" << pileNb + (pileDeleted ? 0 : 1) << pileIdx << QVector<int>::fromStdVector(fuseBeta);
+          std::vector<int> outerFuseBeta(std::begin(fuseBeta), std::end(fuseBeta) - 1);
+          group.transformations.push_back(Transformation::fuseNext(outerFuseBeta));
+        }
+
+        // Finally, rearrange and fuse on the inner level.
+        size_t pileSize = cs->projection()->pileCSNumber(pileIdx) + (csDeleted && actionWithinPile ? 0 : 1); // extra CS created
+        if (!actionWithinPile) { // If outer fuse took place, this occurence is the last in pile
+          createdBeta[createdBeta.size() - 2] = pileSize - 1;
+          createdBeta[createdBeta.size() - 1] = 0;
+        }
+        qDebug() << "inner fuse" << pileSize << csIdx << QVector<int>::fromStdVector(createdBeta);
+        rearrangeCSs2D(csIdx + 1, csDeleted, createdBeta, pileSize, group);
+        // Fuse if an inner (vertical) split took place (??? always)
+        group.transformations.push_back(Transformation::fuseNext(fuseBeta));
+
+      } else if (r.action() == VizProjection::IsCsAction::InsertPile) {
+        // TODO: 1d case
+        rearrangePiles2D(createdBeta, pileDeleted, group, r.pileIdx(), pileNb);
+      } else if (r.action() == VizProjection::IsCsAction::InsertCS) {
+        // TODO: 1d case
+//        if (oldPileIdx == r.pileIdx()) { // same pile -- reorder only
+        if (actionWithinPile) {
+          size_t pileSize = cs->projection()->pileCSNumber(r.pileIdx());
+          qDebug() << "insert cs" << pileSize << QVector<int>::fromStdVector(createdBeta);
+          rearrangeCSs2D(r.coordinateSystemIdx(), csDeleted, createdBeta, pileSize, group);
+        } else { // different piles -- fusion required
+          qDebug() << "insert cs" << QVector<int>::fromStdVector(createdBeta);
+
+          size_t pileIdx = r.pileIdx();
+          if (pileDeleted && oldPileIdx < pileIdx) {
+            pileIdx--;
+          }
+
+          // TODO: same for CS?
+          size_t csIdx = r.coordinateSystemIdx();
+          if (csDeleted && actionWithinPile && oldCsIdx < csIdx) {
+            csIdx--;
+          }
+          std::vector<int> fuseBeta { (int) pileIdx, (int) csIdx }; // <0,1> projection; otherwise first part of the beta-prefix ("projection" prefix) needed
+
+          // First, rearrange and fuse on the outer level.  For fusion's sake, put the statement after the pile to fuse with.
+          rearrangePiles2D(createdBeta, true, group, pileIdx + 1 + (pileDeleted ? 0 : 1), pileNb + (pileDeleted ? 0 : 1));
+          // Fuse if an outer (horizontal) split took place.
+          if (!actionWithinPile) {
+            qDebug() << "outer fuse" << pileNb + (pileDeleted ? 0 : 1) << pileIdx << QVector<int>::fromStdVector(fuseBeta);
+            std::vector<int> outerFuseBeta(std::begin(fuseBeta), std::end(fuseBeta) - 1);
+            group.transformations.push_back(Transformation::fuseNext(outerFuseBeta));
+          }
+
+          // Finally, rearrange and fuse on the inner level.
+          size_t pileSize = cs->projection()->pileCSNumber(pileIdx) + (csDeleted && actionWithinPile ? 0 : 1); // extra CS created
+          if (!actionWithinPile) { // If outer fuse took place, this occurence is the last in pile
+            createdBeta[createdBeta.size() - 2] = pileSize - 1;
+            createdBeta[createdBeta.size() - 1] = 0;
+          }
+          qDebug() << "inner fuse" << pileSize << csIdx << QVector<int>::fromStdVector(createdBeta);
+          rearrangeCSs2D(csIdx + 1, csDeleted, createdBeta, pileSize, group);
+
+        }
+      } else {
+        CLINT_UNREACHABLE;
+      }
+
+
+//      size_t pileSize = cs->projection()->pileCSNumber(targetPileIdx);
+//      // Reorder to the given position, fuse if required.
+//      if (r.action() == VizProjection::IsCsAction::Found) {
+//        std::vector<int> fuseBeta = cs->betaPrefix(); // if found, it contains at least one polygon (other than vp) with correct beta.
+//        if (cs->isVerticalAxisVisible()) {
+//          // Reorder piles if needed
+//          std::vector<int> pileBeta(std::begin(createdBeta), std::end(createdBeta) - 2); // <0,1> projection
+//          if (pileBeta.back() - 1 != r.pileIdx() && pileNb != 1 && oldPileIdx != r.pileIdx()) {
+//            qDebug() << r.pileIdx() << splitHorizontal << pileNb << QVector<int>::fromStdVector(pileBeta);
+//            group.transformations.push_back(Transformation::putAfter(pileBeta, r.pileIdx() + splitHorizontal, pileNb + splitHorizontal));
+//          }
+//          // Fuse outer if piles are different.
+//          if (oldPileIdx != r.pileIdx()) {
+//            std::vector<int> fuseBetaOuter(std::begin(fuseBeta), std::end(fuseBeta) - 1);
+//            group.transformations.push_back(Transformation::fuseNext(fuseBetaOuter));
+//          }
+
+//          int verticalIncrement = 0;
+//          if (oldPileIdx != r.pileIdx() ||
+//              (oldPileIdx == r.pileIdx() && splitVertical)) {
+//            verticalIncrement = 1;
+//          }
+
+//          // Reorder inside pile if needed.
+//          std::vector<int> csBeta(std::begin(fuseBeta), std::end(fuseBeta) - 1); // <0,1> projection
+//          csBeta.push_back(pileSize);
+//          if (csBeta.back() - 1 != r.coordinateSystemIdx() && pileSize != 1) {
+//            qDebug() << r.coordinateSystemIdx() << splitVertical << pileSize << QVector<int>::fromStdVector(csBeta);
+//            group.transformations.push_back(Transformation::putAfter(csBeta, r.coordinateSystemIdx() + verticalIncrement, pileSize + verticalIncrement));
+//          }
+//          // Fuse inner always when found (otherwise, no split should have happened)
+//          group.transformations.push_back(Transformation::fuseNext(fuseBeta));
+//        } else if (cs->isHorizontalAxisVisible()) {
+//          // FIXME: this may be wrong
+//          std::vector<int> pileBeta(std::begin(createdBeta), std::end(createdBeta) - 1); // <0,1> projection
+//          if (pileBeta.back() - 1 != r.pileIdx() && pileNb != 1) {
+//            qDebug() << r.pileIdx() << splitHorizontal << pileNb;
+//            group.transformations.push_back(Transformation::putAfter(pileBeta, r.pileIdx() + splitHorizontal, pileNb + splitHorizontal));
+//            qDebug() << "<<";
+//          }
+
+//          group.transformations.push_back(Transformation::fuseNext(fuseBeta));
+//        } else {
+//          CLINT_UNREACHABLE; // Should not be fusing statements.
+//        }
+//      } else if (r.action() == VizProjection::IsCsAction::InsertCS) {
+//        // Reorder inside pile if needed.
+//        std::vector<int> csBeta(std::begin(createdBeta), std::end(createdBeta) - 1); // <0,1> projection
+//        if (csBeta.back() != r.coordinateSystemIdx() && pileSize != 1) {
+//          qDebug() << r.coordinateSystemIdx() << splitVertical << pileSize;
+////          group.transformations.push_back(Transformation::putAfter(csBeta, r.coordinateSystemIdx() + splitVertical, pileSize + splitVertical));
+//          group.transformations.push_back(Transformation::putBefore(csBeta, r.coordinateSystemIdx(), pileSize + splitVertical));
+//        }
+//      } else if (r.action() == VizProjection::IsCsAction::InsertPile) {
+//        // Reorder piles if needed
+//        std::vector<int> pileBeta(std::begin(createdBeta), std::end(createdBeta) - 2); // <0,1> projection
+//        qDebug() << "insert pile" << QVector<int>::fromStdVector(pileBeta)<< r.pileIdx();
+//        if (pileBeta.back() != r.pileIdx() && pileNb != 1) {
+//          qDebug() << r.pileIdx() << splitHorizontal << pileNb;
+//          group.transformations.push_back(Transformation::putBefore(pileBeta, r.pileIdx() + splitHorizontal, pileNb /*+ splitHorizontal*/));
+//        }
+//      } else {
+//        CLINT_UNREACHABLE;
+//      }
+
+//      qDebug() << "fuse successful";
     }
+
+    Transformer *transformer = new ClayScriptGenerator(std::cerr);
+    transformer->apply(nullptr, group);
+
     // TODO: provide functionality for both simultaneously with a single repaint (setMinMax?)
     cs->projection()->ensureFitsHorizontally(cs, hmin, hmax);
     cs->projection()->ensureFitsVertically(cs, vmin, vmax);
+  } else {
+    for (VizPolyhedron *vp : selectedPolyhedra) {
+      vp->coordinateSystem()->resetPolyhedronPos(vp);
+    }
+  }
+
+  if (!group.transformations.empty()) {
+    ClayBetaMapper *mapper = new ClayBetaMapper(polyhedron->scop());
+    mapper->apply(nullptr, group);
+    bool happy = true;
+    for (ClintStmt *stmt : polyhedron->scop()->statements()) {
+      for (ClintStmtOccurrence *occurrence : stmt->occurences()) {
+        int result;
+        std::vector<int> beta;
+        std::tie(beta, result) = mapper->map(occurrence->betaVector());
+        qDebug() << result << QVector<int>::fromStdVector(occurrence->betaVector()) << "->" << QVector<int>::fromStdVector(beta);
+
+        happy = happy && result == ClayBetaMapper::SUCCESS;
+      }
+    }
+    CLINT_ASSERT(happy, "Beta mapping failed");
+//    polyhedron->scop()->transformed(group);
+//    polyhedron->scop()->executeTransformationSequence();
   }
 }
 

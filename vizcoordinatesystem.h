@@ -101,6 +101,11 @@ public:
     return m_polyhedra.empty();
   }
 
+  int countPolyhedra() const {
+    return m_polyhedra.size();
+  }
+
+  std::vector<int> betaPrefix() const;
 
   int horizontalAxisLength() const;
   int verticalAxisLength() const;

@@ -79,6 +79,15 @@ public:
     return m_scene->itemsBoundingRect().size().toSize();
   }
 
+  std::pair<size_t, size_t> csIndices(VizCoordinateSystem *vcs) const;
+  size_t pileCSNumber(size_t pileIndex) const {
+    CLINT_ASSERT(pileIndex < m_coordinateSystems.size(), "Pile index out of range");
+    return m_coordinateSystems.at(pileIndex).size();
+  }
+  size_t pileNumber() const {
+    return m_coordinateSystems.size();
+  }
+
   VizCoordinateSystem *insertPile(IsCsResult csAt, int dimensionality);
   VizCoordinateSystem *insertCs(IsCsResult csAt, int dimensionality);
 signals:
