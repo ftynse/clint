@@ -112,7 +112,7 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
       const std::vector<int> &originalBeta = it.first;
       const std::vector<int> &target = transformation.target();
       std::vector<int> updatedBeta(originalBeta);
-      if (target.size() < originalBeta.size() &&
+      if (target.size() - 1 < originalBeta.size() &&
           isPrefix(target, originalBeta, target.size() - 1)){
         if (originalBeta[target.size() - 1] == nextValue) {
           updatedBeta[target.size() - 1]--;
