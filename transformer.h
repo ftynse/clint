@@ -4,11 +4,17 @@
 #include "transformation.h"
 #include "oslutils.h" // FIXME: move clay-beta-conversion to here and remove this include
 
+class ClintScop;
+class ClintStmtOccurrence;
+
 #include <osl/osl.h>
 
 #include <clay/clay.h>
 #include <clay/options.h>
 #include <clay/transformation.h>
+
+#include <map>
+#include <unordered_map>
 
 class Transformer {
 public:
@@ -18,7 +24,7 @@ public:
     }
   }
 
-  void apply(osl_scop_p scop, const TransformationGroup &group) {
+  virtual void apply(osl_scop_p scop, const TransformationGroup &group) {
     for (Transformation transformation : group.transformations) {
       apply(scop, transformation);
     }
@@ -66,6 +72,63 @@ public:
 
 private:
   clay_options_p m_options;
+};
+
+class ClayBetaMapper : public Transformer {
+public:
+  enum MapError {
+    SUCCESS = 0,
+    NOT_ORIGINAL_BETA = 1,
+    NO_MAPPING = 2,
+    NOT_MAPPED_BETA = 3,
+    NO_REVERSE = 4
+  };
+
+  ClayBetaMapper(ClintScop *scop);
+
+  virtual ~ClayBetaMapper() {}
+
+  void apply(osl_scop_p scop, const Transformation &transformation) override;
+  void apply(osl_scop_p scop, const TransformationGroup &group) override;
+  std::vector<int> transformedBeta(const std::vector<int> &beta, const Transformation &transformation) override { return std::vector<int>(); }
+  std::vector<int> originalBeta(const std::vector<int> &beta, const Transformation &transformation) override { return std::vector<int>(); }
+
+  bool isOriginal(const std::vector<int> &beta) {
+    return m_originalOccurrences.find(beta) != std::end(m_originalOccurrences);
+  }
+
+  bool isMapped(const std::vector<int> &beta) {
+    auto occurrence = m_originalOccurrences.find(beta);
+    if (occurrence == std::end(m_originalOccurrences))
+      return false;
+    return m_updatedBeta.find(occurrence->second) != std::end(m_updatedBeta);
+  }
+
+  std::pair<std::vector<int>, int> map(const std::vector<int> &beta) {
+    auto occurrenceIter = m_originalOccurrences.find(beta);
+    if (occurrenceIter == std::end(m_originalOccurrences))
+      return std::make_pair(std::vector<int>(), NOT_ORIGINAL_BETA);
+    auto betaIter = m_updatedBeta.find(occurrenceIter->second);
+    if (betaIter == std::end(m_updatedBeta))
+      return std::make_pair(std::vector<int>(), NO_MAPPING);
+    return std::make_pair(betaIter->second, SUCCESS);
+  }
+
+  std::pair<std::vector<int>, int> reverseMap(const std::vector<int> &beta) {
+    auto occurrenceIter = m_updatedOccurrences.find(beta);
+    if (occurrenceIter == std::end(m_updatedOccurrences))
+      return std::make_pair(std::vector<int>(), NOT_MAPPED_BETA);
+    auto betaIter = m_originalBeta.find(occurrenceIter->second);
+    if (betaIter == std::end(m_originalBeta))
+      return std::make_pair(std::vector<int>(), NO_REVERSE);
+    return std::make_pair(betaIter->second, SUCCESS);
+  }
+
+
+private:
+  ClintScop *m_cscop;
+  std::unordered_map<ClintStmtOccurrence *, std::vector<int>> m_originalBeta, m_updatedBeta;
+  std::map<std::vector<int>, ClintStmtOccurrence *> m_originalOccurrences, m_updatedOccurrences;
 };
 
 class ClayScriptGenerator : public Transformer {
