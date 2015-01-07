@@ -61,6 +61,7 @@ public:
   int maximumValue(int dimIdx) const;
 
   void resetOccurrence(osl_statement_p stmt, const std::vector<int> &betaVector);
+  void resetBetaVector(const std::vector<int> &betaVector);
 
 signals:
   void pointsChanged();

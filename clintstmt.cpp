@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <map>
+#include <set>
 #include <utility>
 
 inline void fillDimensionNames(char **strings, std::vector<std::string> &dimensionNames) {
@@ -58,6 +59,23 @@ ClintStmt::ClintStmt(osl_statement_p stmt, ClintScop *parent) :
     osl_names_p names = osl_names_generate("p", 1, "i", nbIterators, "y", 1, "z", 1, "l", 1);
     fillDimensionNames(names->iterators->string, m_dimensionNames);
     osl_names_free(names);
+  }
+}
+
+void ClintStmt::updateBetas(const std::map<std::vector<int>, std::vector<int> > &mapping) {
+  std::map<std::vector<int>, ClintStmtOccurrence *> updatedBetas;
+  std::set<std::vector<int>> keysToRemove;
+  for (auto it : m_occurrences) {
+    if (mapping.count(it.first) == 1) {
+      updatedBetas[mapping.at(it.first)] = it.second;
+      keysToRemove.insert(it.first);
+    }
+  }
+  for (auto it : keysToRemove) {
+    m_occurrences.erase(it);
+  }
+  for (auto it : updatedBetas) {
+    m_occurrences.insert(it);
   }
 }
 

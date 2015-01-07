@@ -45,6 +45,14 @@ void ClintStmtOccurrence::resetOccurrence(osl_statement_p stmt, const std::vecto
   }
 }
 
+void ClintStmtOccurrence::resetBetaVector(const std::vector<int> &betaVector) {
+  bool differentBeta = (m_betaVector == betaVector);
+  m_betaVector = betaVector;
+
+  if (differentBeta)
+    emit betaChanged();
+}
+
 bool operator < (const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs) {
   return lhs.m_betaVector < rhs.m_betaVector;
 }

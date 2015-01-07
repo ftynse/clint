@@ -63,6 +63,8 @@ public:
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
   std::unordered_set<ClintDependence *> internalDependences(ClintStmtOccurrence *occurrence) const;
   void createDependences(osl_scop_p scop);
+
+  void updateBetas(std::map<std::vector<int>, std::vector<int> > &mapping);
 signals:
 
 public slots:

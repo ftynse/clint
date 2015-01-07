@@ -563,19 +563,29 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
     ClayBetaMapper *mapper = new ClayBetaMapper(polyhedron->scop());
     mapper->apply(nullptr, group);
     bool happy = true;
+    std::map<std::vector<int>, std::vector<int>> mapping;
     for (ClintStmt *stmt : polyhedron->scop()->statements()) {
       for (ClintStmtOccurrence *occurrence : stmt->occurences()) {
         int result;
-        std::vector<int> beta;
-        std::tie(beta, result) = mapper->map(occurrence->betaVector());
-        qDebug() << result << QVector<int>::fromStdVector(occurrence->betaVector()) << "->" << QVector<int>::fromStdVector(beta);
+        std::vector<int> beta = occurrence->betaVector();
+        std::vector<int> updatedBeta;
+        std::tie(updatedBeta, result) = mapper->map(occurrence->betaVector());
 
+        qDebug() << result << QVector<int>::fromStdVector(beta) << "->" << QVector<int>::fromStdVector(updatedBeta);
+        if (result == ClayBetaMapper::SUCCESS &&
+            beta != updatedBeta) {
+          occurrence->resetBetaVector(updatedBeta);
+          mapping[beta] = updatedBeta;
+        }
         happy = happy && result == ClayBetaMapper::SUCCESS;
       }
     }
     CLINT_ASSERT(happy, "Beta mapping failed");
-//    polyhedron->scop()->transformed(group);
-//    polyhedron->scop()->executeTransformationSequence();
+
+    polyhedron->scop()->updateBetas(mapping);
+
+    polyhedron->scop()->transformed(group);
+    polyhedron->scop()->executeTransformationSequence();
   }
 }
 

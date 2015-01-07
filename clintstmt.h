@@ -3,8 +3,8 @@
 
 #include <QObject>
 
-#include <clintprogram.h>
-#include <clintscop.h>
+#include "clintprogram.h"
+#include "clintscop.h"
 
 #include <map>
 #include <vector>
@@ -40,6 +40,8 @@ public:
     CLINT_UNREACHABLE;
     return std::string("??");
   }
+
+  void updateBetas(const std::map<std::vector<int>, std::vector<int>> &mapping);
 
 signals:
 

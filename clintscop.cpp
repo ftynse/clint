@@ -7,6 +7,8 @@
 
 #include <tuple>
 #include <utility>
+#include <set>
+#include <map>
 
 void ClintScop::createDependences(osl_scop_p scop) {
   DependenceMap dependenceMap = oslDependenceMap(scop);
@@ -63,6 +65,7 @@ void ClintScop::executeTransformationSequence() {
     oslListForeachSingle(stmt->scattering, [this,&stmt](osl_relation_p scattering) {
       std::vector<int> beta = betaExtract(scattering);
       ClintStmtOccurrence *occ = occurrence(beta);
+      CLINT_ASSERT(occ != nullptr, "Occurrence corresponding to the beta-vector not found");
       occ->resetOccurrence(stmt, beta);
     });
   });
@@ -80,6 +83,58 @@ ClintStmtOccurrence *ClintScop::occurrence(const std::vector<int> &beta) const {
   if (stmt == nullptr)
     return nullptr;
   return stmt->occurrence(beta);
+}
+
+// old->new
+void ClintScop::updateBetas(std::map<std::vector<int>, std::vector<int>> &mapping) {
+  // Update beta map.
+  VizBetaMap newBetas;
+  std::set<std::vector<int>> betaKeysToRemove;
+  for (auto it : mapping) {
+    newBetas.insert(std::make_pair(it.second, m_vizBetaMap[it.first]));
+    betaKeysToRemove.insert(it.first);
+  }
+  for (auto it : betaKeysToRemove) {
+    m_vizBetaMap.erase(it);
+  }
+  for (auto it : newBetas) {
+    m_vizBetaMap.insert(it);
+  }
+
+  // Update statements.
+  for (auto it : statements()) {
+    it->updateBetas(mapping);
+  }
+
+  // Update dependence map.
+  ClintDependenceMap newDeps;
+  std::set<std::pair<std::vector<int>, std::vector<int> > > depKeysToRemove;
+  for (auto it : m_dependenceMap) {
+    bool firstBetaRemapped = mapping.count(it.first.first) == 1;
+    bool secondBetaRemapped = mapping.count(it.first.second) == 1;
+    if (firstBetaRemapped && secondBetaRemapped) {
+      newDeps.insert(std::make_pair(
+                       std::make_pair(mapping[it.first.first], mapping[it.first.second]),
+                       it.second));
+    } else if (firstBetaRemapped) {
+      newDeps.insert(std::make_pair(
+                       std::make_pair(mapping[it.first.first], it.first.second),
+                       it.second));
+    } else if (secondBetaRemapped) {
+      newDeps.insert(std::make_pair(
+                       std::make_pair(it.first.first, mapping[it.first.second]),
+                       it.second));
+    }
+    if (firstBetaRemapped || secondBetaRemapped) {
+      depKeysToRemove.insert(it.first);
+    }
+  }
+  for (auto it : depKeysToRemove) {
+    m_dependenceMap.erase(it);
+  }
+  for (auto it : newDeps) {
+    m_dependenceMap.insert(it);
+  }
 }
 
 std::unordered_set<ClintDependence *>
