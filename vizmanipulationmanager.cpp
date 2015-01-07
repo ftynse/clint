@@ -247,12 +247,16 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       size_t oldPileIdx, oldCsIdx;
       // FIXME: works for normalized scops only
       std::tie(oldPileIdx, oldCsIdx) = oldCS->projection()->csIndices(oldCS);
+      bool oneDimensional = vp->occurrence()->dimensionality() < oldCS->verticalDimensionIdx();
+      bool zeroDimensional = vp->occurrence()->dimensionality() < oldCS->horizontalDimensionIdx();
+
       bool movedToAnotherCS = oldCS != cs; // split is needed if the polygon was moved to a different CS
 
       if (!movedToAnotherCS) {
         vp->coordinateSystem()->resetPolyhedronPos(vp);
         continue;
       }
+
 
       bool csDeleted = false;
       bool pileDeleted = false;
@@ -274,6 +278,9 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
 
         oldCS->projection()->deleteCoordinateSystem(oldCS);
       }
+
+      CLINT_ASSERT(oneDimensional ? csDeleted : true, "In 1D cases, CS should be deleted");
+      CLINT_ASSERT(zeroDimensional ? pileDeleted : true, "In 0D cases, pile should be deleted");
 
       size_t pileNb = cs->projection()->pileNumber();
 
@@ -305,6 +312,9 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
         if (splitVertical) {
           splitBeta[splitBeta.size() - 2]++;
           splitBeta[splitBeta.size() - 1] = 0;
+        }
+        if (oneDimensional) {
+          splitBeta.push_back(424242);
         }
         qDebug() << "outer split" << pileSize << QVector<int>::fromStdVector(splitBeta);
         rearrangeCSs2D(pileSize, true, splitBeta, pileSize, group);
@@ -345,13 +355,10 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
 
       size_t targetPileIdx, targetCSIdx;
       std::tie(targetPileIdx, targetCSIdx) = cs->projection()->csIndices(cs);
-      // FIXME: considering only full 2d cases here now
-      CLINT_ASSERT(beta.size() == 3, "FIXME: cosidering only full 2d cases");
 
       qDebug() << "targeting pile" << targetPileIdx << "cs" << targetCSIdx;
 
       if (r.action() == VizProjection::IsCsAction::Found) {
-        // TODO: 1d case
         // Fusion required.
         std::vector<int> fuseBeta = cs->betaPrefix(); // if found, it contains at least one polygon (other than vp) with correct beta.
         CLINT_ASSERT(fuseBeta[fuseBeta.size() - 1] == r.coordinateSystemIdx(), "Beta consistency violated");
@@ -374,8 +381,10 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
 //        rearrangePiles2D(createdBeta, true, group, pileIdx + 1 + (pileDeleted ? 0 : 1), pileNb + (pileDeleted ? 0 : 1));
         // Fuse if not within pile transformation.
         if (!actionWithinPile) {
-          rearrangePiles2D(createdBeta, pileDeleted, group, pileIdx + 1, pileNb + (actionWithinPile ? 0 : 1));
+          if (oneDimensional)
+            createdBeta.push_back(424242);
           qDebug() << "outer fuse" << pileNb + (pileDeleted ? 0 : 1) << pileIdx << QVector<int>::fromStdVector(fuseBeta);
+          rearrangePiles2D(createdBeta, pileDeleted, group, pileIdx + 1, pileNb + (actionWithinPile ? 0 : 1));
           std::vector<int> outerFuseBeta(std::begin(fuseBeta), std::end(fuseBeta) - 1);
           group.transformations.push_back(Transformation::fuseNext(outerFuseBeta));
         }
@@ -388,18 +397,26 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
           createdBeta[createdBeta.size() - 1] = 0;
         }
         qDebug() << "inner fuse" << pileSize << csIdx << QVector<int>::fromStdVector(createdBeta);
-        rearrangeCSs2D(csIdx + 1, csDeleted, createdBeta, pileSize, group);
-        // Fuse if an inner (vertical) split took place (??? always)
-        group.transformations.push_back(Transformation::fuseNext(fuseBeta));
+        if (!oneDimensional) {
+          rearrangeCSs2D(csIdx + 1, csDeleted, createdBeta, pileSize, group);
+          group.transformations.push_back(Transformation::fuseNext(fuseBeta));
+        }
 
       } else if (r.action() == VizProjection::IsCsAction::InsertPile) {
-        // TODO: 1d case
+        if (oneDimensional)
+          createdBeta.push_back(424242);
+        if (zeroDimensional) {
+          createdBeta.push_back(424242);
+          createdBeta.push_back(424242);
+        }
+        qDebug() << "insert pile";
         rearrangePiles2D(createdBeta, pileDeleted, group, r.pileIdx(), pileNb);
       } else if (r.action() == VizProjection::IsCsAction::InsertCS) {
-        // TODO: 1d case
 //        if (oldPileIdx == r.pileIdx()) { // same pile -- reorder only
         if (actionWithinPile) {
           size_t pileSize = cs->projection()->pileCSNumber(r.pileIdx());
+          if (oneDimensional)
+            createdBeta.push_back(424242);
           qDebug() << "insert cs" << pileSize << QVector<int>::fromStdVector(createdBeta);
           rearrangeCSs2D(r.coordinateSystemIdx(), csDeleted, createdBeta, pileSize, group);
         } else { // different piles -- fusion required
@@ -420,6 +437,8 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
           // First, rearrange and fuse on the outer level.  For fusion's sake, put the statement after the pile to fuse with.
 //          rearrangePiles2D(createdBeta, true, group, pileIdx + 1 + (pileDeleted ? 0 : 1), pileNb + (pileDeleted ? 0 : 1));
           if (!actionWithinPile) {
+            if (oneDimensional)
+              createdBeta.push_back(424242);
             rearrangePiles2D(createdBeta, pileDeleted, group, pileIdx + 1, pileNb + (actionWithinPile ? 0 : 1));
             qDebug() << "outer fuse" << pileNb + (pileDeleted ? 0 : 1) << pileIdx << QVector<int>::fromStdVector(fuseBeta);
             std::vector<int> outerFuseBeta(std::begin(fuseBeta), std::end(fuseBeta) - 1);
@@ -433,8 +452,9 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
             createdBeta[createdBeta.size() - 2] = pileSize - 1;
             createdBeta[createdBeta.size() - 1] = 0;
           }
-          qDebug() << "inner fuse" << pileSize << csIdx << QVector<int>::fromStdVector(createdBeta);
-          rearrangeCSs2D(csIdx, csDeleted, createdBeta, pileSize, group); // not (csIdx + 1) since no fuse happening
+          qDebug() << "inner fuse" << pileSize << csIdx << QVector<int>::fromStdVector(createdBeta) << oneDimensional;
+          if (!oneDimensional)
+            rearrangeCSs2D(csIdx, csDeleted, createdBeta, pileSize, group); // no (csIdx + 1) since to fusion required; putting before.
 
         }
       } else {
