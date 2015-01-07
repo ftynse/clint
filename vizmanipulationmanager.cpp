@@ -410,9 +410,10 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
         }
 
         // First, rearrange and fuse on the outer level.  For fusion's sake, put the statement after the pile to fuse with.
-        rearrangePiles2D(createdBeta, true, group, pileIdx + 1 + (pileDeleted ? 0 : 1), pileNb + (pileDeleted ? 0 : 1));
-        // Fuse if an outer (horizontal) split took place.
+//        rearrangePiles2D(createdBeta, true, group, pileIdx + 1 + (pileDeleted ? 0 : 1), pileNb + (pileDeleted ? 0 : 1));
+        // Fuse if not within pile transformation.
         if (!actionWithinPile) {
+          rearrangePiles2D(createdBeta, pileDeleted, group, pileIdx + 1, pileNb + (actionWithinPile ? 0 : 1));
           qDebug() << "outer fuse" << pileNb + (pileDeleted ? 0 : 1) << pileIdx << QVector<int>::fromStdVector(fuseBeta);
           std::vector<int> outerFuseBeta(std::begin(fuseBeta), std::end(fuseBeta) - 1);
           group.transformations.push_back(Transformation::fuseNext(outerFuseBeta));
@@ -455,9 +456,9 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
           std::vector<int> fuseBeta { (int) pileIdx, (int) csIdx }; // <0,1> projection; otherwise first part of the beta-prefix ("projection" prefix) needed
 
           // First, rearrange and fuse on the outer level.  For fusion's sake, put the statement after the pile to fuse with.
-          rearrangePiles2D(createdBeta, true, group, pileIdx + 1 + (pileDeleted ? 0 : 1), pileNb + (pileDeleted ? 0 : 1));
-          // Fuse if an outer (horizontal) split took place.
+//          rearrangePiles2D(createdBeta, true, group, pileIdx + 1 + (pileDeleted ? 0 : 1), pileNb + (pileDeleted ? 0 : 1));
           if (!actionWithinPile) {
+            rearrangePiles2D(createdBeta, pileDeleted, group, pileIdx + 1, pileNb + (actionWithinPile ? 0 : 1));
             qDebug() << "outer fuse" << pileNb + (pileDeleted ? 0 : 1) << pileIdx << QVector<int>::fromStdVector(fuseBeta);
             std::vector<int> outerFuseBeta(std::begin(fuseBeta), std::end(fuseBeta) - 1);
             group.transformations.push_back(Transformation::fuseNext(outerFuseBeta));
