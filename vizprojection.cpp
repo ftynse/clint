@@ -159,7 +159,7 @@ std::pair<size_t, size_t> VizProjection::csIndices(VizCoordinateSystem *vcs) con
   return std::make_pair(pileIdx, csIdx);
 }
 
-VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult csAt, int dimensionality) {
+VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult &csAt, int dimensionality) {
   VizCoordinateSystem *vcs = nullptr;
   switch (csAt.action()) {
   case IsCsAction::Found:
@@ -168,6 +168,7 @@ VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult csAt, int 
       if (dimensionality >= m_horizontalDimensionIdx) {
         // Target projection does not have horizontal dimension, but the polyhedron has and the projection covers it.
         // -> create new pile
+        csAt.m_action = IsCsAction::InsertPile;
         return insertPile(csAt, dimensionality);
       } else {
         CLINT_UNREACHABLE;
@@ -176,6 +177,7 @@ VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult csAt, int 
       if (dimensionality >= m_verticalDimensionIdx) {
         // Target projection does not have vertical dimension, but the polyhedron has and the projection covers it.
         // -> create new cs
+        csAt.m_action = IsCsAction::InsertCS;
         return insertCs(csAt, dimensionality);
       } else {
         // Do nothing (invisible in this projection)

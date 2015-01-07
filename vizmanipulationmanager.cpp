@@ -420,8 +420,9 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
         }
 
         // Finally, rearrange and fuse on the inner level.
-        size_t pileSize = cs->projection()->pileCSNumber(pileIdx) + (csDeleted && actionWithinPile ? 0 : 1); // extra CS created
+        size_t pileSize = cs->projection()->pileCSNumber(pileIdx) + (csDeleted && actionWithinPile ? 0 : 1); // extra CS created and is not visually present
         if (!actionWithinPile) { // If outer fuse took place, this occurence is the last in pile
+          createdBeta[createdBeta.size() - 3] = pileIdx;
           createdBeta[createdBeta.size() - 2] = pileSize - 1;
           createdBeta[createdBeta.size() - 1] = 0;
         }
@@ -465,8 +466,9 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
           }
 
           // Finally, rearrange and fuse on the inner level.
-          size_t pileSize = cs->projection()->pileCSNumber(pileIdx) + (csDeleted && actionWithinPile ? 0 : 1); // extra CS created
+          size_t pileSize = cs->projection()->pileCSNumber(pileIdx); // extra CS created is actually present
           if (!actionWithinPile) { // If outer fuse took place, this occurence is the last in pile
+            createdBeta[createdBeta.size() - 3] = pileIdx;
             createdBeta[createdBeta.size() - 2] = pileSize - 1;
             createdBeta[createdBeta.size() - 1] = 0;
           }

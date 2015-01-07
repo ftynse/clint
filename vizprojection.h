@@ -67,7 +67,7 @@ public:
   };
 
   VizProjection::IsCsResult isCoordinateSystem(QPointF point);
-  VizCoordinateSystem *ensureCoordinateSystem(IsCsResult csAt, int dimensionality);
+  VizCoordinateSystem *ensureCoordinateSystem(IsCsResult &csAt, int dimensionality);
   VizCoordinateSystem *createCoordinateSystem(int dimensionality);
   void deleteCoordinateSystem(VizCoordinateSystem *vcs);
 
