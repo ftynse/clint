@@ -473,7 +473,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
             createdBeta[createdBeta.size() - 1] = 0;
           }
           qDebug() << "inner fuse" << pileSize << csIdx << QVector<int>::fromStdVector(createdBeta);
-          rearrangeCSs2D(csIdx + 1, csDeleted, createdBeta, pileSize, group);
+          rearrangeCSs2D(csIdx, csDeleted, createdBeta, pileSize, group); // not (csIdx + 1) since no fuse happening
 
         }
       } else {
