@@ -383,8 +383,8 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
         if (!actionWithinPile) {
           if (oneDimensional)
             createdBeta.push_back(424242);
-          qDebug() << "outer fuse" << pileNb + (pileDeleted ? 0 : 1) << pileIdx << QVector<int>::fromStdVector(fuseBeta);
-          rearrangePiles2D(createdBeta, pileDeleted, group, pileIdx + 1, pileNb + (actionWithinPile ? 0 : 1));
+          qDebug() << "outer fuse" << pileNb + (actionWithinPile ? 0 : 1) << pileIdx << QVector<int>::fromStdVector(fuseBeta) << QVector<int>::fromStdVector(createdBeta);
+          rearrangePiles2D(createdBeta, false, group, pileIdx + 1, pileNb + (actionWithinPile ? 0 : 1));
           std::vector<int> outerFuseBeta(std::begin(fuseBeta), std::end(fuseBeta) - 1);
           group.transformations.push_back(Transformation::fuseNext(outerFuseBeta));
         }
