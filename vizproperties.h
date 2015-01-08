@@ -2,7 +2,10 @@
 #define VIZPROPERTIES_H
 
 #include <QObject>
+#include <QColor>
 #include <QtXml>
+
+#include <vector>
 
 class VizProperties : public QObject {
   Q_OBJECT
@@ -19,6 +22,24 @@ public:
   }
   /*inline*/ double coordinateSystemMargin() const {
     return m_coordinateSystemMargin;
+  }
+
+  QColor color(const std::vector<int> &beta) const {
+    int id = 0;
+    for (int i = 0; i < beta.size(); i++) {
+      id += beta[i] * pow(10, i % 7);
+    }
+    id = id % 24;
+    id = (id * 7) % 24; // distribute far from each other
+    return QColor::fromHsv(id * 15, 60, 200, 127);
+  }
+
+  bool filledPolygons() const {
+    return m_filledPolygons;
+  }
+
+  bool filledPoints() const {
+    return m_filledPoints;
   }
 
   const static size_t UNDEFINED_DIMENSION = (size_t) -1;
@@ -54,10 +75,13 @@ public slots:
   void setCoordinateSystemMargin(double margin);
 
 private:
-  double m_polyhedronOffset       = 8.0;
-  double m_pointRadius            = 8.0;
-  double m_pointDistance          = 32.0;
-  double m_coordinateSystemMargin = 10.0;
+  double m_polyhedronOffset       = 4.0;
+  double m_pointRadius            = 4.0;
+  double m_pointDistance          = 16.0;
+  double m_coordinateSystemMargin = 5.0;
+
+  bool m_filledPolygons           = true;
+  bool m_filledPoints             = false;
 };
 
 #endif // VIZPROPERTIES_H

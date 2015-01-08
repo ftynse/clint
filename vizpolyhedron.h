@@ -83,6 +83,15 @@ public:
   void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
   void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 
+  QColor color() const {
+    return m_backgroundColor;
+  }
+
+  void setColor(QColor clr) {
+    m_backgroundColor = clr;
+    update();
+  }
+
   void setPos(const QPointF &position) {
     if (m_overrideSetPos) {
       m_pressPos = position;
@@ -103,6 +112,7 @@ private:
   ClintStmtOccurrence *m_occurrence;
   VizCoordinateSystem *m_coordinateSystem;
   QPainterPath m_polyhedronShape;
+  QColor m_backgroundColor;
 
   std::unordered_set<VizPoint *> m_points;
   std::unordered_set<VizDepArrow *> m_deps;

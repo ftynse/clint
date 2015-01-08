@@ -79,6 +79,11 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
             std::max(occurrenceHorizontalMax, m_horizontalMax),
             std::min(occurrenceVerticalMin, m_verticalMin),
             std::max(occurrenceVerticalMax, m_verticalMax));
+  const VizProperties *props = projection()->vizProperties();
+  if (props->filledPolygons())
+    vp->setColor(projection()->vizProperties()->color(occurrence->betaVector()));
+  else
+    vp->setColor(QColor(Qt::transparent));
 
   // Setting up internal dependences.
   std::unordered_set<ClintDependence *> dependences =

@@ -17,6 +17,7 @@ void VizPoint::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
   painter->save();
   const double radius =
       m_polyhedron->coordinateSystem()->projection()->vizProperties()->pointRadius();
+  painter->setBrush(QBrush(m_color));
   painter->drawEllipse(QPointF(0, 0), radius, radius);
   painter->restore();
 }

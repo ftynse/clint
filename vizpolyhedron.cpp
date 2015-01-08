@@ -38,8 +38,15 @@ void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points,
   m_localHorizontalMax = horiontalMax;
   m_localVerticalMin   = verticalMin;
   m_localVerticalMax   = verticalMax;
+  const VizProperties *props = coordinateSystem()->projection()->vizProperties();
   for (const std::vector<int> &point : points) {
     VizPoint *vp = new VizPoint(this);
+    if (props->filledPoints()) {
+      vp->setColor(props->color(occurrence()->betaVector()));
+    } else {
+      vp->setColor(QColor::fromRgb(100, 100, 100, 127));
+    }
+
     if (point.size() == 0) {
       vp->setScatteredCoordinates();
       vp->setOriginalCoordinates();
@@ -416,6 +423,7 @@ void VizPolyhedron::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     fatPen.setWidth(painter->pen().widthF() * 2.0);
     painter->setPen(fatPen);
   }
+  painter->setBrush(m_backgroundColor);
   painter->drawPath(m_polyhedronShape);
   painter->restore();
 }

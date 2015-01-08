@@ -62,6 +62,10 @@ public:
   QPainterPath shape() const;
   QVariant itemChange(GraphicsItemChange change, const QVariant &value);
 
+  void setColor(QColor color) {
+    m_color = color;
+  }
+
 signals:
 
 public slots:
@@ -78,6 +82,8 @@ private:
   int m_scatteredVertical   = NO_COORD;
 
   bool m_selectionChangeBarrier = false;
+
+  QColor m_color;
 };
 
 #endif // VIZPOINT_H
