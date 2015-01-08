@@ -23,6 +23,9 @@ public slots:
   void fileSaveSvg();
   void openFileByName(QString fileName);
 
+  void editUndo();
+  void editRedo();
+
   void viewFreezeToggled(bool value);
 
   void scopTransformed();
@@ -32,6 +35,9 @@ private:
   QAction *m_actionFileClose;
   QAction *m_actionFileSaveSvg;
   QAction *m_actionFileQuit;
+
+  QAction *m_actionEditUndo;
+  QAction *m_actionEditRedo;
 
   QAction *m_actionViewFreeze;
 

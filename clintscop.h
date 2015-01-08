@@ -79,10 +79,21 @@ public:
     return m_currentScript;
   }
 
+  bool hasUndo() const {
+    return m_transformationSeq.groups.size() > 0;
+  }
+
+  bool hasRedo() const {
+    return m_undoneTransformationSeq.groups.size() > 0;
+  }
+
 signals:
   void transformExecuted();
 
 public slots:
+  void undoTransformation();
+  void redoTransformation();
+  void clearRedo();
 
 private:
 
@@ -96,6 +107,7 @@ private:
   ClintOccurrenceDeps m_internalDeps;
 
   TransformationSequence m_transformationSeq;
+  TransformationSequence m_undoneTransformationSeq;
   Transformer *m_transformer;
   Transformer *m_scriptGenerator;
 

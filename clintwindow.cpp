@@ -86,6 +86,15 @@ void ClintWindow::setupActions() {
 
   m_actionFileClose->setEnabled(false);
 
+  m_actionEditUndo = new QAction(QIcon::fromTheme("edit-undo"), "Undo", this);
+  m_actionEditRedo = new QAction(QIcon::fromTheme("edit-redo"), "Redo", this);
+
+  m_actionEditUndo->setShortcut(QKeySequence::Undo);
+  m_actionEditRedo->setShortcut(QKeySequence::Redo);
+
+  m_actionEditUndo->setEnabled(false);
+  m_actionEditRedo->setEnabled(false);
+
   m_actionViewFreeze = new QAction("Keep original code", this);
   m_actionViewFreeze->setCheckable(true);
 
@@ -93,6 +102,9 @@ void ClintWindow::setupActions() {
   connect(m_actionFileClose, &QAction::triggered, this, &ClintWindow::fileClose);
   connect(m_actionFileSaveSvg, &QAction::triggered, this, &ClintWindow::fileSaveSvg);
   connect(m_actionFileQuit, &QAction::triggered, qApp, &QApplication::quit);
+
+  connect(m_actionEditUndo, &QAction::triggered, this, &ClintWindow::editUndo);
+  connect(m_actionEditRedo, &QAction::triggered, this, &ClintWindow::editRedo);
 
   connect(m_actionViewFreeze, &QAction::toggled, this, &ClintWindow::viewFreezeToggled);
 }
@@ -106,10 +118,15 @@ void ClintWindow::setupMenus() {
   fileMenu->addSeparator();
   fileMenu->addAction(m_actionFileQuit);
 
+  QMenu *editMenu = new QMenu("Edit");
+  editMenu->addAction(m_actionEditUndo);
+  editMenu->addAction(m_actionEditRedo);
+
   QMenu *viewMenu = new QMenu("View");
   viewMenu->addAction(m_actionViewFreeze);
 
   m_menuBar->addAction(fileMenu->menuAction());
+  m_menuBar->addAction(editMenu->menuAction());
   m_menuBar->addAction(viewMenu->menuAction());
   m_menuBar->setNativeMenuBar(false);  // Override MacOS behavior since it does not display the menu
 
@@ -218,6 +235,36 @@ void ClintWindow::openFileByName(QString fileName) {
     free(originalCode);
 }
 
+void ClintWindow::editUndo() {
+  return;
+
+  if (!m_program)
+    return;
+  ClintScop *vscop = (*m_program)[0];
+  if (!vscop)
+    return;
+  CLINT_ASSERT(vscop->hasUndo(), "No undo possible, but the button is enabled");
+  vscop->undoTransformation();
+
+  m_actionEditUndo->setEnabled(vscop->hasUndo());
+  m_actionEditRedo->setEnabled(true);
+}
+
+void ClintWindow::editRedo() {
+  return;
+
+  if (!m_program)
+    return;
+  ClintScop *vscop = (*m_program)[0];
+  if (!vscop)
+    return;
+  CLINT_ASSERT(vscop->hasRedo(), "No redo possible, but the button is enabled");
+  vscop->redoTransformation();
+
+  m_actionEditRedo->setEnabled(vscop->hasRedo());
+  m_actionEditUndo->setEnabled(true);
+}
+
 void ClintWindow::viewFreezeToggled(bool value) {
   m_showOriginalCode = value;
   scopTransformed();
@@ -235,4 +282,10 @@ void ClintWindow::scopTransformed() {
   else
     codeEditor->setText(QString(vscop->originalCode()));
   scriptEditor->setText(QString(vscop->currentScript()));
+
+  if (vscop->hasRedo())
+    vscop->clearRedo();
+
+  m_actionEditUndo->setEnabled(vscop->hasUndo());
+  m_actionEditRedo->setEnabled(false);
 }

@@ -175,3 +175,23 @@ ClintScop::internalDependences(ClintStmtOccurrence *occurrence) const {
   }
   return std::move(result);
 }
+
+void ClintScop::undoTransformation() {
+  if (!hasUndo())
+    return;
+  m_undoneTransformationSeq.groups.push_back(m_transformationSeq.groups.back());
+  m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1);
+  executeTransformationSequence();
+}
+
+void ClintScop::redoTransformation() {
+  if (!hasRedo())
+    return;
+  m_transformationSeq.groups.push_back(m_undoneTransformationSeq.groups.back());
+  m_undoneTransformationSeq.groups.erase(std::end(m_undoneTransformationSeq.groups) - 1);
+  executeTransformationSequence();
+}
+
+void ClintScop::clearRedo() {
+  m_undoneTransformationSeq.groups.clear();
+}
