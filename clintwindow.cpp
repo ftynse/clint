@@ -205,6 +205,10 @@ void ClintWindow::scopTransformed() {
   if (!m_program)
     return;
   ClintScop *vscop = (*m_program)[0];
+  if (!vscop)
+    return;
+
   if (!m_showOriginalCode)
     codeEditor->setText(QString(vscop->generatedCode()));
+  scriptEditor->setText(QString(vscop->currentScript()));
 }

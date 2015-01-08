@@ -9,6 +9,7 @@
 #include <utility>
 #include <set>
 #include <map>
+#include <sstream>
 
 void ClintScop::createDependences(osl_scop_p scop) {
   DependenceMap dependenceMap = oslDependenceMap(scop);
@@ -45,12 +46,19 @@ ClintScop::ClintScop(osl_scop_p scop, ClintProgram *parent) :
   createDependences(scop);
 
   m_transformer = new ClayTransformer;
+  m_scriptGenerator = new ClayScriptGenerator(m_scriptStream);
 
   m_generatedCode = oslToCCode(m_scopPart);
+  m_currentScript = (char *) malloc(sizeof(char));
+  m_currentScript[0] = '\0';
 }
 
 ClintScop::~ClintScop() {
   delete m_transformer;
+  delete m_scriptGenerator;
+
+  free(m_generatedCode);
+  free(m_currentScript);
 }
 
 void ClintScop::executeTransformationSequence() {
@@ -72,7 +80,16 @@ void ClintScop::executeTransformationSequence() {
     });
   });
 
+  if (m_generatedCode != nullptr)
+    free(m_generatedCode);
   m_generatedCode = oslToCCode(transformedScop);
+  if (m_currentScript != nullptr)
+    free(m_currentScript);
+  m_scriptGenerator->apply(m_scopPart, m_transformationSeq);
+  m_currentScript = strdup(m_scriptStream.str().c_str());
+  m_scriptStream.str(std::string());
+  m_scriptStream.clear();
+
   emit transformExecuted();
 }
 

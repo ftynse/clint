@@ -8,6 +8,7 @@
 #include <map>
 #include <unordered_set>
 #include <vector>
+#include <sstream>
 
 #include "transformation.h"
 #include "transformer.h"
@@ -70,6 +71,10 @@ public:
     return m_generatedCode;
   }
 
+  const char *currentScript() {
+    return m_currentScript;
+  }
+
 signals:
   void transformExecuted();
 
@@ -88,8 +93,11 @@ private:
 
   TransformationSequence m_transformationSeq;
   Transformer *m_transformer;
+  Transformer *m_scriptGenerator;
 
-  char *m_generatedCode;
+  char *m_generatedCode = nullptr;
+  char *m_currentScript = nullptr;
+  std::stringstream m_scriptStream;
 };
 
 #endif // CLINTSCOP_H
