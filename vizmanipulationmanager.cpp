@@ -148,7 +148,7 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
   }
 
   if (!group.transformations.empty()) {
-    polyhedron->scop()->transformed(group);
+    polyhedron->scop()->transform(group);
     polyhedron->scop()->executeTransformationSequence();
   }
 }
@@ -500,7 +500,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
 
     polyhedron->scop()->updateBetas(mapping);
 
-    polyhedron->scop()->transformed(group);
+    polyhedron->scop()->transform(group);
     polyhedron->scop()->executeTransformationSequence();
   }
 }

@@ -7,8 +7,10 @@
 #include "clintprogram.h"
 #include "vizprojection.h"
 
-class ClintWindow : public QMainWindow
-{
+class QWidget;
+class QTextEdit;
+
+class ClintWindow : public QMainWindow {
   Q_OBJECT
 public:
   explicit ClintWindow(QWidget *parent = 0);
@@ -21,6 +23,8 @@ public slots:
   void fileSaveSvg();
   void openFileByName(QString fileName);
 
+  void scopTransformed();
+
 private:
   QAction *m_actionFileOpen;
   QAction *m_actionFileClose;
@@ -32,9 +36,15 @@ private:
 
   ClintProgram *m_program = nullptr;
   VizProjection *m_projection = nullptr;
+  QTextEdit *codeEditor = nullptr;
+  QTextEdit *scriptEditor = nullptr;
+
+  bool m_showOriginalCode = false;
 
   void setupActions();
   void setupMenus();
+
+  void resetCentralWidget(QWidget *interface = nullptr);
 };
 
 #endif // CLINTWINDOW_H

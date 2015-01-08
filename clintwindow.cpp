@@ -7,30 +7,43 @@
 #include "clintwindow.h"
 #include "oslutils.h"
 
-namespace {
+void ClintWindow::resetCentralWidget(QWidget *interface) {
+  if (centralWidget() != nullptr) {
+    QWidget *oldWidget = centralWidget();
+    scriptEditor->setParent(nullptr);
+    codeEditor->setParent(nullptr);
+    delete oldWidget;
+  }
 
-QWidget *clintInterfaceMockup() {
-  QGridLayout *topLayout = new QGridLayout;
+  if (interface == nullptr) {
+    setCentralWidget(nullptr);
+    return;
+  }
 
-  QLabel *TODOvisualization = new QLabel("TODO: visualization");
   QLabel *TODOupdater = new QLabel("<\n>");
-  QListView *TODOhistory = new QListView();
-  QTextEdit *TODOcodeEditor = new QTextEdit();
-
-  topLayout->addWidget(TODOvisualization, 0, 0, 2, 1, Qt::AlignCenter | Qt::AlignVCenter);
-  topLayout->addWidget(TODOupdater, 0, 1, 2, 1, Qt::AlignVCenter);
-  topLayout->addWidget(TODOhistory, 0, 2, 1, 1, Qt::AlignCenter | Qt::AlignTop);
-  topLayout->addWidget(TODOcodeEditor, 1, 2, 1, 1, Qt::AlignCenter | Qt::AlignBottom);
+  QGridLayout *topLayout = new QGridLayout;
+  topLayout->addWidget(interface, 0, 0, 2, 1 /*,Qt::AlignCenter | Qt::AlignVCenter*/);
+  topLayout->addWidget(TODOupdater, 0, 1, 2, 1 /*,Qt::AlignVCenter*/);
+  topLayout->addWidget(scriptEditor, 0, 2, 1, 1 /*,Qt::AlignCenter | Qt::AlignTop*/);
+  topLayout->addWidget(codeEditor, 1, 2, 1, 1  /*,Qt::AlignCenter| Qt::AlignBottom*/);
 
   topLayout->setColumnStretch(0, 3);
   topLayout->setColumnStretch(2, 1);
+  topLayout->setRowStretch(0, 1);
+  topLayout->setRowStretch(1, 3);
+
+//  QBoxLayout *topLayout = new QBoxLayout(QBoxLayout::LeftToRight);
+//  topLayout->addWidget(interface, 3);
+//  topLayout->addWidget(TODOupdater, 0);
+//  QBoxLayout *innerLayout = new QBoxLayout(QBoxLayout::TopToBottom);
+//  innerLayout->addWidget(scriptEditor, 1);
+//  innerLayout->addWidget(codeEditor, 3);
+//  topLayout->addLayout(innerLayout, 1);
 
   QWidget *topWidget = new QWidget;
   topWidget->setLayout(topLayout);
-  return topWidget;
+  setCentralWidget(topWidget);
 }
-
-} // end anonymous namespace
 
 ClintWindow::ClintWindow(QWidget *parent) :
   QMainWindow(parent) {
@@ -46,6 +59,12 @@ ClintWindow::ClintWindow(QWidget *parent) :
       filename = args[i];
     }
   }
+
+  QFont monospacefont("PT Mono");
+  scriptEditor = new QTextEdit;
+  codeEditor = new QTextEdit;
+  codeEditor->setFont(monospacefont);
+  scriptEditor->setFont(monospacefont);
 
   setWindowTitle("Clint: Chunky Loop INTerface");
   setupActions();
@@ -102,9 +121,15 @@ void ClintWindow::fileClose() {
   if (!m_fileOpen)
     return;
 
+  if (m_program) {
+    ClintScop *vscop = (*m_program)[0];
+    if (vscop)
+      disconnect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
+  }
+
   setWindowTitle("Clint: Chunky Loop INTerface");
 
-  setCentralWidget(nullptr);
+  resetCentralWidget(nullptr);
   m_program->setParent(nullptr);
   delete m_program;
   m_program = nullptr;
@@ -147,10 +172,12 @@ void ClintWindow::openFileByName(QString fileName) {
   osl_scop_p scop = nullptr;
   if (fileName.endsWith(".scop")) {
     scop = osl_scop_read(file);
+    codeEditor->setText(QString(oslToCCode(scop)));
   } else if (fileName.endsWith(".c") ||
              fileName.endsWith(".cpp") ||
              fileName.endsWith(".cxx")) {
     scop = oslFromCCode(file);
+    codeEditor->setText(QString(fileContents(file)));
   } else {
     CLINT_UNREACHABLE;
   }
@@ -164,11 +191,20 @@ void ClintWindow::openFileByName(QString fileName) {
 
   m_program = new ClintProgram(scop, this);
   ClintScop *vscop = (*m_program)[0];
+  connect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
   m_projection = new VizProjection(0, 1, this);
   m_projection->projectScop(vscop);
 
-  setCentralWidget(m_projection->widget());
+  resetCentralWidget(m_projection->widget());
 
   m_fileOpen = true;
   m_actionFileClose->setEnabled(true);
+}
+
+void ClintWindow::scopTransformed() {
+  if (!m_program)
+    return;
+  ClintScop *vscop = (*m_program)[0];
+  if (!m_showOriginalCode)
+    codeEditor->setText(QString(vscop->generatedCode()));
 }

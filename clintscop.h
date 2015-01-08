@@ -48,13 +48,13 @@ public:
     return iterator->second;
   }
 
-  void transformed(const Transformation &t) {
+  void transform(const Transformation &t) {
     TransformationGroup tg;
     tg.transformations.push_back(t);
     m_transformationSeq.groups.push_back(std::move(tg));
   }
 
-  void transformed(const TransformationGroup &tg) {
+  void transform(const TransformationGroup &tg) {
     m_transformationSeq.groups.push_back(tg);
   }
 
@@ -65,7 +65,13 @@ public:
   void createDependences(osl_scop_p scop);
 
   void updateBetas(std::map<std::vector<int>, std::vector<int> > &mapping);
+
+  const char *generatedCode() {
+    return m_generatedCode;
+  }
+
 signals:
+  void transformExecuted();
 
 public slots:
 
@@ -82,6 +88,8 @@ private:
 
   TransformationSequence m_transformationSeq;
   Transformer *m_transformer;
+
+  char *m_generatedCode;
 };
 
 #endif // CLINTSCOP_H

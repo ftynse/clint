@@ -45,6 +45,8 @@ ClintScop::ClintScop(osl_scop_p scop, ClintProgram *parent) :
   createDependences(scop);
 
   m_transformer = new ClayTransformer;
+
+  m_generatedCode = oslToCCode(m_scopPart);
 }
 
 ClintScop::~ClintScop() {
@@ -69,6 +71,9 @@ void ClintScop::executeTransformationSequence() {
       occ->resetOccurrence(stmt, beta);
     });
   });
+
+  m_generatedCode = oslToCCode(transformedScop);
+  emit transformExecuted();
 }
 
 std::unordered_set<ClintStmt *> ClintScop::statements() const {

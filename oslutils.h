@@ -9,6 +9,9 @@
 
 #include <candl/candl.h>
 
+#define CLOOG_INT_GMP
+#include <cloog/cloog.h>
+
 #include <functional>
 #include <map>
 #include <tuple>
@@ -201,6 +204,9 @@ inline std::vector<int> betaExtract(osl_relation_p relation) {
 
 osl_scop_p oslFromCCode(FILE *file);
 osl_scop_p oslFromCCode(char *code);
+char *oslToCCode(osl_scop_p scop);
+char *fileContents(FILE *file);
 
 osl_dependence_p oslScopDependence(osl_scop_p scop);
+
 #endif // OSLUTILS_H

@@ -228,6 +228,49 @@ osl_scop_p oslFromCCode(char *code) {
   return clan_scop;
 }
 
+char *fileContents(FILE *f) {
+  if (!f) {
+    return nullptr;
+  }
+  rewind(f);
+  fseek(f, 0, SEEK_END);
+  size_t fileSize = ftell(f);
+  rewind(f);
+  char *cstr = (char *) malloc(fileSize * sizeof(char));
+  fread(cstr, sizeof(char), fileSize, f);
+  return cstr;
+}
+
+char *oslToCCode(osl_scop_p scop) {
+  CloogState *state = cloog_state_malloc();
+  CloogOptions *options = cloog_options_malloc(state);
+  options->openscop = 1;
+  options->quiet = 1;
+//  options->scop = scop;
+//  CloogProgram *program = cloog_program_malloc();
+
+  FILE *tmpOslFile = tmpfile();
+  osl_scop_print(tmpOslFile, scop);
+  fflush(tmpOslFile);
+  rewind(tmpOslFile);
+  CloogProgram *program = cloog_program_read(tmpOslFile, options);
+  fclose(tmpOslFile);
+
+  program = cloog_program_generate(program, options);
+  FILE *tmpCloogFile = tmpfile();
+  cloog_program_pprint(tmpCloogFile, program, options);
+  fflush(tmpCloogFile);
+
+  char *str = fileContents(tmpCloogFile);
+
+  fclose(tmpCloogFile);
+  cloog_program_free(program);
+  cloog_options_free(options);
+  cloog_state_free(state);
+
+  return str;
+}
+
 template <typename T>
 void oslListOnlyElement(T **container, int index) {
   if (index < 0 || container == nullptr || *container == nullptr)
