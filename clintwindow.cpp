@@ -106,14 +106,15 @@ void ClintWindow::setupMenus() {
 }
 
 void ClintWindow::fileOpen() {
-  if (m_fileOpen) {
-    fileClose();
-  }
-
   QString selectedFilter;
   QString fileName = QFileDialog::getOpenFileName(this, "Open file", QString(), "OpenScop files (*.scop);;C/C++ sources (*.c *.cpp *.cxx)", &selectedFilter);
   if (fileName.isNull())
     return;
+
+  if (m_fileOpen) {
+    fileClose();
+  }
+
   openFileByName(fileName);
 }
 
