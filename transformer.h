@@ -156,6 +156,7 @@ public:
       outputVector(m_stream, transformation.target()) << "], "
              << transformation.depth() << ", "
              << "{" << transformation.constantAmount() << "});\n";
+      break;
     default:
       m_stream << "###unkonwn transformation###\n";
     }
