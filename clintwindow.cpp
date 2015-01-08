@@ -86,10 +86,15 @@ void ClintWindow::setupActions() {
 
   m_actionFileClose->setEnabled(false);
 
+  m_actionViewFreeze = new QAction("Keep original code", this);
+  m_actionViewFreeze->setCheckable(true);
+
   connect(m_actionFileOpen, &QAction::triggered, this, &ClintWindow::fileOpen);
   connect(m_actionFileClose, &QAction::triggered, this, &ClintWindow::fileClose);
   connect(m_actionFileSaveSvg, &QAction::triggered, this, &ClintWindow::fileSaveSvg);
   connect(m_actionFileQuit, &QAction::triggered, qApp, &QApplication::quit);
+
+  connect(m_actionViewFreeze, &QAction::toggled, this, &ClintWindow::viewFreezeToggled);
 }
 
 void ClintWindow::setupMenus() {
@@ -100,8 +105,14 @@ void ClintWindow::setupMenus() {
   fileMenu->addAction(m_actionFileClose);
   fileMenu->addSeparator();
   fileMenu->addAction(m_actionFileQuit);
+
+  QMenu *viewMenu = new QMenu("View");
+  viewMenu->addAction(m_actionViewFreeze);
+
   m_menuBar->addAction(fileMenu->menuAction());
+  m_menuBar->addAction(viewMenu->menuAction());
   m_menuBar->setNativeMenuBar(false);  // Override MacOS behavior since it does not display the menu
+
   setMenuBar(m_menuBar);
 }
 
@@ -171,6 +182,7 @@ void ClintWindow::openFileByName(QString fileName) {
   }
 
   osl_scop_p scop = nullptr;
+  char *originalCode = nullptr;
   if (fileName.endsWith(".scop")) {
     scop = osl_scop_read(file);
     codeEditor->setText(QString(oslToCCode(scop)));
@@ -178,7 +190,8 @@ void ClintWindow::openFileByName(QString fileName) {
              fileName.endsWith(".cpp") ||
              fileName.endsWith(".cxx")) {
     scop = oslFromCCode(file);
-    codeEditor->setText(QString(fileContents(file)));
+    originalCode = fileContents(file);
+    codeEditor->setText(QString(originalCode));
   } else {
     CLINT_UNREACHABLE;
   }
@@ -190,7 +203,7 @@ void ClintWindow::openFileByName(QString fileName) {
 
   setWindowTitle(QString("%1 - Clint").arg(fileNameNoPath));
 
-  m_program = new ClintProgram(scop, this);
+  m_program = new ClintProgram(scop, originalCode, this);
   ClintScop *vscop = (*m_program)[0];
   connect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
   m_projection = new VizProjection(0, 1, this);
@@ -200,6 +213,14 @@ void ClintWindow::openFileByName(QString fileName) {
 
   m_fileOpen = true;
   m_actionFileClose->setEnabled(true);
+
+  if (originalCode)
+    free(originalCode);
+}
+
+void ClintWindow::viewFreezeToggled(bool value) {
+  m_showOriginalCode = value;
+  scopTransformed();
 }
 
 void ClintWindow::scopTransformed() {
@@ -211,5 +232,7 @@ void ClintWindow::scopTransformed() {
 
   if (!m_showOriginalCode)
     codeEditor->setText(QString(vscop->generatedCode()));
+  else
+    codeEditor->setText(QString(vscop->originalCode()));
   scriptEditor->setText(QString(vscop->currentScript()));
 }

@@ -15,7 +15,7 @@ class VizCoordinateSystem;
 class ClintProgram : public QObject {
   Q_OBJECT
 public:
-  explicit ClintProgram(osl_scop_p scop, QObject *parent = 0);
+  explicit ClintProgram(osl_scop_p scop, char *originalCode = nullptr, QObject *parent = 0);
   ~ClintProgram();
 
   QSet<ClintStmt *> statementsInCoordinateSystem(VizCoordinateSystem *system) const {

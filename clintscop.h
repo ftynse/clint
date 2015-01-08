@@ -24,7 +24,7 @@ public:
   typedef std::multimap<std::pair<std::vector<int>, std::vector<int>>, ClintDependence *> ClintDependenceMap;
   typedef std::multimap<ClintStmtOccurrence *, ClintDependence *> ClintOccurrenceDeps;
 
-  explicit ClintScop(osl_scop_p scop, ClintProgram *parent = nullptr);
+  explicit ClintScop(osl_scop_p scop, char *originalCode = nullptr, ClintProgram *parent = nullptr);
   ~ClintScop();
 
   // Accessors
@@ -71,6 +71,10 @@ public:
     return m_generatedCode;
   }
 
+  const char *originalCode() {
+    return m_originalCode;
+  }
+
   const char *currentScript() {
     return m_currentScript;
   }
@@ -95,6 +99,7 @@ private:
   Transformer *m_transformer;
   Transformer *m_scriptGenerator;
 
+  char *m_originalCode  = nullptr;
   char *m_generatedCode = nullptr;
   char *m_currentScript = nullptr;
   std::stringstream m_scriptStream;

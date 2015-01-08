@@ -23,6 +23,8 @@ public slots:
   void fileSaveSvg();
   void openFileByName(QString fileName);
 
+  void viewFreezeToggled(bool value);
+
   void scopTransformed();
 
 private:
@@ -30,6 +32,9 @@ private:
   QAction *m_actionFileClose;
   QAction *m_actionFileSaveSvg;
   QAction *m_actionFileQuit;
+
+  QAction *m_actionViewFreeze;
+
   QMenuBar *m_menuBar;
 
   bool m_fileOpen = false;

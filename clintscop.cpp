@@ -28,7 +28,7 @@ void ClintScop::createDependences(osl_scop_p scop) {
   }
 }
 
-ClintScop::ClintScop(osl_scop_p scop, ClintProgram *parent) :
+ClintScop::ClintScop(osl_scop_p scop, char *originalCode, ClintProgram *parent) :
   QObject(parent), m_scopPart(scop), m_program(parent) {
   oslListForeach(scop->statement, [this](osl_statement_p stmt) {
     ClintStmt *vizStmt = new ClintStmt(stmt, this);
@@ -51,6 +51,12 @@ ClintScop::ClintScop(osl_scop_p scop, ClintProgram *parent) :
   m_generatedCode = oslToCCode(m_scopPart);
   m_currentScript = (char *) malloc(sizeof(char));
   m_currentScript[0] = '\0';
+
+  if (originalCode == nullptr) {
+    m_originalCode = strdup(m_generatedCode);
+  } else {
+    m_originalCode = strdup(originalCode);
+  }
 }
 
 ClintScop::~ClintScop() {
@@ -59,6 +65,7 @@ ClintScop::~ClintScop() {
 
   free(m_generatedCode);
   free(m_currentScript);
+  free(m_originalCode);
 }
 
 void ClintScop::executeTransformationSequence() {
