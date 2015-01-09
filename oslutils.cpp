@@ -237,8 +237,9 @@ char *fileContents(FILE *f) {
   fseek(f, 0, SEEK_END);
   size_t fileSize = ftell(f);
   rewind(f);
-  char *cstr = (char *) malloc(fileSize * sizeof(char));
+  char *cstr = (char *) malloc((fileSize + 1)* sizeof(char));
   fread(cstr, sizeof(char), fileSize, f);
+  cstr[fileSize] = '\0';
   return cstr;
 }
 
