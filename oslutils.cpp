@@ -2,6 +2,7 @@
 #include "macros.h"
 
 #include <osl/osl.h>
+#include <osl/extensions/extbody.h>
 
 #include <clay/beta.h>
 
@@ -269,6 +270,117 @@ char *oslToCCode(osl_scop_p scop) {
   cloog_state_free(state);
 
   return str;
+}
+
+#include <QString>
+#include <QChar>
+char *escapeHtml(char *str) {
+  QString s = QString(str);
+  s.replace("<", "&lt;");
+  s.replace(">", "&gt;");
+  int position = 0;
+  while (true) {
+    position = s.indexOf(QChar('\n'), position);
+    if (position == -1)
+      break;
+    position++;
+    if (position >= s.length())
+      break;
+    int spaces = 0;
+    for (; s[position + spaces].isSpace(); spaces++)
+      ;
+    for (int i = 0; i < spaces; i++) {
+      s.insert(position, "&nbsp;");
+    }
+    s.remove(position + spaces * 6, spaces);
+    position += spaces * 6;
+  }
+  return strdup(s.toStdString().c_str());
+}
+
+// TODO: this function assumes that one beta may have multiple positions in the code,
+// but one statement cannot have multiple betas (which is false in case of iss)
+// We cannot solve this without support from CLooG since we cannot generate different
+// statement contents for different betas of the same statement.
+//
+// Actually, we can!  All betas in the inputScop may be reified to a statement.
+// On the other hand, we do not know how this may affect the output code.  Having CLooG
+// generate information about statement position in the code is a better solution.
+std::multimap<std::vector<int>, std::pair<int, int>> stmtPositionsInHelper(osl_scop_p inputScop, bool isHtml) {
+  std::multimap<std::vector<int>, std::pair<int, int>> positions;
+
+  osl_scop_p scop = osl_scop_clone(inputScop);
+
+  int counter = 0;
+  char buffer[40];
+  oslListForeach(scop->statement, [&counter,&buffer](osl_statement_p stmt) {
+    snprintf(buffer, sizeof(buffer), "__clintstmt__%05d", counter++);
+    osl_extbody_p extbody = (osl_extbody_p) osl_generic_lookup(stmt->extension, OSL_URI_EXTBODY);
+    if (extbody) {
+      osl_body_p body = extbody->body;
+      osl_strings_free(body->expression);
+      body->expression = osl_strings_encapsulate(strdup(buffer));
+    }
+    osl_body_p body = (osl_body_p) osl_generic_lookup(stmt->extension, OSL_URI_BODY);
+    if (body) {
+      osl_strings_free(body->expression);
+      body->expression = osl_strings_encapsulate(strdup(buffer));
+    }
+  });
+
+
+  char *generatedCode, *originalCode;
+  if (isHtml) {
+    char *generatedRawCode = oslToCCode(scop);
+    char *originalRawCode = oslToCCode(inputScop);
+    generatedCode = escapeHtml(generatedRawCode);
+    originalCode = escapeHtml(originalRawCode);
+    free(generatedRawCode);
+    free(originalRawCode);
+  } else {
+    generatedCode = oslToCCode(scop);
+    originalCode = oslToCCode(inputScop);
+  }
+
+  char *current = generatedCode;
+  char intBuffer[6];
+  intBuffer[5] = '\0';
+  int lengthDifference = 0;
+  while (true) {
+    char *found = strstr(current, "__clintstmt__");
+    if (!found)
+      break;
+    strncpy(intBuffer, found + strlen("__clintstmt__"), 5);
+    int stmtIdx = atoi(intBuffer);
+    osl_statement_p stmt = oslListAt(scop->statement, stmtIdx);
+    if (!stmt)
+      break;
+    std::vector<int> beta = betaExtract(stmt->scattering); // FIXME: multiple scatterings possible
+    long generatedStmtStartPos = (found - generatedCode);
+    long originalStmtStartPos = generatedStmtStartPos + lengthDifference;
+    char *end = strstr(originalCode + originalStmtStartPos, ";");
+
+    if (end == nullptr)
+      break;
+    long generatedStmtEndPos = generatedStmtStartPos + strlen("__clintstmt__00000");
+    long originalStmtEndPos = (end - originalCode) + 1; // Take ';' into account as well
+    lengthDifference += (originalStmtEndPos - originalStmtStartPos) - (generatedStmtEndPos - generatedStmtStartPos);
+    positions.emplace(beta, std::make_pair(originalStmtStartPos, originalStmtEndPos));
+    current = found + (generatedStmtEndPos - generatedStmtEndPos) + 1;
+  }
+
+  free(generatedCode);
+  free(originalCode);
+
+  return std::move(positions);
+}
+
+std::multimap<std::vector<int>, std::pair<int, int>> stmtPositionsInHtml(osl_scop_p inputScop) {
+  return stmtPositionsInHelper(inputScop, true);
+}
+
+std::multimap<std::vector<int>, std::pair<int, int>> stmtPositionsInCode(osl_scop_p inputScop) {
+  return stmtPositionsInHelper(inputScop, false);
 }
 
 template <typename T>

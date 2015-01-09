@@ -202,13 +202,11 @@ void ClintWindow::openFileByName(QString fileName) {
   char *originalCode = nullptr;
   if (fileName.endsWith(".scop")) {
     scop = osl_scop_read(file);
-    codeEditor->setText(QString(oslToCCode(scop)));
   } else if (fileName.endsWith(".c") ||
              fileName.endsWith(".cpp") ||
              fileName.endsWith(".cxx")) {
     scop = oslFromCCode(file);
     originalCode = fileContents(file);
-    codeEditor->setText(QString(originalCode));
   } else {
     CLINT_UNREACHABLE;
   }
@@ -225,6 +223,8 @@ void ClintWindow::openFileByName(QString fileName) {
   connect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
   m_projection = new VizProjection(0, 1, this);
   m_projection->projectScop(vscop);
+
+  codeEditor->setHtml(vscop->originalHtml());
 
   resetCentralWidget(m_projection->widget());
 
@@ -270,6 +270,22 @@ void ClintWindow::viewFreezeToggled(bool value) {
   scopTransformed();
 }
 
+void ClintWindow::updateCodeEditor() {
+  if (!m_program)
+    return;
+  ClintScop *vscop = (*m_program)[0];
+  if (!vscop)
+    return;
+
+  if (!m_showOriginalCode) {
+//    codeEditor->setText(QString(vscop->generatedCode()));
+    codeEditor->setHtml(QString(vscop->generatedHtml()));
+  } else {
+//    codeEditor->setText(QString(vscop->originalCode()));
+    codeEditor->setHtml(QString(vscop->originalHtml()));
+  }
+}
+
 void ClintWindow::scopTransformed() {
   if (!m_program)
     return;
@@ -277,10 +293,7 @@ void ClintWindow::scopTransformed() {
   if (!vscop)
     return;
 
-  if (!m_showOriginalCode)
-    codeEditor->setText(QString(vscop->generatedCode()));
-  else
-    codeEditor->setText(QString(vscop->originalCode()));
+  updateCodeEditor();
   scriptEditor->setText(QString(vscop->currentScript()));
 
   if (vscop->hasRedo())

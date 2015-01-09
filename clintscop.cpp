@@ -11,6 +11,10 @@
 #include <map>
 #include <sstream>
 
+#include <QColor>
+#include <QString>
+#include "vizproperties.h"
+
 void ClintScop::createDependences(osl_scop_p scop) {
   DependenceMap dependenceMap = oslDependenceMap(scop);
   for (auto element : dependenceMap) {
@@ -47,6 +51,7 @@ ClintScop::ClintScop(osl_scop_p scop, char *originalCode, ClintProgram *parent) 
 
   m_transformer = new ClayTransformer;
   m_scriptGenerator = new ClayScriptGenerator(m_scriptStream);
+  m_betaMapper = new ClayBetaMapper(this);
 
   m_generatedCode = oslToCCode(m_scopPart);
   m_currentScript = (char *) malloc(sizeof(char));
@@ -54,18 +59,86 @@ ClintScop::ClintScop(osl_scop_p scop, char *originalCode, ClintProgram *parent) 
 
   if (originalCode == nullptr) {
     m_originalCode = strdup(m_generatedCode);
+    updateGeneratedHtml(m_scopPart, m_originalHtml);
   } else {
     m_originalCode = strdup(originalCode);
+    m_originalHtml = std::string(originalCode);
   }
 }
 
 ClintScop::~ClintScop() {
   delete m_transformer;
   delete m_scriptGenerator;
+  delete m_betaMapper;
 
   free(m_generatedCode);
   free(m_currentScript);
   free(m_originalCode);
+}
+
+inline std::string rgbColorText(QColor clr) {
+  char buffer[16];
+  snprintf(buffer, 16, "%d,%d,%d", clr.red(), clr.green(), clr.blue());
+  return std::string(buffer);
+}
+
+void ClintScop::updateGeneratedHtml(osl_scop_p transformedScop, std::string &string) {
+  std::map<std::pair<int, int>, std::vector<int>> betasAtPos;
+
+  std::multimap<std::vector<int>, std::pair<int, int>> positions = stmtPositionsInHtml(transformedScop);
+  m_betaMapper->apply(m_scopPart, m_transformationSeq);
+  for (auto it : positions) {
+    int result;
+    std::vector<int> reverseBeta;
+    std::tie(reverseBeta, result) = m_betaMapper->reverseMap(it.first);
+    if (result == ClayBetaMapper::SUCCESS) {
+      betasAtPos.emplace(it.second, reverseBeta);
+    } else {
+      qDebug() << "no reverse for" << QVector<int>::fromStdVector(it.first) << result;
+    }
+  }
+
+  if (m_generatedCode != nullptr)
+    free(m_generatedCode);
+  m_generatedCode = oslToCCode(transformedScop);
+  if (m_currentScript != nullptr)
+    free(m_currentScript);
+  m_scriptGenerator->apply(m_scopPart, m_transformationSeq);
+  m_currentScript = strdup(m_scriptStream.str().c_str());
+  m_scriptStream.str(std::string());
+  m_scriptStream.clear();
+
+  char *generatedCode = escapeHtml(m_generatedCode);
+  char *currentPtr = generatedCode;
+  VizProperties *props = new VizProperties;  // FIXME: this does not belong to here, access it elsewhere
+  std::stringstream html;
+  for (auto it : betasAtPos) {
+    if (it.first.first < (currentPtr - generatedCode)||
+        it.first.first > it.first.second) {
+      qDebug() << "Code positions are wrong";
+      break;
+    }
+    html << std::string(currentPtr, it.first.first - (currentPtr - generatedCode));
+    currentPtr = generatedCode + it.first.first;
+    html << "<span style=\"color: rgb(" << rgbColorText(props->color(it.second)) << ");\">";
+    html << std::string(currentPtr, (it.first.second - it.first.first));
+    currentPtr = generatedCode + it.first.second;
+    html << "</span>";
+  }
+  html << std::string(currentPtr);
+  string.clear();
+  string = html.str();
+
+  size_t index = 0;
+  while (true) {
+    index = string.find("\n", index);
+    if (index == string.npos)
+      break;
+    string.replace(index, 1, "\n<br/>");
+    index += 6;
+  }
+
+  delete props;
 }
 
 void ClintScop::executeTransformationSequence() {
@@ -87,15 +160,7 @@ void ClintScop::executeTransformationSequence() {
     });
   });
 
-  if (m_generatedCode != nullptr)
-    free(m_generatedCode);
-  m_generatedCode = oslToCCode(transformedScop);
-  if (m_currentScript != nullptr)
-    free(m_currentScript);
-  m_scriptGenerator->apply(m_scopPart, m_transformationSeq);
-  m_currentScript = strdup(m_scriptStream.str().c_str());
-  m_scriptStream.str(std::string());
-  m_scriptStream.clear();
+  updateGeneratedHtml(transformedScop, m_generatedHtml);
 
   emit transformExecuted();
 }

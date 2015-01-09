@@ -30,6 +30,8 @@ public slots:
 
   void scopTransformed();
 
+  void updateCodeEditor();
+
 private:
   QAction *m_actionFileOpen;
   QAction *m_actionFileClose;

@@ -79,6 +79,14 @@ public:
     return m_currentScript;
   }
 
+  const char *generatedHtml() const {
+    return m_generatedHtml.c_str();
+  }
+
+  const char *originalHtml() const {
+    return m_originalHtml.c_str();
+  }
+
   bool hasUndo() const {
     return m_transformationSeq.groups.size() > 0;
   }
@@ -96,6 +104,7 @@ public slots:
   void clearRedo();
 
 private:
+  void updateGeneratedHtml(osl_scop_p transformedScop, std::string &string);
 
   osl_scop_p m_scopPart;
   ClintProgram *m_program;
@@ -110,11 +119,13 @@ private:
   TransformationSequence m_undoneTransformationSeq;
   Transformer *m_transformer;
   Transformer *m_scriptGenerator;
+  ClayBetaMapper *m_betaMapper;
 
   char *m_originalCode  = nullptr;
   char *m_generatedCode = nullptr;
   char *m_currentScript = nullptr;
   std::stringstream m_scriptStream;
+  std::string m_originalHtml, m_generatedHtml;
 };
 
 #endif // CLINTSCOP_H

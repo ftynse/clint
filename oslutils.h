@@ -207,6 +207,10 @@ osl_scop_p oslFromCCode(char *code);
 char *oslToCCode(osl_scop_p scop);
 char *fileContents(FILE *file);
 
+char *escapeHtml(char *);
+std::multimap<std::vector<int>, std::pair<int, int>> stmtPositionsInCode(osl_scop_p scop);
+std::multimap<std::vector<int>, std::pair<int, int>> stmtPositionsInHtml(osl_scop_p scop);
+
 osl_dependence_p oslScopDependence(osl_scop_p scop);
 
 #endif // OSLUTILS_H
