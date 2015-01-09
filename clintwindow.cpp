@@ -10,8 +10,8 @@
 void ClintWindow::resetCentralWidget(QWidget *interface) {
   if (centralWidget() != nullptr) {
     QWidget *oldWidget = centralWidget();
-    scriptEditor->setParent(nullptr);
-    codeEditor->setParent(nullptr);
+    m_scriptEditor->setParent(nullptr);
+    m_codeEditor->setParent(nullptr);
     delete oldWidget;
   }
 
@@ -24,8 +24,8 @@ void ClintWindow::resetCentralWidget(QWidget *interface) {
   QGridLayout *topLayout = new QGridLayout;
   topLayout->addWidget(interface, 0, 0, 2, 1 /*,Qt::AlignCenter | Qt::AlignVCenter*/);
   topLayout->addWidget(TODOupdater, 0, 1, 2, 1 /*,Qt::AlignVCenter*/);
-  topLayout->addWidget(scriptEditor, 0, 2, 1, 1 /*,Qt::AlignCenter | Qt::AlignTop*/);
-  topLayout->addWidget(codeEditor, 1, 2, 1, 1  /*,Qt::AlignCenter| Qt::AlignBottom*/);
+  topLayout->addWidget(m_scriptEditor, 0, 2, 1, 1 /*,Qt::AlignCenter | Qt::AlignTop*/);
+  topLayout->addWidget(m_codeEditor, 1, 2, 1, 1  /*,Qt::AlignCenter| Qt::AlignBottom*/);
 
   topLayout->setColumnStretch(0, 3);
   topLayout->setColumnStretch(2, 1);
@@ -61,10 +61,10 @@ ClintWindow::ClintWindow(QWidget *parent) :
   }
 
   QFont monospacefont("PT Mono");
-  scriptEditor = new QTextEdit;
-  codeEditor = new QTextEdit;
-  codeEditor->setFont(monospacefont);
-  scriptEditor->setFont(monospacefont);
+  m_scriptEditor = new QTextEdit;
+  m_codeEditor = new QTextEdit;
+  m_codeEditor->setFont(monospacefont);
+  m_scriptEditor->setFont(monospacefont);
 
   setWindowTitle("Clint: Chunky Loop INTerface");
   setupActions();
@@ -224,7 +224,8 @@ void ClintWindow::openFileByName(QString fileName) {
   m_projection = new VizProjection(0, 1, this);
   m_projection->projectScop(vscop);
 
-  codeEditor->setHtml(vscop->originalHtml());
+  m_codeEditor->setHtml(vscop->originalHtml());
+  m_scriptEditor->setHtml(QString());
 
   resetCentralWidget(m_projection->widget());
 
@@ -279,10 +280,10 @@ void ClintWindow::updateCodeEditor() {
 
   if (!m_showOriginalCode) {
 //    codeEditor->setText(QString(vscop->generatedCode()));
-    codeEditor->setHtml(QString(vscop->generatedHtml()));
+    m_codeEditor->setHtml(QString(vscop->generatedHtml()));
   } else {
 //    codeEditor->setText(QString(vscop->originalCode()));
-    codeEditor->setHtml(QString(vscop->originalHtml()));
+    m_codeEditor->setHtml(QString(vscop->originalHtml()));
   }
 }
 
@@ -294,7 +295,7 @@ void ClintWindow::scopTransformed() {
     return;
 
   updateCodeEditor();
-  scriptEditor->setText(QString(vscop->currentScript()));
+  m_scriptEditor->setText(QString(vscop->currentScript()));
 
   if (vscop->hasRedo())
     vscop->clearRedo();

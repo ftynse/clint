@@ -49,8 +49,8 @@ private:
 
   ClintProgram *m_program = nullptr;
   VizProjection *m_projection = nullptr;
-  QTextEdit *codeEditor = nullptr;
-  QTextEdit *scriptEditor = nullptr;
+  QTextEdit *m_codeEditor = nullptr;
+  QTextEdit *m_scriptEditor = nullptr;
 
   bool m_showOriginalCode = false;
 
