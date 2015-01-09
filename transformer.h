@@ -18,7 +18,7 @@ class ClintStmtOccurrence;
 
 class Transformer {
 public:
-  void apply(osl_scop_p scop, const TransformationSequence &sequence) {
+  virtual void apply(osl_scop_p scop, const TransformationSequence &sequence) {
     for (TransformationGroup group : sequence.groups) {
       apply(scop, group);
     }
@@ -90,6 +90,7 @@ public:
 
   void apply(osl_scop_p scop, const Transformation &transformation) override;
   void apply(osl_scop_p scop, const TransformationGroup &group) override;
+  void apply(osl_scop_p scop, const TransformationSequence &sequence) override;
   std::vector<int> transformedBeta(const std::vector<int> &beta, const Transformation &transformation) override { return std::vector<int>(); }
   std::vector<int> originalBeta(const std::vector<int> &beta, const Transformation &transformation) override { return std::vector<int>(); }
 
@@ -124,7 +125,27 @@ public:
     return std::make_pair(betaIter->second, SUCCESS);
   }
 
+  template <typename T>
+  void iterativeApply(osl_scop_p scop, const std::vector<T> &list) {
+    bool first = true;
+    decltype(m_originalBeta) originalBetaInit = m_originalBeta;
+    decltype(m_originalOccurrences) originalOccurrencesInit = m_originalOccurrences;
+    for (const T &t : list) {
+      if (first) {
+        first = false;
+      } else {
+        m_originalBeta = m_updatedBeta;
+        m_originalOccurrences = m_updatedOccurrences;
+        m_updatedBeta.clear();
+        m_updatedOccurrences.clear();
+      }
+      apply(scop, t);
+    }
+    m_originalBeta = originalBetaInit;
+    m_originalOccurrences = originalOccurrencesInit;
+  }
 
+  void resetOriginals(ClintScop *scop);
 private:
   ClintScop *m_cscop;
   std::unordered_map<ClintStmtOccurrence *, std::vector<int>> m_originalBeta, m_updatedBeta;

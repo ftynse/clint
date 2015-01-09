@@ -59,6 +59,8 @@ ClayBetaMapper::ClayBetaMapper(ClintScop *scop) {
       m_originalOccurrences[beta] = occurrence;
     }
   }
+  m_updatedBeta = m_originalBeta;
+  m_updatedOccurrences = m_originalOccurrences;
 }
 
 inline bool isPrefix(const std::vector<int> &prefix, const std::vector<int> &beta, size_t length = -1ull) {
@@ -77,8 +79,6 @@ inline bool isPrefix(const std::vector<int> &prefix, const std::vector<int> &bet
   }
   return result;
 }
-
-#include <QtDebug>
 
 void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation) {
 //  oslListForeach(scop->statement, [this](osl_statement_p stmt) {
@@ -163,6 +163,7 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
   case Transformation::Kind::Shift:
   case Transformation::Kind::Skew:
     // Do not affect beta
+    m_updatedBeta = m_originalBeta;
     break;
   }
 
@@ -173,24 +174,11 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
 }
 
 void ClayBetaMapper::apply(osl_scop_p scop, const TransformationGroup &group) {
-  bool first = true;
-  decltype(m_originalBeta) originalBetaInit;
-  decltype(m_originalOccurrences) originalOccurrencesInit;
-  for (const Transformation &t : group.transformations) {
-    if (first) {
-      first = false;
-      originalBetaInit = m_originalBeta;
-      originalOccurrencesInit = m_originalOccurrences;
-    } else {
-      m_originalBeta = m_updatedBeta;
-      m_originalOccurrences = m_updatedOccurrences;
-      m_updatedBeta.clear();
-      m_originalBeta.clear();
-    }
-    apply(scop, t);
-  }
-  m_originalBeta = originalBetaInit;
-  m_originalOccurrences = originalOccurrencesInit;
+  iterativeApply(scop, group.transformations);
+}
+
+void ClayBetaMapper::apply(osl_scop_p scop, const TransformationSequence &sequence) {
+  iterativeApply(scop, sequence.groups);
 }
 
 std::vector<int> ClayTransformer::transformedBeta(const std::vector<int> &beta, const Transformation &transformation) {
