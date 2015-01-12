@@ -15,6 +15,7 @@ class ClintWindow : public QMainWindow {
 public:
   explicit ClintWindow(QWidget *parent = 0);
 
+    ClintScop * regenerateScop(ClintScop *vscop);
 signals:
 
 public slots:

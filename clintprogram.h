@@ -30,9 +30,9 @@ public:
     return m_enumerator;
   }
 
-  ClintScop *operator [](int idx) {
+  ClintScop *&operator [](int idx) {
     CLINT_ASSERT(idx < m_scops.size(), "Indexed access out of bounds");
-    return m_scops.at(idx);
+    return m_scops[idx];
   }
 
 signals:

@@ -236,8 +236,26 @@ void ClintWindow::openFileByName(QString fileName) {
     free(originalCode);
 }
 
+ClintScop *ClintWindow::regenerateScop(ClintScop *vscop) {
+  osl_scop_p scop = vscop->appliedScop();
+  ClintScop *newscop = new ClintScop(scop, nullptr, m_program);
+  m_projection->projectScop(newscop);
+  for (TransformationGroup g : vscop->transformationSequence().groups) {
+    newscop->transform(g);
+  }
+  newscop->resetRedoSequence(vscop->redoSequence());
+  newscop->setScopSilent(vscop->scopPart());
+  (*m_program)[0] = newscop;
+  disconnect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
+  connect(newscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
+
+  updateCodeEditor();
+  m_scriptEditor->setText(newscop->currentScript());
+
+  return newscop;
+}
+
 void ClintWindow::editUndo() {
-  return;
 
   if (!m_program)
     return;
@@ -247,12 +265,14 @@ void ClintWindow::editUndo() {
   CLINT_ASSERT(vscop->hasUndo(), "No undo possible, but the button is enabled");
   vscop->undoTransformation();
 
-  m_actionEditUndo->setEnabled(vscop->hasUndo());
+  ClintScop *newscop = regenerateScop(vscop);
+  delete vscop;
+
+  m_actionEditUndo->setEnabled(newscop->hasUndo());
   m_actionEditRedo->setEnabled(true);
 }
 
 void ClintWindow::editRedo() {
-  return;
 
   if (!m_program)
     return;
@@ -262,7 +282,10 @@ void ClintWindow::editRedo() {
   CLINT_ASSERT(vscop->hasRedo(), "No redo possible, but the button is enabled");
   vscop->redoTransformation();
 
-  m_actionEditRedo->setEnabled(vscop->hasRedo());
+  ClintScop *newscop = regenerateScop(vscop);
+  delete vscop;
+
+  m_actionEditRedo->setEnabled(newscop->hasRedo());
   m_actionEditUndo->setEnabled(true);
 }
 

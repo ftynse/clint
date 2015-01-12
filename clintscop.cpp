@@ -76,6 +76,12 @@ ClintScop::~ClintScop() {
   free(m_originalCode);
 }
 
+osl_scop_p ClintScop::appliedScop() {
+  osl_scop_p scop = osl_scop_clone(m_scopPart);
+  m_transformer->apply(scop, m_transformationSeq);
+  return scop;
+}
+
 inline std::string rgbColorText(QColor clr) {
   char buffer[16];
   snprintf(buffer, 16, "%d,%d,%d", clr.red(), clr.green(), clr.blue());
@@ -246,7 +252,7 @@ void ClintScop::undoTransformation() {
     return;
   m_undoneTransformationSeq.groups.push_back(m_transformationSeq.groups.back());
   m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1);
-  executeTransformationSequence();
+//  executeTransformationSequence();
 }
 
 void ClintScop::redoTransformation() {
@@ -254,7 +260,7 @@ void ClintScop::redoTransformation() {
     return;
   m_transformationSeq.groups.push_back(m_undoneTransformationSeq.groups.back());
   m_undoneTransformationSeq.groups.erase(std::end(m_undoneTransformationSeq.groups) - 1);
-  executeTransformationSequence();
+//  executeTransformationSequence();
 }
 
 void ClintScop::clearRedo() {

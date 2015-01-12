@@ -245,6 +245,14 @@ void VizProjection::appendCoordinateSystem(int dimensionality) {
 }
 
 void VizProjection::projectScop(ClintScop *vscop) {
+  m_selectionManager->clearSelection();
+  for (int i = 0; i < m_coordinateSystems.size(); i++) {
+    for (int j = 0; j < m_coordinateSystems[i].size(); j++) {
+      delete m_coordinateSystems[i][j];
+    }
+  }
+  m_coordinateSystems.clear();
+
   // With beta-vectors for statements, we cannot have a match that is not equality,
   // i.e. we cannot have simultaneously [1] and [1,3] as beta-vectors for statements.
   // Therefore when operating with statements, any change in beta-vector equality

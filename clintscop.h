@@ -67,6 +67,31 @@ public:
 
   void updateBetas(std::map<std::vector<int>, std::vector<int> > &mapping);
 
+  osl_scop_p appliedScop();
+  void setScopSilent(osl_scop_p scop) {
+    updateGeneratedHtml(m_scopPart, m_generatedHtml);
+    m_scopPart = scop;
+    m_scriptGenerator->apply(scop, m_transformationSeq);
+    if (m_currentScript)
+      free(m_currentScript);
+    m_currentScript = strdup(m_scriptStream.str().c_str());
+    m_scriptStream.str(std::string());
+    m_scriptStream.clear();
+    updateGeneratedHtml(m_scopPart, m_originalHtml);
+  }
+  osl_scop_p scopPart() const {
+    return m_scopPart;
+  }
+  const TransformationSequence &transformationSequence() const {
+    return m_transformationSeq;
+  }
+  const TransformationSequence &redoSequence() const {
+    return m_undoneTransformationSeq;
+  }
+  void resetRedoSequence(const TransformationSequence &seq) {
+    m_undoneTransformationSeq = seq;
+  }
+
   const char *generatedCode() {
     return m_generatedCode;
   }
