@@ -198,7 +198,8 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
       std::vector<int> updatedBeta(transformation.target());
       updatedBeta.push_back(numberStmt + i);
 
-      m_updatedBeta[nullptr] = updatedBeta; // FIXME: find the stmt occurrence here!
+      // XXX: wtf method to keep track of occurrences created by iss
+      m_updatedBeta[(ClintStmtOccurrence *) m_lastOccurrenceFakePtr++] = updatedBeta;
     }
   }
     break;

@@ -114,6 +114,8 @@ public:
     resetPointPositions();
   }
 
+  void setOccurrenceSilent(ClintStmtOccurrence *occurrence);
+
 signals:
 
 public slots:

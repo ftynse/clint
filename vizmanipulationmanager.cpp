@@ -614,6 +614,10 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
 
     oldPolyhedron->scop()->transform(group);
     oldPolyhedron->scop()->executeTransformationSequence();
+
+    betaLoop.push_back(1); // FIXME: works only if one polygon in CS
+    ClintStmtOccurrence *occurrence = oldPolyhedron->scop()->occurrence(betaLoop);
+    polyhedron->setOccurrenceSilent(occurrence);
   }
     break;
 

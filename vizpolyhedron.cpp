@@ -18,7 +18,7 @@ VizPolyhedron::VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSyste
   setFlag(QGraphicsItem::ItemIsMovable);
   setFlag(QGraphicsItem::ItemSendsGeometryChanges);
 
-  connect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
+  setOccurrenceSilent(occurrence);
 }
 
 void VizPolyhedron::setPointVisiblePos(VizPoint *vp, int x, int y) {
@@ -535,4 +535,15 @@ void VizPolyhedron::recomputeMinMax() {
   m_localHorizontalMax = horizontalMax;
   m_localVerticalMin = verticalMin;
   m_localVerticalMax = verticalMax;
+}
+
+void VizPolyhedron::setOccurrenceSilent(ClintStmtOccurrence *occurrence) {
+  if (m_occurrence) {
+    disconnect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
+  }
+  m_occurrence = occurrence;
+  if (occurrence) {
+    m_backgroundColor = m_coordinateSystem->projection()->vizProperties()->color(occurrence->betaVector());
+    connect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
+  }
 }

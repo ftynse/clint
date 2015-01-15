@@ -150,6 +150,8 @@ private:
   ClintScop *m_cscop;
   std::unordered_map<ClintStmtOccurrence *, std::vector<int>> m_originalBeta, m_updatedBeta;
   std::map<std::vector<int>, ClintStmtOccurrence *> m_originalOccurrences, m_updatedOccurrences;
+
+  int m_lastOccurrenceFakePtr = 1;
 };
 
 class ClayScriptGenerator : public Transformer {
