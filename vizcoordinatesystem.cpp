@@ -172,6 +172,19 @@ void VizCoordinateSystem::reparentPolyhedron(VizPolyhedron *polyhedron) {
   polyhedron->reparent(this);
 }
 
+void VizCoordinateSystem::insertPolyhedronAfter(VizPolyhedron *inserted, VizPolyhedron *after) {
+  auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), after);
+  if (it == std::end(m_polyhedra))
+    m_polyhedra.push_back(inserted);
+  else
+    m_polyhedra.insert(++it, inserted);
+  if (inserted->occurrence())
+    addAxisLabels(inserted->occurrence());
+  inserted->reparent(this);
+
+  updatePolyhedraPositions();
+}
+
 void VizCoordinateSystem::polyhedronUpdated(VizPolyhedron *polyhedron) {
   const double pointDistance = m_projection->vizProperties()->pointDistance();
   auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);

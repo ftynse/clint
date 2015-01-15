@@ -9,6 +9,9 @@
 #include <QtGui>
 #include <QtWidgets>
 
+#include <set>
+#include <map>
+
 VizManipulationManager::VizManipulationManager(QObject *parent) :
   QObject(parent) {
 }
@@ -505,3 +508,136 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
   }
 }
 
+void VizManipulationManager::pointAboutToMove(VizPoint *point) {
+  VizSelectionManager *selectionManager =
+      point->coordinateSystem()->projection()->selectionManager();
+  const std::unordered_set<VizPoint *> selectedPoints =
+      selectionManager->selectedPoints();
+
+  m_pointDetachState = PT_NODETACH;
+  if (selectedPoints.size() == 0)
+    return;
+
+  std::map<int, std::set<int>> horizontal, vertical;
+  bool samePolyhedron = true;
+  for (VizPoint *pt : selectedPoints) {
+    int horzCoordinate, vertCoordinate;
+    std::tie(horzCoordinate, vertCoordinate) = pt->scatteredCoordinates();
+    horizontal[horzCoordinate].emplace(vertCoordinate);
+    vertical[vertCoordinate].emplace(horzCoordinate);
+    samePolyhedron = samePolyhedron && (pt->polyhedron() == point->polyhedron());
+  }
+
+  if (!samePolyhedron)
+    return;
+
+  int horizontalSize = point->polyhedron()->localHorizontalMax() -
+      point->polyhedron()->localHorizontalMin();
+  int verticalSize = point->polyhedron()->localVerticalMax() -
+      point->polyhedron()->localVerticalMin();
+
+  // Condition 1: adjacent to one of borders and consecutive (w/o localdim)
+  // std::map is ordered by key
+  // Condition 2: all points in line selected (w/o localdim; fails for triangles)
+  int horizontalStart = (horizontal.begin())->first;
+  int horizontalEnd   = (horizontal.rbegin())->first;
+  int verticalStart   = (vertical.begin())->first;
+  int verticalEnd     = (vertical.rbegin())->first;
+  if (horizontalStart == point->polyhedron()->localHorizontalMin() && // Attached to the horizontal beginning
+      horizontalEnd - horizontalStart == horizontal.size() - 1) {     // All consecutive lines selected
+    bool all = std::all_of(std::begin(horizontal), std::end(horizontal), [verticalSize,point](const std::pair<int, std::set<int>> &pair) {
+      const std::set<int> &s = pair.second;
+      return s.size() == verticalSize + 1 &&
+          *(s.begin()) == point->polyhedron()->localVerticalMin() &&
+          *(s.rbegin()) == point->polyhedron()->localVerticalMax();
+    });
+    if (all) {
+      // Vertical (inner) iss
+      m_pointDetachState = PT_DETACH_VERTICAL;
+      m_pointDetachValue = point->polyhedron()->localVerticalMin() + (horizontalEnd - horizontalStart + 1);
+      m_pointDetachParametric = false;
+    }
+  } else if (horizontalEnd == point->polyhedron()->localHorizontalMax()) {
+
+  } else if (verticalStart == point->polyhedron()->localVerticalMin()) {
+
+  } else if (verticalEnd == point->polyhedron()->localHorizontalMax()) {
+
+  } else {
+    m_pointDetachState = PT_NODETACH;
+    return; // no transformation;
+    // TODO: if everything selected -> select the polyhedron; do not allow ISSing all points
+  }
+
+}
+
+void VizManipulationManager::pointHasMoved(VizPoint *point) {
+  switch (m_pointDetachState) {
+  case PT_NODETACH:
+  case PT_DETACH_VERTICAL:
+  case PT_DETACH_HORIZONTAL:
+  {
+    std::set<VizPolyhedron *> polyhedra;
+    for (VizPoint *vp : point->coordinateSystem()->projection()->selectionManager()->selectedPoints())
+      polyhedra.insert(vp->polyhedron());
+    for (VizPolyhedron *polyhedron : polyhedra)
+      polyhedron->resetPointPositions();
+    return;
+  }
+    break;
+  case PT_DETACHED_HORIZONTAL:
+    qDebug() << "detached";
+    break;
+  case PT_DETACHED_VERTICAL:
+    qDebug() << "detached";
+  {
+    // FIXME: 2d only
+    VizPolyhedron *polyhedron = new VizPolyhedron(nullptr, point->coordinateSystem());
+    VizSelectionManager *sm = point->coordinateSystem()->projection()->selectionManager();
+    const std::unordered_set<VizPoint *> selectedPoints = sm->selectedPoints();
+    CLINT_ASSERT(std::find(std::begin(selectedPoints), std::end(selectedPoints), point) != std::end(selectedPoints),
+                 "The point being manipulated is not selected");
+    VizPolyhedron *oldPolyhedron = point->polyhedron();
+    for (VizPoint *vp : selectedPoints) {
+      polyhedron->reparentPoint(vp);
+    }
+    oldPolyhedron->updateShape();
+    polyhedron->setColor(Qt::white);
+    polyhedron->updateShape();
+    point->coordinateSystem()->insertPolyhedronAfter(polyhedron, oldPolyhedron);
+
+    std::vector<int> betaLoop(oldPolyhedron->occurrence()->betaVector());
+    betaLoop.erase(betaLoop.end() - 1);
+    TransformationGroup group;
+    group.transformations.push_back(
+          Transformation::issFirst(betaLoop, oldPolyhedron->coordinateSystem()->horizontalDimensionIdx(), m_pointDetachValue));
+
+    oldPolyhedron->scop()->transform(group);
+    oldPolyhedron->scop()->executeTransformationSequence();
+  }
+    break;
+
+  }
+}
+
+void VizManipulationManager::pointMoving(QPointF position) {
+  switch (m_pointDetachState) {
+  case PT_NODETACH:
+    return;
+    break;
+  case PT_DETACH_HORIZONTAL:
+  case PT_DETACHED_HORIZONTAL:
+    if (fabs(position.y()) >= 4.0) // FIXME: hardcode
+      m_pointDetachState = PT_DETACHED_HORIZONTAL;
+    else
+      m_pointDetachState = PT_DETACH_HORIZONTAL;
+    break;
+  case PT_DETACH_VERTICAL:
+  case PT_DETACHED_VERTICAL:
+    if (fabs(position.x()) >= 4.0)
+      m_pointDetachState = PT_DETACHED_VERTICAL;
+    else
+      m_pointDetachState = PT_DETACH_VERTICAL;
+    break;
+  }
+}

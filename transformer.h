@@ -178,6 +178,17 @@ public:
              << transformation.depth() << ", "
              << "{" << transformation.constantAmount() << "});\n";
       break;
+    case Transformation::Kind::IndexSetSplitting:
+    {
+      m_stream << "iss([";
+      outputVector(m_stream, transformation.target()) << "], {";
+      std::vector<int> iters;
+      for (int i = 0, e = transformation.target().size(); i < e; i++)
+        iters.push_back(transformation.depth() == i ? -1 : 0);
+      outputVector(m_stream, iters) << "||" << transformation.constantAmount() - 1 << "});\n";
+    }
+      break;
+
     default:
       m_stream << "###unkonwn transformation###\n";
     }

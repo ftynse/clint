@@ -22,8 +22,9 @@ ClintStmt::ClintStmt(osl_statement_p stmt, ClintScop *parent) :
   oslListForeach(stmt->scattering, [this](osl_relation_p scattering) {
     std::vector<int> betaVector = betaExtract(scattering);
     if (m_occurrences.count(betaVector) == 0) {
-      ClintStmtOccurrence *vso = new ClintStmtOccurrence(m_statement, betaVector, this);
-      m_occurrences[betaVector] = vso;
+//      ClintStmtOccurrence *vso = new ClintStmtOccurrence(m_statement, betaVector, this);
+//      m_occurrences[betaVector] = vso;
+      makeOccurrence(m_statement, betaVector);
     }
   });
 
@@ -86,4 +87,12 @@ std::vector<ClintStmtOccurrence *> ClintStmt::occurences() const {
   }
   std::sort(std::begin(result), std::end(result), VizStmtOccurrencePtrComparator());
   return std::move(result);
+}
+
+ClintStmtOccurrence *ClintStmt::makeOccurrence(osl_statement_p stmt, const std::vector<int> &beta) {
+  // TODO: if stmt != m_statement, do something!  During transformations, the state we hold for scop becomes no longer consistent
+  // with osl_* structures.  Do we actually need them everywhere but in ClintScop?
+  ClintStmtOccurrence *occurrence = new ClintStmtOccurrence(stmt, beta, this);
+  m_occurrences[beta] = occurrence;
+  return occurrence;
 }

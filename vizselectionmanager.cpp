@@ -61,9 +61,27 @@ void VizSelectionManager::polyhedronSelectionChanged(VizPolyhedron *polyhedron, 
   emit selectionChanged();
 }
 
-// Point selection is not allowed
 void VizSelectionManager::pointSelectionChanged(VizPoint *point, bool selected) {
-  clearSelection(m_selectedPoints);
+//  clearSelection(m_selectedPoints);
+  // Ignore selection changes triggered by the manager itself.
+  if (m_selectionBarrier)
+    return;
+  BarrierRAII ba(&m_selectionBarrier);
+  (void) ba;
+
+  if (!selected) {
+    m_selectedPoints.erase(point);
+    return;
+  }
+
+  bool selectionAllowed = true;
+  if (!m_selectedPolyhedra.empty() || !m_selectedCoordinateSystems.empty()) {
+    selectionAllowed = resolveTypeConflict(m_selectedPoints, point);
+  }
+  if (!selectionAllowed)
+    return;
+  m_selectedPoints.insert(point);
+  emit selectionChanged();
 }
 
 // Coordinate system selection is not allowed

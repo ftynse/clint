@@ -30,6 +30,10 @@ public:
     return m_selectedPolyhedra;
   }
 
+  const std::unordered_set<VizPoint *> &selectedPoints() const {
+    return m_selectedPoints;
+  }
+
 signals:
   void selectionChanged();
 

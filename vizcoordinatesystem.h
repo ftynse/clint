@@ -116,6 +116,8 @@ public:
                                 bool ignoreHorizontal = false, bool ignoreVertical = false);
   void reparentPolyhedron(VizPolyhedron *polyhedron);
   void resetPolyhedronPos(VizPolyhedron *polyhedron);
+
+  void insertPolyhedronAfter(VizPolyhedron *inserted, VizPolyhedron *after);
 signals:
 
 public slots:

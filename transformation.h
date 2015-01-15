@@ -13,7 +13,8 @@ public:
     Skew,
     Fuse,
     Split,
-    Reorder
+    Reorder,
+    IndexSetSplitting
   };
 
   Kind kind() const {
@@ -58,6 +59,16 @@ public:
     t.m_depthInner     = sourceDimension;
     t.m_depthOuter     = targetDimension;
     t.m_constantAmount = factor;
+    return t;
+  }
+
+  static Transformation issFirst(const std::vector<int> &beta, int depth, int value) {
+    CLINT_ASSERT(beta.size() >= 1, "Beta too short");
+    Transformation t;
+    t.m_kind           = Kind::IndexSetSplitting;
+    t.m_targetBeta     = beta;
+    t.m_constantAmount = value;
+    t.m_depthOuter     = depth;
     return t;
   }
 

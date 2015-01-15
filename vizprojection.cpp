@@ -16,6 +16,9 @@ VizProjection::VizProjection(int horizontalDimensionIdx, int verticalDimensionId
   m_scene = new QGraphicsScene;
   m_view = new QGraphicsView(m_scene);
 
+  m_view->setDragMode(QGraphicsView::RubberBandDrag);
+  m_view->setRubberBandSelectionMode(Qt::ContainsItemShape);
+
   m_vizProperties = new VizProperties(this);
   connect(m_vizProperties, &VizProperties::vizPropertyChanged,
           this, &VizProjection::updateProjection);

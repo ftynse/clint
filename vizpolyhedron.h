@@ -57,10 +57,13 @@ public:
     return m_localVerticalMax;
   }
 
+  void recomputeMinMax();
+
   void setProjectedPoints(std::vector<std::vector<int>> &&points,
                           int horizontalMin, int horizontalMax,
                           int verticalMin, int verticalMax);
   void setInternalDependences(const std::vector<std::vector<int>> &dependences);
+  void resetPointPositions();
 
   void reparent(VizCoordinateSystem *vcs) {
     if (vcs == m_coordinateSystem)
@@ -101,6 +104,14 @@ public:
   }
   void setPos(qreal x, qreal y) {
     setPos(QPointF(x, y));
+  }
+
+  void reparentPoint(VizPoint *point);
+
+  void updateShape() {
+    recomputeMinMax();
+    recomputeShape();
+    resetPointPositions();
   }
 
 signals:

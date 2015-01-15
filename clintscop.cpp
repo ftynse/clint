@@ -151,12 +151,33 @@ void ClintScop::executeTransformationSequence() {
   // Since shift transformation does not affect betas, we can use them as statement identifiers
   // TODO(osl): maintain an ID for scattering union part throughout Clay transformations
   // and use them as identifiers, rather than betas
-  oslListForeachSingle(transformedScop->statement, [this,&transformedScop](osl_statement_p stmt) {
-    oslListForeachSingle(stmt->scattering, [this,&stmt](osl_relation_p scattering) {
+
+  // As in whiteboxing, assuming that statement order is not changed.
+  std::map<osl_statement_p, ClintStmt *> statementMapping;
+  int size = oslListSize(m_scopPart->statement);
+  CLINT_ASSERT(size == oslListSize(transformedScop->statement), "Number of statements changed in the transformation");
+  osl_statement_p transformedStmt = transformedScop->statement;
+  osl_statement_p originalStmt = m_scopPart->statement;
+  for (int i = 0; i < size; i++) {
+    ClintStmt *clintStmt = statement(betaExtract(originalStmt->scattering));
+    statementMapping[transformedStmt] = clintStmt;
+    transformedStmt = transformedStmt->next;
+    originalStmt = originalStmt->next;
+  }
+
+
+  oslListForeachSingle(transformedScop->statement, [this,&transformedScop,&statementMapping](osl_statement_p stmt) {
+    oslListForeachSingle(stmt->scattering, [this,&stmt,&statementMapping](osl_relation_p scattering) {
       std::vector<int> beta = betaExtract(scattering);
       ClintStmtOccurrence *occ = occurrence(beta);
-      CLINT_ASSERT(occ != nullptr, "Occurrence corresponding to the beta-vector not found");
-      occ->resetOccurrence(stmt, beta);
+//      CLINT_ASSERT(occ != nullptr, "Occurrence corresponding to the beta-vector not found");
+      if (occ == nullptr) {
+        ClintStmt *clintStmt = statementMapping[stmt];
+        occ = clintStmt->makeOccurrence(stmt, beta);
+        m_vizBetaMap[beta] = clintStmt;
+      } else {
+        occ->resetOccurrence(stmt, beta);
+      }
     });
   });
 
