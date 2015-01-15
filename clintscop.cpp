@@ -41,13 +41,14 @@ void ClintScop::processDependenceMap(const DependenceMap &dependenceMap,
     if (std::find(std::begin(violated), std::end(violated), dep) != std::end(violated)) {
       isViolated = true;
     }
-    qDebug() << QVector<int>::fromStdVector(betas.first) << QVector<int>::fromStdVector(betas.second) << "###";
     ClintStmtOccurrence *source = mappedOccurrence(betas.first);
     ClintStmtOccurrence *target = mappedOccurrence(betas.second);
 
     ClintDependence *clintDep = new ClintDependence(dep, source, target, isViolated, this);
 
-    m_dependenceMap.emplace(betas, clintDep);
+    m_dependenceMap.emplace(std::make_pair(m_betaMapper->map(betas.first).first,
+                                           m_betaMapper->map(betas.second).first),
+                            clintDep);
     if (source == target) {
       m_internalDeps.emplace(source, clintDep);
     }

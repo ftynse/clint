@@ -285,12 +285,22 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
 
   if (nextCsIsDependent) {
     QPointF position(horizontalAxisLength() / 2, -verticalAxisLength());
+    painter->save();
+    if (nextCsIsViolated) {
+      painter->setBrush(Qt::red);
+    }
     painter->drawEllipse(position, 4, 4);
+    painter->restore();
   }
 
   if (nextPileIsDependent) {
     QPointF position(horizontalAxisLength(), -verticalAxisLength() / 2);
+    painter->save();
+    if (nextPileIsViolated) {
+      painter->setBrush(Qt::red);
+    }
     painter->drawEllipse(position, 4, 4);
+    painter->restore();
   }
 }
 
@@ -331,13 +341,25 @@ int VizCoordinateSystem::ticMargin() const {
   return 2 * m_projection->vizProperties()->pointRadius();
 }
 
-bool VizCoordinateSystem::dependentWith(VizCoordinateSystem *vcs) {
+int VizCoordinateSystem::dependentWith(VizCoordinateSystem *vcs) {
+  bool dependent = false;
+  bool violated = false;
   for (VizPolyhedron *vp1 : m_polyhedra) {
     for (VizPolyhedron *vp2 : vcs->m_polyhedra) {
       ClintScop *scop = vp1->scop();
-      if (!scop->dependencesBetween(vp1->occurrence(), vp2->occurrence()).empty())
-        return true;
+      std::unordered_set<ClintDependence *> deps =
+          scop->dependencesBetween(vp1->occurrence(), vp2->occurrence());
+      dependent = dependent || !deps.empty();
+      for (ClintDependence *dep : deps) {
+        violated = violated || dep->isViolated();
+      }
+      if (violated)
+        break;
     }
   }
-  return false;
+  if (violated)
+    return 2;
+  if (dependent)
+    return 1;
+  return 0;
 }

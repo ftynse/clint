@@ -250,21 +250,29 @@ void VizProjection::updateOuterDependences() {
     const std::vector<VizCoordinateSystem *> &pile1 = m_coordinateSystems[pileIdx];
     for (int csIdx = 0, csIdxEnd = pile1.size(); csIdx < csIdxEnd; csIdx++) {
       VizCoordinateSystem *cs1 = pile1[csIdx];
-      cs1->nextCsIsDependent = false;
-      cs1->nextPileIsDependent = false;
+      cs1->nextCsIsDependent = 0;
+      cs1->nextPileIsDependent = 0;
 
       if (csIdx < csIdxEnd - 1) {
         VizCoordinateSystem *cs2 = pile1[csIdx + 1];
-        if (cs1->dependentWith(cs2)) {
+        int r = cs1->dependentWith(cs2);
+        if (r > 0) {
           cs1->nextCsIsDependent = true;
+        }
+        if (r > 1) {
+          cs1->nextCsIsViolated = true;
         }
       }
       if (pileIdx < pileIdxEnd - 1) {
         const std::vector<VizCoordinateSystem *> &pile2 = m_coordinateSystems[pileIdx + 1];
         for (int csoIdx = 0, csoIdxEnd = pile2.size(); csoIdx < csoIdxEnd; csoIdx++) {
           VizCoordinateSystem *cs3 = pile2[csoIdx];
-          if (cs1->dependentWith(cs3)) {
+          int r = cs1->dependentWith(cs3);
+          if (r > 0) {
             pile1.front()->nextPileIsDependent = true;
+          }
+          if (r > 1) {
+            pile1.front()->nextPileIsViolated = true;
           }
         }
       }
