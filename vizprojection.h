@@ -90,6 +90,7 @@ public:
 
   VizCoordinateSystem *insertPile(IsCsResult csAt, int dimensionality);
   VizCoordinateSystem *insertCs(IsCsResult csAt, int dimensionality);
+  void updateOuterDependences();
 signals:
 
 public slots:

@@ -15,21 +15,60 @@
 #include <QString>
 #include "vizproperties.h"
 
-void ClintScop::createDependences(osl_scop_p scop) {
-  DependenceMap dependenceMap = oslDependenceMap(scop);
+void ClintScop::clearDependences() {
+  for (auto it : m_dependenceMap) {
+    it.second->setParent(nullptr);
+    delete it.second;
+  }
+  m_dependenceMap.clear();
+  m_internalDeps.clear();
+}
+
+#include <QtDebug>
+void ClintScop::processDependenceMap(const DependenceMap &dependenceMap,
+                                     const std::vector<osl_dependence_p> &violated) {
+  for (ClintStmt *s : statements()) {
+    for (ClintStmtOccurrence *o : s->occurences()) {
+      qDebug() << QVector<int>::fromStdVector(o->betaVector());
+    }
+  }
+
   for (auto element : dependenceMap) {
     std::pair<std::vector<int>, std::vector<int>> betas;
     betas = element.first;
     osl_dependence_p dep = element.second;
-    ClintStmtOccurrence *source = occurrence(betas.first);
-    ClintStmtOccurrence *target = occurrence(betas.second);
+    bool isViolated = false;
+    if (std::find(std::begin(violated), std::end(violated), dep) != std::end(violated)) {
+      isViolated = true;
+    }
+    qDebug() << QVector<int>::fromStdVector(betas.first) << QVector<int>::fromStdVector(betas.second) << "###";
+    ClintStmtOccurrence *source = mappedOccurrence(betas.first);
+    ClintStmtOccurrence *target = mappedOccurrence(betas.second);
 
-    ClintDependence *clintDep = new ClintDependence(dep, source, target, this);
+    ClintDependence *clintDep = new ClintDependence(dep, source, target, isViolated, this);
+
     m_dependenceMap.emplace(betas, clintDep);
     if (source == target) {
       m_internalDeps.emplace(source, clintDep);
     }
   }
+}
+
+void ClintScop::createDependences(osl_scop_p scop) {
+  clearDependences();
+
+  DependenceMap dependenceMap = oslDependenceMap(scop);
+  std::vector<osl_dependence_p> emptyVector;
+  processDependenceMap(dependenceMap, emptyVector);
+}
+
+void ClintScop::updateDependences(osl_scop_p transformed) {
+  clearDependences();
+
+  std::vector<osl_dependence_p> violated;
+  DependenceMap dependenceMap = oslDependenceMapViolations(m_scopPart, transformed, &violated);
+
+  processDependenceMap(dependenceMap, violated);
 }
 
 ClintScop::ClintScop(osl_scop_p scop, char *originalCode, ClintProgram *parent) :
@@ -47,11 +86,11 @@ ClintScop::ClintScop(osl_scop_p scop, char *originalCode, ClintProgram *parent) 
   // FIXME: hardcoded parameter value
   m_fixedContext = oslRelationFixAllParameters(m_scopPart->context, 6);
 
-  createDependences(scop);
-
   m_transformer = new ClayTransformer;
   m_scriptGenerator = new ClayScriptGenerator(m_scriptStream);
   m_betaMapper = new ClayBetaMapper(this);
+
+  createDependences(scop);
 
   m_generatedCode = oslToCCode(m_scopPart);
   m_currentScript = (char *) malloc(sizeof(char));
@@ -92,7 +131,6 @@ void ClintScop::updateGeneratedHtml(osl_scop_p transformedScop, std::string &str
   std::map<std::pair<int, int>, std::vector<int>> betasAtPos;
 
   std::multimap<std::vector<int>, std::pair<int, int>> positions = stmtPositionsInHtml(transformedScop);
-  m_betaMapper->apply(m_scopPart, m_transformationSeq);
   for (auto it : positions) {
     int result;
     std::vector<int> reverseBeta;
@@ -166,6 +204,10 @@ void ClintScop::executeTransformationSequence() {
     });
   });
 
+  m_betaMapper->apply(m_scopPart, m_transformationSeq);
+  // Do not create new dependences, but rather maintain the old?
+  updateDependences(transformedScop);
+
   updateGeneratedHtml(transformedScop, m_generatedHtml);
 
   emit transformExecuted();
@@ -183,6 +225,15 @@ ClintStmtOccurrence *ClintScop::occurrence(const std::vector<int> &beta) const {
   if (stmt == nullptr)
     return nullptr;
   return stmt->occurrence(beta);
+}
+
+ClintStmtOccurrence *ClintScop::mappedOccurrence(const std::vector<int> &beta) const {
+  std::vector<int> mappedBeta;
+  int result;
+  std::tie(mappedBeta, result) = m_betaMapper->map(beta);
+  if (result != ClayBetaMapper::SUCCESS)
+    return nullptr;
+  return occurrence(mappedBeta);
 }
 
 // old->new
@@ -244,6 +295,24 @@ ClintScop::internalDependences(ClintStmtOccurrence *occurrence) const {
   for (auto element = range.first; element != range.second; element++) {
     result.emplace(element->second);
   }
+  return std::move(result);
+}
+
+// TODO: use this function to implement internalDependences; remove m_internalDeps.
+void ClintScop::forwardDependencesBetween(ClintStmtOccurrence *occ1,
+                                          ClintStmtOccurrence *occ2,
+                                          std::unordered_set<ClintDependence *> &result) const {
+  auto range = m_dependenceMap.equal_range(std::make_pair(occ1->betaVector(), occ2->betaVector())); // FIXME: no beta vectors here...!
+  for (auto element = range.first; element != range.second; element++) {
+    result.emplace(element->second);
+  }
+}
+
+std::unordered_set<ClintDependence *>
+ClintScop::dependencesBetween(ClintStmtOccurrence *occ1, ClintStmtOccurrence *occ2) const {
+  std::unordered_set<ClintDependence *> result;
+  forwardDependencesBetween(occ1, occ2, result);
+  forwardDependencesBetween(occ2, occ1, result);
   return std::move(result);
 }
 

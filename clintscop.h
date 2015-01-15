@@ -22,6 +22,7 @@ class ClintScop : public QObject {
 public:
   typedef std::map<std::vector<int>, ClintStmt *> VizBetaMap;
   typedef std::multimap<std::pair<std::vector<int>, std::vector<int>>, ClintDependence *> ClintDependenceMap;
+//  typedef std::multimap<std::pair<ClintStmtOccurrence *, ClintStmtOccurrence *>, ClintDependence *> ClintDependenceMap;
   typedef std::multimap<ClintStmtOccurrence *, ClintDependence *> ClintOccurrenceDeps;
 
   explicit ClintScop(osl_scop_p scop, char *originalCode = nullptr, ClintProgram *parent = nullptr);
@@ -62,8 +63,9 @@ public:
   void executeTransformationSequence();
 
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
+  ClintStmtOccurrence *mappedOccurrence(const std::vector<int> &beta) const;
   std::unordered_set<ClintDependence *> internalDependences(ClintStmtOccurrence *occurrence) const;
-  void createDependences(osl_scop_p scop);
+  std::unordered_set<ClintDependence *> dependencesBetween(ClintStmtOccurrence *occ1, ClintStmtOccurrence *occ2) const;
 
   void updateBetas(std::map<std::vector<int>, std::vector<int> > &mapping);
 
@@ -119,7 +121,6 @@ public:
   bool hasRedo() const {
     return m_undoneTransformationSeq.groups.size() > 0;
   }
-
 signals:
   void transformExecuted();
 
@@ -130,6 +131,13 @@ public slots:
 
 private:
   void updateGeneratedHtml(osl_scop_p transformedScop, std::string &string);
+  void forwardDependencesBetween(ClintStmtOccurrence *occ1, ClintStmtOccurrence *occ2,
+                                 std::unordered_set<ClintDependence *> &result) const;
+  void clearDependences();
+  void processDependenceMap(const DependenceMap &dependenceMap,
+                            const std::vector<osl_dependence_p> &violated);
+  void createDependences(osl_scop_p scop);
+  void updateDependences(osl_scop_p transformed);
 
   osl_scop_p m_scopPart;
   ClintProgram *m_program;

@@ -502,6 +502,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
 
     polyhedron->scop()->transform(group);
     polyhedron->scop()->executeTransformationSequence();
+    polyhedron->coordinateSystem()->projection()->updateOuterDependences();
   }
 }
 

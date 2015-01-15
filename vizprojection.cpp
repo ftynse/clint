@@ -244,6 +244,34 @@ void VizProjection::appendCoordinateSystem(int dimensionality) {
   m_coordinateSystems.back().push_back(vcs);
 }
 
+void VizProjection::updateOuterDependences() {
+  // This is veeeery inefficient.
+  for (int pileIdx = 0, pileIdxEnd = m_coordinateSystems.size(); pileIdx < pileIdxEnd; pileIdx++) {
+    const std::vector<VizCoordinateSystem *> &pile1 = m_coordinateSystems[pileIdx];
+    for (int csIdx = 0, csIdxEnd = pile1.size(); csIdx < csIdxEnd; csIdx++) {
+      VizCoordinateSystem *cs1 = pile1[csIdx];
+      cs1->nextCsIsDependent = false;
+      cs1->nextPileIsDependent = false;
+
+      if (csIdx < csIdxEnd - 1) {
+        VizCoordinateSystem *cs2 = pile1[csIdx + 1];
+        if (cs1->dependentWith(cs2)) {
+          cs1->nextCsIsDependent = true;
+        }
+      }
+      if (pileIdx < pileIdxEnd - 1) {
+        const std::vector<VizCoordinateSystem *> &pile2 = m_coordinateSystems[pileIdx + 1];
+        for (int csoIdx = 0, csoIdxEnd = pile2.size(); csoIdx < csoIdxEnd; csoIdx++) {
+          VizCoordinateSystem *cs3 = pile2[csoIdx];
+          if (cs1->dependentWith(cs3)) {
+            pile1.front()->nextPileIsDependent = true;
+          }
+        }
+      }
+    }
+  }
+}
+
 void VizProjection::projectScop(ClintScop *vscop) {
   m_selectionManager->clearSelection();
   for (int i = 0; i < m_coordinateSystems.size(); i++) {
@@ -337,6 +365,9 @@ void VizProjection::projectScop(ClintScop *vscop) {
   if (!visiblePile) {
     m_coordinateSystems.pop_back();
   }
+
+  updateOuterDependences();
+
   updateSceneLayout();
 }
 

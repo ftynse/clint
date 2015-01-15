@@ -4,8 +4,10 @@
 ClintDependence::ClintDependence(osl_dependence_p dependence,
                                  ClintStmtOccurrence *source,
                                  ClintStmtOccurrence *target,
+                                 bool violated,
                                  QObject *parent) :
-  QObject(parent), m_dependence(dependence), m_source(source), m_target(target) {
+  QObject(parent), m_dependence(dependence), m_source(source), m_target(target),
+  m_violated(violated) {
   CLINT_ASSERT(source, "Dependence source must not be empty");
   CLINT_ASSERT(target, "Dependence source must not be empty");
   CLINT_ASSERT(source->scop() == target->scop(), "Cross-scop dependences are not allowed");

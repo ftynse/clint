@@ -10,7 +10,8 @@ class ClintDependence : public QObject {
   Q_OBJECT
 public:
   explicit ClintDependence(osl_dependence_p dependence, ClintStmtOccurrence *source,
-                           ClintStmtOccurrence *target, QObject *parent = nullptr);
+                           ClintStmtOccurrence *target, bool violated,
+                           QObject *parent = nullptr);
 
   std::vector<std::vector<int>> projectOn(int horizontalDimIdx, int verticalDimIdx);
 
@@ -30,6 +31,10 @@ public:
     return m_target;
   }
 
+  bool isViolated() const {
+    return m_violated;
+  }
+
 signals:
 
 public slots:
@@ -39,6 +44,8 @@ private:
 
   ClintStmtOccurrence *m_source;
   ClintStmtOccurrence *m_target;
+
+  bool m_violated;
 };
 
 #endif // CLINTDEPENDENCE_H

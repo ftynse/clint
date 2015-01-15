@@ -107,6 +107,10 @@ public:
 
   std::vector<int> betaPrefix() const;
 
+  bool dependentWith(VizCoordinateSystem *vcs);
+  bool nextCsIsDependent = false;
+  bool nextPileIsDependent = false;
+
   int horizontalAxisLength() const;
   int verticalAxisLength() const;
   int ticMargin() const;

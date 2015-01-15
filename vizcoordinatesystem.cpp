@@ -282,6 +282,16 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
                       pointDistance,
                       Qt::AlignVCenter | Qt::AlignRight | Qt::TextDontClip, m_verticalName);
   }
+
+  if (nextCsIsDependent) {
+    QPointF position(horizontalAxisLength() / 2, -verticalAxisLength());
+    painter->drawEllipse(position, 4, 4);
+  }
+
+  if (nextPileIsDependent) {
+    QPointF position(horizontalAxisLength(), -verticalAxisLength() / 2);
+    painter->drawEllipse(position, 4, 4);
+  }
 }
 
 QRectF VizCoordinateSystem::boundingRect() const {
@@ -319,4 +329,15 @@ int VizCoordinateSystem::verticalAxisLength() const {
 
 int VizCoordinateSystem::ticMargin() const {
   return 2 * m_projection->vizProperties()->pointRadius();
+}
+
+bool VizCoordinateSystem::dependentWith(VizCoordinateSystem *vcs) {
+  for (VizPolyhedron *vp1 : m_polyhedra) {
+    for (VizPolyhedron *vp2 : vcs->m_polyhedra) {
+      ClintScop *scop = vp1->scop();
+      if (!scop->dependencesBetween(vp1->occurrence(), vp2->occurrence()).empty())
+        return true;
+    }
+  }
+  return false;
 }

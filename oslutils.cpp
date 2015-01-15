@@ -440,6 +440,22 @@ osl_dependence_p oslScopDependences(osl_scop_p scop) {
   return dependences;
 }
 
+candl_violation_p oslScopViolations(osl_scop_p scop, osl_scop_p transformed, osl_dependence_p *deps = nullptr) {
+  candl_options_p candl_options = candl_options_malloc();
+  candl_options->fullcheck = 1;
+  candl_scop_usr_init(scop);
+  osl_dependence_p dependences = candl_dependence(scop, candl_options);
+  if (deps != nullptr) {
+    *deps = dependences;
+  }
+  if (dependences)
+    candl_dependence_init_fields(scop, dependences);
+  candl_violation_p violations = candl_violation(scop, dependences, transformed, candl_options);
+  candl_scop_usr_cleanup(scop);
+  candl_options_free(candl_options);
+  return violations;
+}
+
 BetaMap oslBetaMap(osl_scop_p scop) {
   BetaMap betaMap;
   oslListNoSeqCall(scop, [&betaMap](osl_scop_p single_scop) {
@@ -454,18 +470,11 @@ BetaMap oslBetaMap(osl_scop_p scop) {
   return std::move(betaMap);
 }
 
-DependenceMap oslDependenceMap(osl_scop_p scop) {
-  // TODO: Candl 0.6.2 does not support computing deps for multiple scops, nor does it support unions.
-  // This is a quite inefficient workaround for it, multiple clones of scop with subsequent removals:
-  // transform a scop with unions, to a scop without unions by introducing more statements.
-  // This function can be moved to Candl to support relation unions.
-  // It also requires to change the osl extensions so that it contains pointer to a scattering
-  // in addition to the statement.
-  // Since dependence domain does not have beta-vectors, it is safe to convert unions to separate
-  // statements -- this will not result in beta-vector collisions.
-  DependenceMap dependenceMap;
-  oslListNoSeqCall(scop, [&dependenceMap](osl_scop_p single_scop) {
-    osl_scop_p noUnionScop = osl_scop_clone(single_scop);
+
+osl_scop_p oslReifyScop(osl_scop_p scop) {
+  osl_scop_p noUnionScop;
+  oslListNoSeqCall(scop, [&noUnionScop](osl_scop_p single_scop) {
+    noUnionScop = osl_scop_clone(single_scop);
     osl_statement_p originalStatements = noUnionScop->statement;
     osl_statement_p newStatements = nullptr;
     osl_statement_p ptr = nullptr;
@@ -487,22 +496,62 @@ DependenceMap oslDependenceMap(osl_scop_p scop) {
     });
     noUnionScop->statement = newStatements;
     osl_statement_free(originalStatements);
+  });
+  return noUnionScop;
+}
 
-    osl_dependence_p dependence = oslScopDependences(noUnionScop);
+DependenceMap oslConstructDependenceMap(osl_dependence_p dependence) {
+  DependenceMap dependenceMap;
+  oslListForeachSingle(dependence, [&dependenceMap](osl_dependence_p dep) {
+    CLINT_ASSERT(dep->stmt_source_ptr != nullptr,
+                 "Source statement pointer in the osl dependence must be defined");
+    CLINT_ASSERT(dep->stmt_target_ptr != nullptr,
+                 "Target statement pointer in the osl dependence must be defined");
 
-    oslListForeachSingle(dependence, [&dependenceMap](osl_dependence_p dep) {
-      CLINT_ASSERT(dep->stmt_source_ptr != nullptr,
-                   "Source statement pointer in the osl dependence must be defined");
-      CLINT_ASSERT(dep->stmt_target_ptr != nullptr,
-                   "Target statement pointer in the osl dependence must be defined");
-
-      std::vector<int> sourceBeta = betaExtract(dep->stmt_source_ptr->scattering);
-      std::vector<int> targetBeta = betaExtract(dep->stmt_target_ptr->scattering);
-      dep->stmt_source_ptr = nullptr;   // Set up nulls intentionally, the data will be deleted.
-      dep->stmt_target_ptr = nullptr;
-      dependenceMap.insert(std::make_pair(std::make_pair(sourceBeta, targetBeta), dep));
-    });
-    osl_scop_free(noUnionScop);
+    std::vector<int> sourceBeta = betaExtract(dep->stmt_source_ptr->scattering);
+    std::vector<int> targetBeta = betaExtract(dep->stmt_target_ptr->scattering);
+    dep->stmt_source_ptr = nullptr;   // Set up nulls intentionally, the data will be deleted.
+    dep->stmt_target_ptr = nullptr;
+    dependenceMap.insert(std::make_pair(std::make_pair(sourceBeta, targetBeta), dep));
   });
   return std::move(dependenceMap);
+}
+
+DependenceMap oslDependenceMap(osl_scop_p scop) {
+  // TODO: Candl 0.6.2 does not support computing deps for multiple scops, nor does it support unions.
+  // This is a quite inefficient workaround for it, multiple clones of scop with subsequent removals:
+  // transform a scop with unions, to a scop without unions by introducing more statements.
+  // This function can be moved to Candl to support relation unions.
+  // It also requires to change the osl extensions so that it contains pointer to a scattering
+  // in addition to the statement.
+  // Since dependence domain does not have beta-vectors, it is safe to convert unions to separate
+  // statements -- this will not result in beta-vector collisions.
+  osl_scop_p noUnionScop = oslReifyScop(scop);
+
+  osl_dependence_p dependence = oslScopDependences(noUnionScop);
+  DependenceMap dependenceMap = oslConstructDependenceMap(dependence);
+
+  osl_scop_free(noUnionScop);
+  return std::move(dependenceMap);
+}
+
+DependenceMap oslDependenceMapViolations(osl_scop_p scop, osl_scop_p transformed, std::vector<osl_dependence_p> *violated) {
+  osl_scop_p noUnionScop = oslReifyScop(scop);
+  osl_scop_p noUnionTransformed = oslReifyScop(transformed);
+
+  osl_dependence_p dependences;
+  if (transformed && violated != nullptr) {
+    candl_violation_p violations = oslScopViolations(noUnionScop, noUnionTransformed, &dependences);
+    oslListForeach(violations, [violated](candl_violation_p violation){
+      violated->push_back(violation->dependence);
+    });
+  } else {
+    dependences = oslScopDependences(noUnionScop);
+  }
+  DependenceMap dependenceMap = oslConstructDependenceMap(dependences);
+
+  osl_scop_free(noUnionScop);
+  osl_scop_free(noUnionTransformed);
+
+  return dependenceMap;
 }
