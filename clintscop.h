@@ -70,6 +70,10 @@ public:
   void updateBetas(std::map<std::vector<int>, std::vector<int> > &mapping);
 
   osl_scop_p appliedScop();
+  void swapBetaMapper(ClintScop *scop) {
+    std::swap(m_betaMapper, scop->m_betaMapper);
+  }
+
   void setScopSilent(osl_scop_p scop) {
     updateGeneratedHtml(m_scopPart, m_generatedHtml);
     m_scopPart = scop;

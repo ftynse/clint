@@ -244,6 +244,7 @@ ClintScop *ClintWindow::regenerateScop(ClintScop *vscop) {
     newscop->transform(g);
   }
   newscop->resetRedoSequence(vscop->redoSequence());
+  newscop->swapBetaMapper(vscop);
   newscop->setScopSilent(vscop->scopPart());
   (*m_program)[0] = newscop;
   disconnect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
