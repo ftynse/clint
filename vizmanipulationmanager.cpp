@@ -691,6 +691,8 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     betaLoop.push_back(1); // FIXME: works only if one polygon in CS
     ClintStmtOccurrence *occurrence = oldPolyhedron->scop()->occurrence(betaLoop);
     polyhedron->setOccurrenceSilent(occurrence);
+    oldPolyhedron->updateInternalDependences();
+    polyhedron->updateInternalDependences();
     polyhedron->coordinateSystem()->projection()->updateInnerDependences();
   }
     break;

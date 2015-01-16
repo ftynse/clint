@@ -116,6 +116,8 @@ public:
     resetPointPositions();
   }
 
+  void updateInternalDependences();
+
   void setOccurrenceSilent(ClintStmtOccurrence *occurrence);
 
 signals:

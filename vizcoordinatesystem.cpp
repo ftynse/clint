@@ -86,14 +86,7 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
   else
     vp->setColor(QColor(Qt::transparent));
 
-  // Setting up internal dependences.
-  std::unordered_set<ClintDependence *> dependences =
-      occurrence->scop()->internalDependences(occurrence);
-  for (ClintDependence *dependence : dependences) {
-    std::vector<std::vector<int>> lines =
-        dependence->projectOn(m_horizontalDimensionIdx, m_verticalDimensionIdx);
-    vp->setInternalDependences(lines);
-  }
+  vp->updateInternalDependences();
 
   return true;
 }

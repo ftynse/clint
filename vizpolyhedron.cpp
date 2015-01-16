@@ -4,6 +4,7 @@
 #include "vizpoint.h"
 #include "vizprojection.h"
 #include "vizselectionmanager.h"
+#include "clintdependence.h"
 
 #include <QtGui>
 #include <QtWidgets>
@@ -187,6 +188,18 @@ void VizPolyhedron::setInternalDependences(const std::vector<std::vector<int>> &
 
     VizDepArrow *depArrow = new VizDepArrow(sourcePoint->pos(), targetPoint->pos(), this, false);
     m_deps.insert(depArrow);
+  }
+}
+
+void VizPolyhedron::updateInternalDependences() {
+  for (VizDepArrow *vda : m_deps) {
+    delete vda;
+  }
+  m_deps.clear();
+
+  for (ClintDependence *dependence : m_occurrence->scop()->internalDependences(m_occurrence)) {
+    setInternalDependences(dependence->projectOn(coordinateSystem()->horizontalDimensionIdx(),
+                                                 coordinateSystem()->verticalDimensionIdx()));
   }
 }
 
