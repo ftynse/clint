@@ -679,7 +679,7 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     betaLoop.erase(betaLoop.end() - 1);
     TransformationGroup group;
     group.transformations.push_back(
-          Transformation::issFirst(betaLoop, dimensionIdx, m_pointDetachValue));
+          Transformation::issFirst(betaLoop, dimensionIdx, minValue + m_pointDetachValue));
 
     Transformer *c = new ClayScriptGenerator(std::cerr);
     c->apply(nullptr, group);
