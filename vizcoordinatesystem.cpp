@@ -91,13 +91,18 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
   return true;
 }
 
-void VizCoordinateSystem::updateInnerDependences() {
-  // TODO: update old arrows instead of creating new? (split/fuse may force deletion)
+void VizCoordinateSystem::deleteInnerDependences() {
   for (VizDepArrow *vda : m_depArrows) {
     vda->setParentItem(nullptr);
-    delete vda;
+    vda->setVisible(false);
+//    delete vda;
   }
   m_depArrows.clear();
+}
+
+void VizCoordinateSystem::updateInnerDependences() {
+  // TODO: update old arrows instead of creating new? (split/fuse may force deletion)
+  deleteInnerDependences();
 
   for (VizPolyhedron *vp1 : m_polyhedra) {
     for (VizPolyhedron *vp2 : m_polyhedra) {
@@ -148,16 +153,19 @@ void VizCoordinateSystem::setInnerDependencesBetween(VizPolyhedron *vp1, VizPoly
     targetPoint = vp2->point(targetCoordinates);
 
     if (!targetPoint || !sourcePoint) {
-      qDebug() << "Could not find point corresponding to "
-               << QVector<int>::fromStdVector(vp1->occurrence()->betaVector()) << sourceCoordinates.first << sourceCoordinates.second << " -> "
-               << QVector<int>::fromStdVector(vp2->occurrence()->betaVector()) << targetCoordinates.first << targetCoordinates.second;
+//      qDebug() << "Could not find point corresponding to "
+//               << QVector<int>::fromStdVector(vp1->occurrence()->betaVector()) << sourceCoordinates.first << sourceCoordinates.second << " -> "
+//               << QVector<int>::fromStdVector(vp2->occurrence()->betaVector()) << targetCoordinates.first << targetCoordinates.second;
       continue;
     }
 
-    VizDepArrow *depArrow = new VizDepArrow(mapFromItem(vp1,sourcePoint->pos()),
-                                            mapFromItem(vp2,targetPoint->pos()),
+    VizDepArrow *depArrow = new VizDepArrow(sourcePoint, targetPoint,
                                             this, violated);
-    depArrow->setZValue(42);
+    if (violated) {
+      depArrow->setZValue(100);
+    } else {
+      depArrow->setZValue(42);
+    }
     m_depArrows.insert(depArrow);
   }
 }

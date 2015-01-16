@@ -178,22 +178,24 @@ void VizPolyhedron::setInternalDependences(const std::vector<std::vector<int>> &
     }
 
     if (!targetPoint || !sourcePoint) {
-      qDebug() << "Could not find point corresponding to "
-               << sourceCoordinates.first << sourceCoordinates.second << " -> "
-               << targetCoordinates.first << targetCoordinates.second;
+//      qDebug() << "Could not find point corresponding to "
+//               << sourceCoordinates.first << sourceCoordinates.second << " -> "
+//               << targetCoordinates.first << targetCoordinates.second;
       continue;
     } else {
 
     }
 
-    VizDepArrow *depArrow = new VizDepArrow(sourcePoint->pos(), targetPoint->pos(), this, false);
+    VizDepArrow *depArrow = new VizDepArrow(sourcePoint, targetPoint, this, false);
     m_deps.insert(depArrow);
   }
 }
 
 void VizPolyhedron::updateInternalDependences() {
   for (VizDepArrow *vda : m_deps) {
-    delete vda;
+    vda->setParentItem(nullptr);
+    vda->setVisible(false);
+//    delete vda;
   }
   m_deps.clear();
 
@@ -460,6 +462,8 @@ QPainterPath VizPolyhedron::shape() const {
 QVariant VizPolyhedron::itemChange(GraphicsItemChange change, const QVariant &value) {
   if (change == QGraphicsItem::ItemSelectedHasChanged) {
     m_coordinateSystem->projection()->selectionManager()->polyhedronSelectionChanged(this, value.toBool());
+  } else if (change == QGraphicsItem::ItemPositionHasChanged) {
+    emit positionChanged();
   }
   return QGraphicsItem::itemChange(change, value);
 }

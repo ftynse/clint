@@ -1,22 +1,62 @@
 #include "vizdeparrow.h"
 #include "vizpolyhedron.h"
 #include "vizprojection.h"
+#include "vizpoint.h"
 
 #include <QtGui>
 #include <QtWidgets>
 
 VizDepArrow::VizDepArrow(QPointF source, QPointF target, VizPolyhedron *parent, bool violated) :
-  QGraphicsItem(parent), m_violated(violated) {
+  QGraphicsObject(parent), m_violated(violated), m_coordinateSystemParent(nullptr) {
 
   m_vizProperties = parent->coordinateSystem()->projection()->vizProperties();
   pointLink(source, target);
 }
 
 VizDepArrow::VizDepArrow(QPointF source, QPointF target, VizCoordinateSystem *parent, bool violated) :
-  QGraphicsItem(parent), m_violated(violated) {
+  QGraphicsObject(parent), m_violated(violated), m_coordinateSystemParent(parent) {
 
   m_vizProperties = parent->projection()->vizProperties();
   pointLink(source, target);
+}
+
+VizDepArrow::VizDepArrow(VizPoint *source, VizPoint *target, VizPolyhedron *parent, bool violated) :
+  VizDepArrow(source->pos(), target->pos(), parent, violated) {
+  m_vizProperties = parent->coordinateSystem()->projection()->vizProperties();
+  m_sourcePoint = source;
+  m_targetPoint = target;
+
+  connect(source, &VizPoint::positionChanged, this, &VizDepArrow::repoint);
+  connect(target, &VizPoint::positionChanged, this, &VizDepArrow::repoint);
+}
+
+void VizDepArrow::pointLinkCS(VizPoint *source, VizPoint *target) {
+  QPointF sourcePoint = source->parentItem()->mapToItem(m_coordinateSystemParent, source->pos());
+  QPointF targetPoint = target->parentItem()->mapToItem(m_coordinateSystemParent, target->pos());
+  pointLink(sourcePoint, targetPoint);
+}
+
+VizDepArrow::VizDepArrow(VizPoint *source, VizPoint *target, VizCoordinateSystem *parent, bool violated) :
+  QGraphicsObject(parent), m_sourcePoint(source), m_targetPoint(target), m_violated(violated), m_coordinateSystemParent(parent) {
+
+  m_vizProperties = parent->projection()->vizProperties();
+  pointLinkCS(source, target);
+
+  connect(source, &VizPoint::positionChanged, this, &VizDepArrow::repoint);
+  connect(target, &VizPoint::positionChanged, this, &VizDepArrow::repoint);
+  connect(source->polyhedron(), &VizPolyhedron::positionChanged, this, &VizDepArrow::repoint);
+  connect(target->polyhedron(), &VizPolyhedron::positionChanged, this, &VizDepArrow::repoint);
+}
+
+void VizDepArrow::repoint() {
+  if (!m_sourcePoint || !m_targetPoint)
+    return;
+
+  if (m_coordinateSystemParent) {
+    pointLinkCS(m_sourcePoint, m_targetPoint);
+  } else {
+    pointLink(m_sourcePoint->pos(), m_targetPoint->pos());
+  }
 }
 
 void VizDepArrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {

@@ -10,6 +10,7 @@ VizPoint::VizPoint(VizPolyhedron *polyhedron) :
 
   setFlag(QGraphicsItem::ItemIsSelectable);
   setFlag(QGraphicsItem::ItemIsMovable);
+  setFlag(QGraphicsItem::ItemSendsGeometryChanges);
 }
 
 void VizPoint::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
@@ -40,6 +41,8 @@ QPainterPath VizPoint::shape() const {
 QVariant VizPoint::itemChange(GraphicsItemChange change, const QVariant &value) {
   if (change == QGraphicsItem::ItemSelectedHasChanged) {
     coordinateSystem()->projection()->selectionManager()->pointSelectionChanged(this, value.toBool());
+  } else if (change == QGraphicsItem::ItemPositionHasChanged) {
+    emit positionChanged();
   }
   return QGraphicsItem::itemChange(change, value);
 }

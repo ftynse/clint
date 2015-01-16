@@ -128,7 +128,7 @@ public:
 
   void insertPolyhedronAfter(VizPolyhedron *inserted, VizPolyhedron *after);
   void updateAllPositions();
-
+  void deleteInnerDependences();
 signals:
 
 public slots:

@@ -121,6 +121,7 @@ public:
   void setOccurrenceSilent(ClintStmtOccurrence *occurrence);
 
 signals:
+  void positionChanged();
 
 public slots:
   void occurrenceChanged();
