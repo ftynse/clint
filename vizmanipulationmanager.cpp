@@ -229,7 +229,7 @@ void VizManipulationManager::rearrangeCSs2D(int coordinateSystemIdx, bool csDele
 void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
   CLINT_ASSERT(m_polyhedron == polyhedron, "Signaled end of polyhedron movement that was never initiated");
   m_polyhedron = nullptr;
-  TransformationGroup group;
+  TransformationGroup group, iterGroup;
 
   const std::unordered_set<VizPolyhedron *> &selectedPolyhedra =
       polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
@@ -244,8 +244,18 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
     }
     VizCoordinateSystem *cs = polyhedron->coordinateSystem()->projection()->ensureCoordinateSystem(r, dimensionality);
     int hmin = INT_MAX, hmax = INT_MIN, vmin = INT_MAX, vmax = INT_MIN; // TODO: frequent functionality, should be extracted?
-    // FIXME: all these assumes only all polyhedra belong to the same coordiante system.?
+    // FIXME: all these assumes only all polyhedra belong to the same coordiante system.
+    bool firstPolyhedron = true;
     for (VizPolyhedron *vp : selectedPolyhedra) {
+      // Assume all selected polyhedra are moved to the same coordinate system.
+      // Then only the first polyhedron may have an Insert action to create this system
+      // while all other polyhedra will have the Found action.
+      if (firstPolyhedron) {
+        firstPolyhedron = false;
+      } else {
+        r.setFound(cs);
+      }
+
       VizCoordinateSystem *oldCS = vp->coordinateSystem();
       size_t oldPileIdx, oldCsIdx;
       // FIXME: works for normalized scops only
@@ -300,11 +310,11 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
         std::vector<int> splitBeta(beta);
         splitBeta.push_back(424242);
         qDebug() << "inner split" << csSize << QVector<int>::fromStdVector(splitBeta);
-        rearrangeCSs2D(csSize, true, splitBeta, csSize, group);
+        rearrangeCSs2D(csSize, true, splitBeta, csSize, iterGroup);
         CLINT_ASSERT(csSize >= 2, "Split requested where it should not happen");
         splitBeta.erase(std::end(splitBeta) - 1);
         splitBeta.back() = csSize - 2;
-        group.transformations.push_back(Transformation::splitAfter(splitBeta));
+        iterGroup.transformations.push_back(Transformation::splitAfter(splitBeta));
 
         splitVertical = true;
       }
@@ -320,12 +330,12 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
           splitBeta.push_back(424242);
         }
         qDebug() << "outer split" << pileSize << QVector<int>::fromStdVector(splitBeta);
-        rearrangeCSs2D(pileSize, true, splitBeta, pileSize, group);
+        rearrangeCSs2D(pileSize, true, splitBeta, pileSize, iterGroup);
         CLINT_ASSERT(pileSize >= 2, "Split requested where it should not happen");
         CLINT_ASSERT(splitBeta.size() >= 2, "Dimensionality mismatch");
         splitBeta.erase(std::end(splitBeta) - 1);
         splitBeta.back() = pileSize - 2;
-        group.transformations.push_back(Transformation::splitAfter(splitBeta));
+        iterGroup.transformations.push_back(Transformation::splitAfter(splitBeta));
 
         splitHorizontal = true;
       }
@@ -364,6 +374,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       if (r.action() == VizProjection::IsCsAction::Found) {
         // Fusion required.
         std::vector<int> fuseBeta = cs->betaPrefix(); // if found, it contains at least one polygon (other than vp) with correct beta.
+        qDebug() << QVector<int>::fromStdVector(fuseBeta) << r.coordinateSystemIdx() << r.pileIdx();
         CLINT_ASSERT(fuseBeta[fuseBeta.size() - 1] == r.coordinateSystemIdx(), "Beta consistency violated");
         CLINT_ASSERT(fuseBeta[fuseBeta.size() - 2] == r.pileIdx(), "Beta consistency violated");
 
@@ -387,9 +398,9 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
           if (oneDimensional)
             createdBeta.push_back(424242);
           qDebug() << "outer fuse" << pileNb + (actionWithinPile ? 0 : 1) << pileIdx << QVector<int>::fromStdVector(fuseBeta) << QVector<int>::fromStdVector(createdBeta);
-          rearrangePiles2D(createdBeta, false, group, pileIdx + 1, pileNb + (actionWithinPile ? 0 : 1));
+          rearrangePiles2D(createdBeta, false, iterGroup, pileIdx + 1, pileNb + (actionWithinPile ? 0 : 1));
           std::vector<int> outerFuseBeta(std::begin(fuseBeta), std::end(fuseBeta) - 1);
-          group.transformations.push_back(Transformation::fuseNext(outerFuseBeta));
+          iterGroup.transformations.push_back(Transformation::fuseNext(outerFuseBeta));
         }
 
         // Finally, rearrange and fuse on the inner level.
@@ -401,8 +412,8 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
         }
         qDebug() << "inner fuse" << pileSize << csIdx << QVector<int>::fromStdVector(createdBeta);
         if (!oneDimensional) {
-          rearrangeCSs2D(csIdx + 1, false, createdBeta, pileSize + csDeleted, group);
-          group.transformations.push_back(Transformation::fuseNext(fuseBeta));
+          rearrangeCSs2D(csIdx + 1, false, createdBeta, pileSize + csDeleted, iterGroup);
+          iterGroup.transformations.push_back(Transformation::fuseNext(fuseBeta));
         }
 
       } else if (r.action() == VizProjection::IsCsAction::InsertPile) {
@@ -413,7 +424,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
           createdBeta.push_back(424242);
         }
         qDebug() << "insert pile";
-        rearrangePiles2D(createdBeta, pileDeleted, group, r.pileIdx(), pileNb);
+        rearrangePiles2D(createdBeta, pileDeleted, iterGroup, r.pileIdx(), pileNb);
       } else if (r.action() == VizProjection::IsCsAction::InsertCS) {
 //        if (oldPileIdx == r.pileIdx()) { // same pile -- reorder only
         if (actionWithinPile) {
@@ -421,7 +432,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
           if (oneDimensional)
             createdBeta.push_back(424242);
           qDebug() << "insert cs" << pileSize << QVector<int>::fromStdVector(createdBeta);
-          rearrangeCSs2D(r.coordinateSystemIdx(), csDeleted, createdBeta, pileSize, group);
+          rearrangeCSs2D(r.coordinateSystemIdx(), csDeleted, createdBeta, pileSize, iterGroup);
         } else { // different piles -- fusion required
           qDebug() << "insert cs" << QVector<int>::fromStdVector(createdBeta);
 
@@ -442,10 +453,10 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
           if (!actionWithinPile) {
             if (oneDimensional)
               createdBeta.push_back(424242);
-            rearrangePiles2D(createdBeta, false, group, pileIdx + 1, pileNb + (actionWithinPile ? 0 : 1));
+            rearrangePiles2D(createdBeta, false, iterGroup, pileIdx + 1, pileNb + (actionWithinPile ? 0 : 1));
             qDebug() << "outer fuse" << pileNb + (pileDeleted ? 0 : 1) << pileIdx << QVector<int>::fromStdVector(fuseBeta);
             std::vector<int> outerFuseBeta(std::begin(fuseBeta), std::end(fuseBeta) - 1);
-            group.transformations.push_back(Transformation::fuseNext(outerFuseBeta));
+            iterGroup.transformations.push_back(Transformation::fuseNext(outerFuseBeta));
           }
 
           // Finally, rearrange and fuse on the inner level.
@@ -457,17 +468,47 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
           }
           qDebug() << "inner fuse" << pileSize << csIdx << QVector<int>::fromStdVector(createdBeta) << oneDimensional;
           if (!oneDimensional)
-            rearrangeCSs2D(csIdx, csDeleted, createdBeta, pileSize, group); // no (csIdx + 1) since to fusion required; putting before.
+            rearrangeCSs2D(csIdx, csDeleted, createdBeta, pileSize, iterGroup); // no (csIdx + 1) since to fusion required; putting before.
 
         }
       } else {
         CLINT_UNREACHABLE;
       }
 
-    }
+      Transformer *transformer = new ClayScriptGenerator(std::cerr);
+      transformer->apply(nullptr, iterGroup);
+      delete transformer;
 
-    Transformer *transformer = new ClayScriptGenerator(std::cerr);
-    transformer->apply(nullptr, group);
+      // Update betas after each polyhedron moved as we use them to determine beta-prefixes
+      // of the coordinate systems.
+      ClayBetaMapper *mapper = new ClayBetaMapper(polyhedron->scop());
+      mapper->apply(nullptr, iterGroup);
+      bool happy = true;
+      std::map<std::vector<int>, std::vector<int>> mapping;
+      for (ClintStmt *stmt : polyhedron->scop()->statements()) {
+        for (ClintStmtOccurrence *occurrence : stmt->occurences()) {
+          int result;
+          std::vector<int> beta = occurrence->betaVector();
+          std::vector<int> updatedBeta;
+          std::tie(updatedBeta, result) = mapper->map(occurrence->betaVector());
+
+          qDebug() << result << QVector<int>::fromStdVector(beta) << "->" << QVector<int>::fromStdVector(updatedBeta);
+          if (result == ClayBetaMapper::SUCCESS &&
+              beta != updatedBeta) {
+            occurrence->resetBetaVector(updatedBeta);
+            mapping[beta] = updatedBeta;
+          }
+          happy = happy && result == ClayBetaMapper::SUCCESS;
+        }
+      }
+      delete mapper;
+      CLINT_ASSERT(happy, "Beta mapping failed");
+
+      polyhedron->scop()->updateBetas(mapping);
+
+      std::copy(std::begin(iterGroup.transformations), std::end(iterGroup.transformations), std::back_inserter(group.transformations));
+      iterGroup.transformations.clear();
+    }
 
     // TODO: provide functionality for both simultaneously with a single repaint (setMinMax?)
     cs->projection()->ensureFitsHorizontally(cs, hmin, hmax);
@@ -479,30 +520,6 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
   }
 
   if (!group.transformations.empty()) {
-    ClayBetaMapper *mapper = new ClayBetaMapper(polyhedron->scop());
-    mapper->apply(nullptr, group);
-    bool happy = true;
-    std::map<std::vector<int>, std::vector<int>> mapping;
-    for (ClintStmt *stmt : polyhedron->scop()->statements()) {
-      for (ClintStmtOccurrence *occurrence : stmt->occurences()) {
-        int result;
-        std::vector<int> beta = occurrence->betaVector();
-        std::vector<int> updatedBeta;
-        std::tie(updatedBeta, result) = mapper->map(occurrence->betaVector());
-
-        qDebug() << result << QVector<int>::fromStdVector(beta) << "->" << QVector<int>::fromStdVector(updatedBeta);
-        if (result == ClayBetaMapper::SUCCESS &&
-            beta != updatedBeta) {
-          occurrence->resetBetaVector(updatedBeta);
-          mapping[beta] = updatedBeta;
-        }
-        happy = happy && result == ClayBetaMapper::SUCCESS;
-      }
-    }
-    CLINT_ASSERT(happy, "Beta mapping failed");
-
-    polyhedron->scop()->updateBetas(mapping);
-
     polyhedron->scop()->transform(group);
     polyhedron->scop()->executeTransformationSequence();
     polyhedron->coordinateSystem()->projection()->updateOuterDependences();

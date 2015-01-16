@@ -57,11 +57,19 @@ public:
       return m_vcs;
     }
 
+    void setFound(VizCoordinateSystem *cs) {
+      if (m_action == IsCsAction::InsertPile) {
+        m_coordinateSystem = 0;
+      }
+      m_action = IsCsAction::Found;
+      m_vcs = cs;
+    }
+
   private:
-    IsCsAction m_action;
-    VizCoordinateSystem *m_vcs = nullptr;
     size_t m_pile;   // in case InsertPile, insert before this index; if index >= size, insert after the last; in case InsertCS, index of the pile to insert to
     size_t m_coordinateSystem;
+    IsCsAction m_action;
+    VizCoordinateSystem *m_vcs = nullptr;
 
     friend class VizProjection;
   };
