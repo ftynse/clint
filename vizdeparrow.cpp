@@ -5,12 +5,17 @@
 #include <QtGui>
 #include <QtWidgets>
 
-VizDepArrow::VizDepArrow(QPointF source, QPointF target, QGraphicsItem *parent) :
-  QGraphicsItem(parent) {
+VizDepArrow::VizDepArrow(QPointF source, QPointF target, VizPolyhedron *parent, bool violated) :
+  QGraphicsItem(parent), m_violated(violated) {
 
-  m_polyhedron = qgraphicsitem_cast<VizPolyhedron *>(parent);
-  CLINT_ASSERT(m_polyhedron != nullptr,
-               "Dependence arrow should belong to a polyhedron");
+  m_vizProperties = parent->coordinateSystem()->projection()->vizProperties();
+  pointLink(source, target);
+}
+
+VizDepArrow::VizDepArrow(QPointF source, QPointF target, VizCoordinateSystem *parent, bool violated) :
+  QGraphicsItem(parent), m_violated(violated) {
+
+  m_vizProperties = parent->projection()->vizProperties();
   pointLink(source, target);
 }
 
@@ -18,6 +23,11 @@ void VizDepArrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *optio
   Q_UNUSED(option);
   Q_UNUSED(widget);
 
+  painter->setRenderHint(QPainter::Antialiasing);
+  if (m_violated) {
+    painter->setPen(Qt::red);
+    painter->setBrush(Qt::red);
+  }
   painter->drawLine(m_arrowLine);
   painter->fillPath(m_arrowHead, QBrush(Qt::black));
 }
@@ -26,8 +36,7 @@ QRectF VizDepArrow::boundingRect() const {
   // Since arrow head has a 60-degree angle, it will be covered by a rectangle
   // (with a 90-degree angle, obviously) ending at the head's sharp end.  This sharp end
   // lies on the arrow line, pointRadius pixels after the arrow line ends.
-  const double pointRadius =
-      m_polyhedron->coordinateSystem()->projection()->vizProperties()->pointRadius();
+  const double pointRadius = m_vizProperties->pointRadius();
   QLineF diagonal(m_arrowLine);
   diagonal.setLength(diagonal.length() + pointRadius);
   return QRectF(m_arrowLine.p1(), m_arrowLine.p2());
@@ -36,8 +45,7 @@ QRectF VizDepArrow::boundingRect() const {
 void VizDepArrow::pointLink(QPointF source, QPointF target) {
   // Set the line so that it starts on the border of the first point's circle, and ends pointRadius
   // pixels before the second point's circle in order to put the arrow head there.
-  const double pointRadius =
-      m_polyhedron->coordinateSystem()->projection()->vizProperties()->pointRadius();
+  const double pointRadius = m_vizProperties->pointRadius();
   m_arrowLine = QLineF(source, target);
   qreal length = m_arrowLine.length();
   QLineF displacementLine = QLineF(m_arrowLine);

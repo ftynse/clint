@@ -13,6 +13,7 @@
 
 class VizPolyhedron;
 class VizProjection;
+class VizDepArrow;
 
 class VizCoordinateSystem : public QGraphicsObject {
   Q_OBJECT
@@ -69,6 +70,8 @@ public:
   QRectF coordinateSystemRect() const;
 
   bool projectStatementOccurrence(ClintStmtOccurrence *occurrence);
+  void updateInnerDependences();
+  void setInnerDependencesBetween(VizPolyhedron *vp1, VizPolyhedron *vp2, std::vector<std::vector<int>> &&lines, bool violated);
 
   void extendHorizontally(int minimum, int maximum) {
     m_horizontalMin = std::min(m_horizontalMin, minimum);
@@ -132,6 +135,7 @@ private:
   std::vector<VizPolyhedron *> m_polyhedra;
   ClintProgram *m_program;
   VizProjection *m_projection;
+  std::unordered_set<VizDepArrow *> m_depArrows;
 
   size_t m_horizontalDimensionIdx = VizProperties::UNDEFINED_DIMENSION;
   size_t m_verticalDimensionIdx   = VizProperties::UNDEFINED_DIMENSION;

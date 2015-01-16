@@ -1,6 +1,7 @@
 #include "vizcoordinatesystem.h"
 #include "vizpolyhedron.h"
 #include "vizprojection.h"
+#include "vizpoint.h"
 #include "clintstmtoccurrence.h"
 #include "clintdependence.h"
 #include "oslutils.h"
@@ -96,6 +97,78 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
 
   return true;
 }
+
+void VizCoordinateSystem::updateInnerDependences() {
+  // TODO: update old arrows instead of creating new? (split/fuse may force deletion)
+  for (VizDepArrow *vda : m_depArrows) {
+    vda->setParentItem(nullptr);
+    delete vda;
+  }
+  m_depArrows.clear();
+
+  for (VizPolyhedron *vp1 : m_polyhedra) {
+    for (VizPolyhedron *vp2 : m_polyhedra) {
+      if (vp1 == vp2)
+        continue;
+
+      std::unordered_set<ClintDependence *> dependences =
+          vp1->scop()->dependencesBetween(vp1->occurrence(), vp2->occurrence());
+      if (dependences.empty())
+        continue;
+
+      for (ClintDependence *dep : dependences) {
+        std::vector<std::vector<int>> lines =
+            dep->projectOn(m_horizontalDimensionIdx, m_verticalDimensionIdx);
+        setInnerDependencesBetween(vp1, vp2, std::move(lines), dep->isViolated());
+      }
+    }
+  }
+
+  update();
+}
+
+void VizCoordinateSystem::setInnerDependencesBetween(VizPolyhedron *vp1, VizPolyhedron *vp2, std::vector<std::vector<int>> &&lines, bool violated) {
+  // TODO: this is very similar to VizPolyhedron::setInternalDependences. Generalize
+  // one CS is not supposed to contain polyhedra of different visible dimensionality, so number of coordinates are equal
+  for (const std::vector<int> &dep : lines) {
+    std::pair<int, int> sourceCoordinates {VizPoint::NO_COORD, VizPoint::NO_COORD};
+    std::pair<int, int> targetCoordinates {VizPoint::NO_COORD, VizPoint::NO_COORD};
+    if (dep.size() == 0) {
+      // TODO: figure out what to do with such dependence
+      continue;
+    } else if (dep.size() == 2) {
+      sourceCoordinates.first = dep[0];
+      targetCoordinates.first = dep[1];
+    } else if (dep.size() == 4) {
+      sourceCoordinates.first = dep[0];
+      sourceCoordinates.second = dep[1];
+      targetCoordinates.first = dep[2];
+      targetCoordinates.second = dep[3];
+    } else {
+      CLINT_UNREACHABLE;
+    }
+
+    // FIXME: this is very inefficient.  Change storage of points to a map by original coodinates.
+    VizPoint *sourcePoint = nullptr,
+             *targetPoint = nullptr;
+    sourcePoint = vp1->point(sourceCoordinates);
+    targetPoint = vp2->point(targetCoordinates);
+
+    if (!targetPoint || !sourcePoint) {
+      qDebug() << "Could not find point corresponding to "
+               << QVector<int>::fromStdVector(vp1->occurrence()->betaVector()) << sourceCoordinates.first << sourceCoordinates.second << " -> "
+               << QVector<int>::fromStdVector(vp2->occurrence()->betaVector()) << targetCoordinates.first << targetCoordinates.second;
+      continue;
+    }
+
+    VizDepArrow *depArrow = new VizDepArrow(mapFromItem(vp1,sourcePoint->pos()),
+                                            mapFromItem(vp2,targetPoint->pos()),
+                                            this, violated);
+    depArrow->setZValue(42);
+    m_depArrows.insert(depArrow);
+  }
+}
+
 
 std::vector<int> VizCoordinateSystem::betaPrefix() const {
 //  // FIXME: this works only for the first two dimensions, betas should be set up in construction

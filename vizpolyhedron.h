@@ -106,6 +106,8 @@ public:
     setPos(QPointF(x, y));
   }
 
+  VizPoint *point(std::pair<int, int> &originalCoordinates) const;
+
   void reparentPoint(VizPoint *point);
 
   void updateShape() {
@@ -146,7 +148,6 @@ private:
   std::vector<VizPoint *> convexHull() const;
   QPolygonF computePolygon() const;
   void recomputeShape();
-  VizPoint *point(std::pair<int, int> &originalCoordinates) const;
 
   QPointF mapToCoordinates(double x, double y) const;
 

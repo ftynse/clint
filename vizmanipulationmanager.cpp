@@ -153,6 +153,7 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
   if (!group.transformations.empty()) {
     polyhedron->scop()->transform(group);
     polyhedron->scop()->executeTransformationSequence();
+    polyhedron->coordinateSystem()->projection()->updateInnerDependences();
   }
 }
 
@@ -523,6 +524,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
     polyhedron->scop()->transform(group);
     polyhedron->scop()->executeTransformationSequence();
     polyhedron->coordinateSystem()->projection()->updateOuterDependences();
+    polyhedron->coordinateSystem()->projection()->updateInnerDependences();
   }
 }
 
@@ -689,6 +691,7 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     betaLoop.push_back(1); // FIXME: works only if one polygon in CS
     ClintStmtOccurrence *occurrence = oldPolyhedron->scop()->occurrence(betaLoop);
     polyhedron->setOccurrenceSilent(occurrence);
+    polyhedron->coordinateSystem()->projection()->updateInnerDependences();
   }
     break;
 

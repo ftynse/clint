@@ -283,6 +283,14 @@ void VizProjection::updateOuterDependences() {
   }
 }
 
+void VizProjection::updateInnerDependences() {
+  for (auto pile : m_coordinateSystems) {
+    for (VizCoordinateSystem *vcs : pile) {
+      vcs->updateInnerDependences();
+    }
+  }
+}
+
 void VizProjection::projectScop(ClintScop *vscop) {
   m_selectionManager->clearSelection();
   for (int i = 0; i < m_coordinateSystems.size(); i++) {
@@ -378,6 +386,8 @@ void VizProjection::projectScop(ClintScop *vscop) {
   }
 
   updateOuterDependences();
+
+  updateInnerDependences();
 
   updateSceneLayout();
 }

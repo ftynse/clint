@@ -185,7 +185,7 @@ void VizPolyhedron::setInternalDependences(const std::vector<std::vector<int>> &
 
     }
 
-    VizDepArrow *depArrow = new VizDepArrow(sourcePoint->pos(), targetPoint->pos(), this);
+    VizDepArrow *depArrow = new VizDepArrow(sourcePoint->pos(), targetPoint->pos(), this, false);
     m_deps.insert(depArrow);
   }
 }
