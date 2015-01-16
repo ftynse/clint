@@ -109,6 +109,9 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
 //    });
 //  });
 
+  m_updatedBeta.clear();
+  m_updatedOccurrences.clear();
+
   switch (transformation.kind()) {
   case Transformation::Kind::Fuse:
   {
@@ -211,7 +214,6 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
     break;
   }
 
-  m_updatedOccurrences.clear();
   for (auto it : m_updatedBeta) {
     m_updatedOccurrences[it.second] = it.first;
   }
