@@ -562,7 +562,8 @@ void VizManipulationManager::pointAboutToMove(VizPoint *point) {
   int verticalStart   = (vertical.begin())->first;
   int verticalEnd     = (vertical.rbegin())->first;
   if (horizontalStart == point->polyhedron()->localHorizontalMin() && // Attached to the horizontal beginning
-      horizontalEnd - horizontalStart == horizontal.size() - 1) {     // All consecutive lines selected
+      horizontalEnd - horizontalStart == horizontal.size() - 1 &&     // All consecutive lines selected
+      horizontalEnd - horizontalStart != horizontalSize) {            // Not all lines selected
     bool all = std::all_of(std::begin(horizontal), std::end(horizontal), [verticalSize,point](const std::pair<int, std::set<int>> &pair) {
       const std::set<int> &s = pair.second;
       return s.size() == verticalSize + 1 &&
@@ -573,14 +574,53 @@ void VizManipulationManager::pointAboutToMove(VizPoint *point) {
       // Vertical (inner) iss
       m_pointDetachState = PT_DETACH_VERTICAL;
       m_pointDetachValue = point->polyhedron()->localVerticalMin() + (horizontalEnd - horizontalStart + 1);
-      m_pointDetachParametric = false;
+      m_pointDetachLast = false;
     }
-  } else if (horizontalEnd == point->polyhedron()->localHorizontalMax()) {
+  } else if (horizontalEnd == point->polyhedron()->localHorizontalMax() &&
+             horizontalEnd - horizontalStart == horizontal.size() - 1 &&
+             horizontalEnd - horizontalStart != horizontalSize) {
 
-  } else if (verticalStart == point->polyhedron()->localVerticalMin()) {
+    bool all = std::all_of(std::begin(horizontal), std::end(horizontal), [verticalSize,point](const std::pair<int, std::set<int>> &pair) {
+      const std::set<int> &s = pair.second;
+      return s.size() == verticalSize + 1 &&
+          *(s.begin()) == point->polyhedron()->localVerticalMin() &&
+          *(s.rbegin()) == point->polyhedron()->localVerticalMax();
+    });
+    if (all) {
+      // Vertical (inner) iss
+      m_pointDetachState = PT_DETACH_VERTICAL;
+      m_pointDetachValue = point->polyhedron()->localVerticalMin() + (horizontalEnd - horizontalStart + 1);
+      m_pointDetachLast = true;
+    }
 
-  } else if (verticalEnd == point->polyhedron()->localHorizontalMax()) {
-
+  } else if (verticalStart == point->polyhedron()->localVerticalMin() &&
+             verticalEnd - verticalStart == vertical.size() - 1 &&
+             verticalEnd - verticalStart != verticalSize) {
+    bool all = std::all_of(std::begin(vertical), std::end(vertical), [horizontalSize,point](const std::pair<int, std::set<int>> &pair) {
+      const std::set<int> &s = pair.second;
+      return s.size() == horizontalSize + 1 &&
+          *(s.begin()) == point->polyhedron()->localHorizontalMin() &&
+          *(s.rbegin()) == point->polyhedron()->localHorizontalMax();
+    });
+    if (all) {
+      m_pointDetachState = PT_DETACH_HORIZONTAL;
+      m_pointDetachValue = point->polyhedron()->localHorizontalMin() + (verticalEnd - verticalStart + 1);
+      m_pointDetachLast = false;
+    }
+  } else if (verticalEnd == point->polyhedron()->localHorizontalMax() &&
+             verticalEnd - verticalStart == vertical.size() - 1 &&
+             verticalEnd - verticalStart != verticalSize) {
+    bool all = std::all_of(std::begin(vertical), std::end(vertical), [horizontalSize,point](const std::pair<int, std::set<int>> &pair) {
+      const std::set<int> &s = pair.second;
+      return s.size() == horizontalSize + 1 &&
+          *(s.begin()) == point->polyhedron()->localHorizontalMin() &&
+          *(s.rbegin()) == point->polyhedron()->localHorizontalMax();
+    });
+    if (all) {
+      m_pointDetachState = PT_DETACH_HORIZONTAL;
+      m_pointDetachValue = point->polyhedron()->localHorizontalMin() + (verticalEnd - verticalStart + 1);
+      m_pointDetachLast = true;
+    }
   } else {
     m_pointDetachState = PT_NODETACH;
     return; // no transformation;
@@ -604,10 +644,7 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
   }
     break;
   case PT_DETACHED_HORIZONTAL:
-    qDebug() << "detached";
-    break;
   case PT_DETACHED_VERTICAL:
-    qDebug() << "detached";
   {
     // FIXME: 2d only
     VizPolyhedron *polyhedron = new VizPolyhedron(nullptr, point->coordinateSystem());
@@ -615,7 +652,19 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     const std::unordered_set<VizPoint *> selectedPoints = sm->selectedPoints();
     CLINT_ASSERT(std::find(std::begin(selectedPoints), std::end(selectedPoints), point) != std::end(selectedPoints),
                  "The point being manipulated is not selected");
+
     VizPolyhedron *oldPolyhedron = point->polyhedron();
+
+    int dimensionIdx;
+    int minValue;
+    if (m_pointDetachState == PT_DETACHED_HORIZONTAL) {
+      dimensionIdx = oldPolyhedron->coordinateSystem()->verticalDimensionIdx();
+      minValue = oldPolyhedron->localVerticalMin();
+    } else {
+      dimensionIdx = oldPolyhedron->coordinateSystem()->horizontalDimensionIdx();
+      minValue = oldPolyhedron->localHorizontalMin();
+    }
+
     for (VizPoint *vp : selectedPoints) {
       polyhedron->reparentPoint(vp);
     }
@@ -628,7 +677,11 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     betaLoop.erase(betaLoop.end() - 1);
     TransformationGroup group;
     group.transformations.push_back(
-          Transformation::issFirst(betaLoop, oldPolyhedron->coordinateSystem()->horizontalDimensionIdx(), m_pointDetachValue));
+          Transformation::issFirst(betaLoop, dimensionIdx, m_pointDetachValue));
+
+    Transformer *c = new ClayScriptGenerator(std::cerr);
+    c->apply(nullptr, group);
+    delete c;
 
     oldPolyhedron->scop()->transform(group);
     oldPolyhedron->scop()->executeTransformationSequence();

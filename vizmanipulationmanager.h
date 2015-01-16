@@ -55,7 +55,7 @@ private:
     PT_DETACHED_VERTICAL
   }    m_pointDetachState;
   int  m_pointDetachValue;
-  bool m_pointDetachParametric;
+  bool m_pointDetachLast;
 
   void ensureTargetConsistency();
 };
