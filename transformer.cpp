@@ -44,6 +44,26 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
 //    clay_list_free(list);
   }
     break;
+  case Transformation::Kind::IndexSetSplitting:
+  {
+    // FIXME: only constant iss is supported
+    clay_list_p list = clay_list_malloc();
+    clay_array_p array = clay_array_malloc();
+    for (size_t i = 0, e = transformation.target().size(); i < e; i++) {
+      if (i == transformation.depth())
+        clay_array_add(array, -1);
+      else
+        clay_array_add(array, 0);
+    }
+    clay_list_add(list, array);
+    clay_list_add(list, clay_array_malloc());
+    array = clay_array_malloc();
+    clay_array_add(array, transformation.constantAmount() - 1); // invert
+    clay_list_add(list, array);
+    err = clay_iss(scop, ClayBeta(transformation.target()), list, nullptr, m_options);
+    clay_list_free(list);
+  }
+    break;
   default:
     break;
   }
@@ -160,6 +180,30 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
     }
   }
     break;
+  case Transformation::Kind::IndexSetSplitting:
+  {
+    // 1. Count all betas matching the prefix (unoptimal).
+    int numberStmt = 0;
+    for (auto it : m_originalOccurrences) {
+      const std::vector<int> &originalBeta = it.first;
+      const std::vector<int> &target = transformation.target();
+      if (isPrefix(target, originalBeta)) {
+        numberStmt++;
+      }
+    }
+    // 2. Old statements are not affected, only the new added.
+    m_updatedBeta = m_originalBeta;
+    // 3. Add newly created betas that do not have links to the occurrence yet???
+    for (int i = 0; i < numberStmt; i++) {
+      std::vector<int> updatedBeta(transformation.target());
+      updatedBeta.push_back(numberStmt + i);
+
+      // XXX: wtf method to keep track of occurrences created by iss
+      m_updatedBeta[(ClintStmtOccurrence *) m_lastOccurrenceFakePtr++] = updatedBeta;
+    }
+  }
+    break;
+
   case Transformation::Kind::Shift:
   case Transformation::Kind::Skew:
     // Do not affect beta

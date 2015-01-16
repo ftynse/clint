@@ -18,7 +18,7 @@ VizPolyhedron::VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSyste
   setFlag(QGraphicsItem::ItemIsMovable);
   setFlag(QGraphicsItem::ItemSendsGeometryChanges);
 
-  connect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
+  setOccurrenceSilent(occurrence);
 }
 
 void VizPolyhedron::setPointVisiblePos(VizPoint *vp, int x, int y) {
@@ -70,6 +70,14 @@ void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points,
   recomputeShape();
 }
 
+void VizPolyhedron::resetPointPositions() {
+  for (VizPoint *vp : m_points) {
+    int x, y;
+    std::tie(x, y) = vp->scatteredCoordinates();
+    setPointVisiblePos(vp, x - m_localHorizontalMin, y - m_localVerticalMin);
+  }
+}
+
 void VizPolyhedron::occurrenceChanged() {
   int horizontalDim = coordinateSystem()->horizontalDimensionIdx();
   int verticalDim   = coordinateSystem()->verticalDimensionIdx();
@@ -117,7 +125,7 @@ void VizPolyhedron::occurrenceChanged() {
       matchedPoints.insert(vp);
     }
   }
-  CLINT_ASSERT(unmatchedNewPoints == 0, "All new points should match old points by original coordinates"); // Not true with ISS
+  CLINT_ASSERT(unmatchedNewPoints == 0, "All new points should match old points by original coordinates");
   CLINT_ASSERT(matchedPoints.size() == m_points.size(), "Not all old points were matched");
   coordinateSystem()->polyhedronUpdated(this);
 }
@@ -500,4 +508,42 @@ QPointF VizPolyhedron::mapToCoordinates(double x, double y) const {
     m_coordinateSystem->projection()->vizProperties()->pointDistance();
   return QPointF((x - m_localHorizontalMin) * pointDistance,
                  -(y - m_localVerticalMin) * pointDistance);
+}
+
+void VizPolyhedron::reparentPoint(VizPoint *point) {
+  if (point->polyhedron() == this)
+    return;
+
+  if (point->polyhedron())
+    point->polyhedron()->m_points.erase(point);
+  point->reparent(this);
+  m_points.insert(point);
+}
+
+void VizPolyhedron::recomputeMinMax() {
+  int horizontalMin = INT_MAX, horizontalMax = INT_MIN,
+      verticalMin = INT_MAX, verticalMax = INT_MIN;
+  for (VizPoint *vp : m_points) {
+    int x,y;
+    std::tie(x, y) = vp->scatteredCoordinates();
+    horizontalMin = std::min(horizontalMin, x);
+    horizontalMax = std::max(horizontalMax, x);
+    verticalMin = std::min(verticalMin, y);
+    verticalMax = std::max(verticalMax, y);
+  }
+  m_localHorizontalMin = horizontalMin;
+  m_localHorizontalMax = horizontalMax;
+  m_localVerticalMin = verticalMin;
+  m_localVerticalMax = verticalMax;
+}
+
+void VizPolyhedron::setOccurrenceSilent(ClintStmtOccurrence *occurrence) {
+  if (m_occurrence) {
+    disconnect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
+  }
+  m_occurrence = occurrence;
+  if (occurrence) {
+    m_backgroundColor = m_coordinateSystem->projection()->vizProperties()->color(occurrence->betaVector());
+    connect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
+  }
 }

@@ -154,6 +154,15 @@ T *oslListAt(T *container, int index) {
   return nullptr;
 }
 
+template <typename T>
+int oslListSize(T *container) {
+  int size = 0;
+  for (T *container_part = container; container_part != nullptr; container_part = container_part->next) {
+    size++;
+  }
+  return size;
+}
+
 
 osl_relation_p oslApplyScattering(osl_statement_p stmt);
 osl_relation_p oslApplyScattering(osl_statement_p stmt, const std::vector<int> &beta);

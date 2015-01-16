@@ -9,15 +9,18 @@ VizPoint::VizPoint(VizPolyhedron *polyhedron) :
   QGraphicsObject(polyhedron), m_polyhedron(polyhedron) {
 
   setFlag(QGraphicsItem::ItemIsSelectable);
+  setFlag(QGraphicsItem::ItemIsMovable);
 }
 
 void VizPoint::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-  Q_UNUSED(option);
   Q_UNUSED(widget);
   painter->save();
   const double radius =
       m_polyhedron->coordinateSystem()->projection()->vizProperties()->pointRadius();
-  painter->setBrush(QBrush(m_color));
+  if (option->state & QStyle::State_Selected)
+    painter->setBrush(QBrush(Qt::white));
+  else
+    painter->setBrush(QBrush(m_color));
   painter->drawEllipse(QPointF(0, 0), radius, radius);
   painter->restore();
 }
@@ -39,6 +42,24 @@ QVariant VizPoint::itemChange(GraphicsItemChange change, const QVariant &value) 
     coordinateSystem()->projection()->selectionManager()->pointSelectionChanged(this, value.toBool());
   }
   return QGraphicsItem::itemChange(change, value);
+}
+
+void VizPoint::mousePressEvent(QGraphicsSceneMouseEvent *event) {
+  QGraphicsItem::mousePressEvent(event);
+  m_pressPos = pos();
+  coordinateSystem()->projection()->manipulationManager()->pointAboutToMove(this);
+}
+
+void VizPoint::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
+  QGraphicsItem::mouseReleaseEvent(event);
+  m_pressPos = QPointF(0,0);
+  coordinateSystem()->projection()->manipulationManager()->pointHasMoved(this);
+}
+
+void VizPoint::mouseMoveEvent(QGraphicsSceneMouseEvent *event) {
+  QGraphicsItem::mouseMoveEvent(event);
+  QPointF diff = pos() - m_pressPos;
+  coordinateSystem()->projection()->manipulationManager()->pointMoving(diff);
 }
 
 void VizPoint::setOriginalCoordinates(int horizontal, int vertical) {

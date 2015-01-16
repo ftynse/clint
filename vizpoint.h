@@ -66,9 +66,23 @@ public:
     m_color = color;
   }
 
+  void reparent(VizPolyhedron *parent) {
+    if (parent == m_polyhedron)
+      return;
+    m_polyhedron = parent;
+    QPointF pos = scenePos();
+    setParentItem(parent);
+    setPos(parent->mapFromScene(pos));
+  }
+
 signals:
 
 public slots:
+
+protected:
+  void mousePressEvent(QGraphicsSceneMouseEvent *event);
+  void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
+  void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
 
 private:
   VizPolyhedron *m_polyhedron;
@@ -84,6 +98,7 @@ private:
   bool m_selectionChangeBarrier = false;
 
   QColor m_color;
+  QPointF m_pressPos;
 };
 
 #endif // VIZPOINT_H

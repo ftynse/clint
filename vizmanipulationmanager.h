@@ -32,6 +32,10 @@ public slots:
   void polyhedronDetaching(QPointF position);
   void polyhedronHasDetached(VizPolyhedron *polyhedron);
 
+  void pointAboutToMove(VizPoint *point);
+  void pointMoving(QPointF position);
+  void pointHasMoved(VizPoint *point);
+
 private:
   VizPolyhedron *m_polyhedron = nullptr;
   VizPoint *m_point = nullptr;
@@ -42,6 +46,16 @@ private:
   int m_horzOffset, m_vertOffset;
   bool m_detached;
   bool m_firstMovement = false;
+
+  enum {
+    PT_NODETACH,
+    PT_DETACH_HORIZONTAL,
+    PT_DETACH_VERTICAL,
+    PT_DETACHED_HORIZONTAL,
+    PT_DETACHED_VERTICAL
+  }    m_pointDetachState;
+  int  m_pointDetachValue;
+  bool m_pointDetachParametric;
 
   void ensureTargetConsistency();
 };
