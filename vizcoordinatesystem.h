@@ -127,6 +127,8 @@ public:
   void resetPolyhedronPos(VizPolyhedron *polyhedron);
 
   void insertPolyhedronAfter(VizPolyhedron *inserted, VizPolyhedron *after);
+  void updateAllPositions();
+
 signals:
 
 public slots:
@@ -162,9 +164,9 @@ private:
   QString m_horizontalName;
   QString m_verticalName;
 
-  void updatePolyhedraPositions();
   void addAxisLabels(ClintStmtOccurrence *occurrence);
   void regenerateAxisLabels();
+  void updatePolyhedraPositions();
 };
 
 #endif // VIZCOORDINATESYSTEM_H

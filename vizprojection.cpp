@@ -29,6 +29,11 @@ VizProjection::VizProjection(int horizontalDimensionIdx, int verticalDimensionId
 
 void VizProjection::updateProjection() {
   updateSceneLayout();
+  for (auto pile : m_coordinateSystems) {
+    for (VizCoordinateSystem *vcs : pile) {
+      vcs->updateAllPositions();
+    }
+  }
   m_view->viewport()->update();
 }
 

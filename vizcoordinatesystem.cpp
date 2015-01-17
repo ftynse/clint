@@ -198,6 +198,14 @@ void VizCoordinateSystem::updatePolyhedraPositions() {
   }
 }
 
+void VizCoordinateSystem::updateAllPositions() {
+  // This does not update arrows since they are attached to the polyhedra by signal/slot
+  updatePolyhedraPositions();
+  for (VizPolyhedron *vp : m_polyhedra) {
+    vp->updateShape();
+  }
+}
+
 void VizCoordinateSystem::setPolyhedronCoordinates(VizPolyhedron *polyhedron, int horizontal,
                                                    int vertical, bool ignoreHorizontal,
                                                    bool ignoreVertical) {

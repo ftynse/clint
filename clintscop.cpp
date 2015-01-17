@@ -72,7 +72,7 @@ void ClintScop::updateDependences(osl_scop_p transformed) {
   processDependenceMap(dependenceMap, violated);
 }
 
-ClintScop::ClintScop(osl_scop_p scop, char *originalCode, ClintProgram *parent) :
+ClintScop::ClintScop(osl_scop_p scop, int parameterValue, char *originalCode, ClintProgram *parent) :
   QObject(parent), m_scopPart(scop), m_program(parent) {
   oslListForeach(scop->statement, [this](osl_statement_p stmt) {
     ClintStmt *vizStmt = new ClintStmt(stmt, this);
@@ -84,8 +84,7 @@ ClintScop::ClintScop(osl_scop_p scop, char *originalCode, ClintProgram *parent) 
     });
   });
 
-  // FIXME: hardcoded parameter value
-  m_fixedContext = oslRelationFixAllParameters(m_scopPart->context, 6);
+  m_fixedContext = oslRelationFixAllParameters(m_scopPart->context, parameterValue);
 
   m_transformer = new ClayTransformer;
   m_scriptGenerator = new ClayScriptGenerator(m_scriptStream);

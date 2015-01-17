@@ -25,7 +25,7 @@ public:
 //  typedef std::multimap<std::pair<ClintStmtOccurrence *, ClintStmtOccurrence *>, ClintDependence *> ClintDependenceMap;
   typedef std::multimap<ClintStmtOccurrence *, ClintDependence *> ClintOccurrenceDeps;
 
-  explicit ClintScop(osl_scop_p scop, char *originalCode = nullptr, ClintProgram *parent = nullptr);
+  explicit ClintScop(osl_scop_p scop, int parameterValue, char *originalCode = nullptr, ClintProgram *parent = nullptr);
   ~ClintScop();
 
   // Accessors

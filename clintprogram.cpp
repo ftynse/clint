@@ -11,7 +11,7 @@ ClintProgram::ClintProgram(osl_scop_p scop, char *originalCode, QObject *parent)
   // They may accept a different constructor as long as they provide the same interface for the
   // coordinate system part.
   oslListForeach(scop, [this,originalCode](osl_scop_p sc) {
-    ClintScop *vizScop = new ClintScop(sc, originalCode, this);
+    ClintScop *vizScop = new ClintScop(sc, 6, originalCode, this); // FIXME: hardcoded value
     m_scops.push_back(vizScop);
   });
 

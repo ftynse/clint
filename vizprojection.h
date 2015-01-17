@@ -23,7 +23,7 @@ public:
 
   void projectScop(ClintScop *vscop);
 
-  /*inline*/ const VizProperties *vizProperties() const {
+  /*inline*/ VizProperties *vizProperties() const {
     return m_vizProperties;
   }
 

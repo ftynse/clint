@@ -15,7 +15,7 @@ class ClintWindow : public QMainWindow {
 public:
   explicit ClintWindow(QWidget *parent = 0);
 
-    ClintScop * regenerateScop(ClintScop *vscop);
+    ClintScop * regenerateScop(ClintScop *vscop, int parameterValue);
 signals:
 
 public slots:
@@ -26,12 +26,15 @@ public slots:
 
   void editUndo();
   void editRedo();
+  void editVizProperties();
 
   void viewFreezeToggled(bool value);
 
   void scopTransformed();
 
   void updateCodeEditor();
+
+  void changeParameter(int value);
 
 private:
   QAction *m_actionFileOpen;
@@ -41,6 +44,7 @@ private:
 
   QAction *m_actionEditUndo;
   QAction *m_actionEditRedo;
+  QAction *m_actionEditVizProperties;
 
   QAction *m_actionViewFreeze;
 
@@ -54,6 +58,7 @@ private:
   QTextEdit *m_scriptEditor = nullptr;
 
   bool m_showOriginalCode = false;
+  int m_parameterValue = 6;
 
   void setupActions();
   void setupMenus();

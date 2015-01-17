@@ -6,6 +6,7 @@
 #include "vizprojection.h"
 #include "clintwindow.h"
 #include "oslutils.h"
+#include "propertiesdialog.h"
 
 void ClintWindow::resetCentralWidget(QWidget *interface) {
   if (centralWidget() != nullptr) {
@@ -88,6 +89,7 @@ void ClintWindow::setupActions() {
 
   m_actionEditUndo = new QAction(QIcon::fromTheme("edit-undo"), "Undo", this);
   m_actionEditRedo = new QAction(QIcon::fromTheme("edit-redo"), "Redo", this);
+  m_actionEditVizProperties = new QAction("Visualization properties", this);
 
   m_actionEditUndo->setShortcut(QKeySequence::Undo);
   m_actionEditRedo->setShortcut(QKeySequence::Redo);
@@ -105,6 +107,7 @@ void ClintWindow::setupActions() {
 
   connect(m_actionEditUndo, &QAction::triggered, this, &ClintWindow::editUndo);
   connect(m_actionEditRedo, &QAction::triggered, this, &ClintWindow::editRedo);
+  connect(m_actionEditVizProperties, &QAction::triggered, this, &ClintWindow::editVizProperties);
 
   connect(m_actionViewFreeze, &QAction::toggled, this, &ClintWindow::viewFreezeToggled);
 }
@@ -121,6 +124,8 @@ void ClintWindow::setupMenus() {
   QMenu *editMenu = new QMenu("Edit");
   editMenu->addAction(m_actionEditUndo);
   editMenu->addAction(m_actionEditRedo);
+  editMenu->addSeparator();
+  editMenu->addAction(m_actionEditVizProperties);
 
   QMenu *viewMenu = new QMenu("View");
   viewMenu->addAction(m_actionViewFreeze);
@@ -188,6 +193,13 @@ void ClintWindow::fileSaveSvg() {
   delete generator;
 }
 
+void ClintWindow::changeParameter(int value) {
+  if (value > 0) {
+    m_parameterValue = value;
+    regenerateScop((*m_program)[0], value);
+  }
+}
+
 void ClintWindow::openFileByName(QString fileName) {
   char *cFileName = strdup(QFile::encodeName(fileName).constData());
   QString fileNameNoPath = QFileInfo(fileName).fileName();
@@ -236,9 +248,12 @@ void ClintWindow::openFileByName(QString fileName) {
     free(originalCode);
 }
 
-ClintScop *ClintWindow::regenerateScop(ClintScop *vscop) {
+ClintScop *ClintWindow::regenerateScop(ClintScop *vscop, int parameterValue = -1) {
+  if (parameterValue == -1)
+    parameterValue = m_parameterValue;
+
   osl_scop_p scop = vscop->appliedScop();
-  ClintScop *newscop = new ClintScop(scop, nullptr, m_program);
+  ClintScop *newscop = new ClintScop(scop, parameterValue, nullptr, m_program);
   m_projection->projectScop(newscop);
   for (TransformationGroup g : vscop->transformationSequence().groups) {
     newscop->transform(g);
@@ -288,6 +303,16 @@ void ClintWindow::editRedo() {
 
   m_actionEditRedo->setEnabled(newscop->hasRedo());
   m_actionEditUndo->setEnabled(true);
+}
+
+void ClintWindow::editVizProperties() {
+  if (!m_projection)
+    return;
+
+  PropertiesDialog *dialog = new PropertiesDialog(m_projection->vizProperties(), this);
+  connect(dialog, &QDialog::rejected, dialog, &QDialog::deleteLater);
+  connect(dialog, &PropertiesDialog::parameterChange, this, &ClintWindow::changeParameter);
+  dialog->show();
 }
 
 void ClintWindow::viewFreezeToggled(bool value) {
