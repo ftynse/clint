@@ -15,7 +15,8 @@ class ClintWindow : public QMainWindow {
 public:
   explicit ClintWindow(QWidget *parent = 0);
 
-    ClintScop * regenerateScop(ClintScop *vscop, int parameterValue);
+    ClintScop *regenerateScop(ClintScop *vscop, int parameterValue);
+    ClintScop *regenerateScopOsl(ClintScop *vscop, osl_scop_p scop, int parameterValue, bool swapMapper);
 signals:
 
 public slots:
@@ -33,6 +34,8 @@ public slots:
   void scopTransformed();
 
   void updateCodeEditor();
+  void reparseCode();
+  void reparseScript();
 
   void changeParameter(int value);
 
@@ -56,6 +59,8 @@ private:
   VizProjection *m_projection = nullptr;
   QTextEdit *m_codeEditor = nullptr;
   QTextEdit *m_scriptEditor = nullptr;
+  QPushButton *m_reparseCodeButton = nullptr,
+              *m_reparseScriptButton = nullptr;
 
   bool m_showOriginalCode = false;
   int m_parameterValue = 6;

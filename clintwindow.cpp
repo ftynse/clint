@@ -13,6 +13,8 @@ void ClintWindow::resetCentralWidget(QWidget *interface) {
     QWidget *oldWidget = centralWidget();
     m_scriptEditor->setParent(nullptr);
     m_codeEditor->setParent(nullptr);
+    m_reparseScriptButton->setParent(nullptr);
+    m_reparseCodeButton->setParent(nullptr);
     delete oldWidget;
   }
 
@@ -21,10 +23,13 @@ void ClintWindow::resetCentralWidget(QWidget *interface) {
     return;
   }
 
-  QLabel *TODOupdater = new QLabel("<\n>");
+//  QLabel *TODOupdater = new QLabel("<\n>");
+
   QGridLayout *topLayout = new QGridLayout;
   topLayout->addWidget(interface, 0, 0, 2, 1 /*,Qt::AlignCenter | Qt::AlignVCenter*/);
-  topLayout->addWidget(TODOupdater, 0, 1, 2, 1 /*,Qt::AlignVCenter*/);
+//  topLayout->addWidget(TODOupdater, 0, 1, 2, 1 /*,Qt::AlignVCenter*/);
+  topLayout->addWidget(m_reparseScriptButton, 0, 1, 1, 1);
+  topLayout->addWidget(m_reparseCodeButton, 1, 1, 1, 1);
   topLayout->addWidget(m_scriptEditor, 0, 2, 1, 1 /*,Qt::AlignCenter | Qt::AlignTop*/);
   topLayout->addWidget(m_codeEditor, 1, 2, 1, 1  /*,Qt::AlignCenter| Qt::AlignBottom*/);
 
@@ -66,6 +71,11 @@ ClintWindow::ClintWindow(QWidget *parent) :
   m_codeEditor = new QTextEdit;
   m_codeEditor->setFont(monospacefont);
   m_scriptEditor->setFont(monospacefont);
+
+  m_reparseCodeButton = new QPushButton("<");
+  m_reparseScriptButton = new QPushButton("<");
+  connect(m_reparseCodeButton, &QPushButton::clicked, this, &ClintWindow::reparseCode);
+  connect(m_reparseScriptButton, &QPushButton::clicked, this, &ClintWindow::reparseScript);
 
   setWindowTitle("Clint: Chunky Loop INTerface");
   setupActions();
@@ -248,27 +258,39 @@ void ClintWindow::openFileByName(QString fileName) {
     free(originalCode);
 }
 
-ClintScop *ClintWindow::regenerateScop(ClintScop *vscop, int parameterValue = -1) {
+ClintScop *ClintWindow::regenerateScopOsl(ClintScop *vscop, osl_scop_p scop, int parameterValue = -1, bool swapMapper = true) {
   if (parameterValue == -1)
     parameterValue = m_parameterValue;
 
-  osl_scop_p scop = vscop->appliedScop();
   ClintScop *newscop = new ClintScop(scop, parameterValue, nullptr, m_program);
   m_projection->projectScop(newscop);
   for (TransformationGroup g : vscop->transformationSequence().groups) {
     newscop->transform(g);
   }
-  newscop->resetRedoSequence(vscop->redoSequence());
-  newscop->swapBetaMapper(vscop);
-  newscop->setScopSilent(vscop->scopPart());
+  if (swapMapper) {
+    newscop->resetRedoSequence(vscop->redoSequence());
+    newscop->swapBetaMapper(vscop);
+    newscop->setScopSilent(vscop->scopPart());
+  } else {
+    newscop->updateCode();
+  }
   (*m_program)[0] = newscop;
   disconnect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
   connect(newscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
 
   updateCodeEditor();
-  m_scriptEditor->setText(newscop->currentScript());
+  if (swapMapper)
+    m_scriptEditor->setText(newscop->currentScript());
 
   return newscop;
+}
+
+ClintScop *ClintWindow::regenerateScop(ClintScop *vscop, int parameterValue = -1) {
+  if (parameterValue == -1)
+    parameterValue = m_parameterValue;
+
+  osl_scop_p scop = vscop->appliedScop();
+  return regenerateScopOsl(vscop, scop, parameterValue);
 }
 
 void ClintWindow::editUndo() {
@@ -334,6 +356,57 @@ void ClintWindow::updateCodeEditor() {
 //    codeEditor->setText(QString(vscop->originalCode()));
     m_codeEditor->setHtml(QString(vscop->originalHtml()));
   }
+}
+
+void ClintWindow::reparseCode() {
+  if (!m_program)
+    return;
+  ClintScop *vscop = (*m_program)[0];
+  if (!vscop)
+    return;
+
+  QString plainText = m_codeEditor->toPlainText();
+  char *code = strdup(plainText.toStdString().c_str());
+  osl_scop_p scop = parseCode(code);
+  if (scop == nullptr) {
+    QMessageBox::critical(this, "Could not parse code", "Could not extract polyhedral representation from the code",
+                          QMessageBox::Ok, QMessageBox::Ok);
+  } else {
+    QString plainText = m_scriptEditor->toPlainText();
+    char *script = strdup(plainText.toStdString().c_str());
+
+    int result = parseClay(scop, script);
+    if (result != 0) {
+      QMessageBox::critical(this, "Could not apply transformation", "The transformation sequence is not applicable to the modified code",
+                            QMessageBox::Ok, QMessageBox::Ok);
+    } else {
+      regenerateScopOsl(vscop, scop, -1, false);
+    }
+    free(script);
+  }
+  free(code);
+}
+
+void ClintWindow::reparseScript() {
+  if (!m_program)
+    return;
+  ClintScop *vscop = (*m_program)[0];
+  if (!vscop)
+    return;
+
+  QString plainText = m_scriptEditor->toPlainText();
+  char *script = strdup(plainText.toStdString().c_str());
+  osl_scop_p scop = osl_scop_clone(vscop->scopPart());
+
+  int result = parseClay(scop, script);
+  if (result != 0) {
+    QMessageBox::critical(this, "Could not apply transformation", "Could not apply specified transformation sequence to the code",
+                          QMessageBox::Ok, QMessageBox::Ok);
+  } else {
+    regenerateScopOsl(vscop, scop, -1, false);
+  }
+
+  free(script);
 }
 
 void ClintWindow::scopTransformed() {

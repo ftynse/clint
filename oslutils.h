@@ -225,4 +225,7 @@ std::multimap<std::vector<int>, std::pair<int, int>> stmtPositionsInHtml(osl_sco
 
 osl_dependence_p oslScopDependence(osl_scop_p scop);
 
+osl_scop_p parseCode(char *code);
+int parseClay(osl_scop_p scop, char *script);
+
 #endif // OSLUTILS_H

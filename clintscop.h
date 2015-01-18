@@ -85,6 +85,10 @@ public:
     m_scriptStream.clear();
     updateGeneratedHtml(m_scopPart, m_originalHtml);
   }
+  void updateCode() {
+    updateGeneratedHtml(m_scopPart, m_generatedHtml);
+  }
+
   osl_scop_p scopPart() const {
     return m_scopPart;
   }

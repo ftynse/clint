@@ -4,6 +4,7 @@
 #include <osl/osl.h>
 #include <osl/extensions/extbody.h>
 
+#include <clay/clay.h>
 #include <clay/beta.h>
 
 #include <candl/candl.h>
@@ -554,4 +555,26 @@ DependenceMap oslDependenceMapViolations(osl_scop_p scop, osl_scop_p transformed
   osl_scop_free(noUnionTransformed);
 
   return dependenceMap;
+}
+
+osl_scop_p parseCode(char *code) {
+  FILE *file = tmpfile();
+  fprintf(file, "%s\n", code);
+  rewind(file);
+  clan_options_p options = clan_options_malloc();
+  options->castle = 0;
+  options->extbody = 1;
+  options->precision = 0;
+  osl_scop_p scop = clan_scop_extract(file, options);
+  clan_options_free(options);
+  fclose(file);
+  return scop;
+}
+
+int parseClay(osl_scop_p scop, char *script) {
+  clay_options_p options = clay_options_malloc();
+  options->normalize = 1;
+  int result = clay_parser_string(scop, script, options);
+  clay_options_free(options);
+  return result;
 }
