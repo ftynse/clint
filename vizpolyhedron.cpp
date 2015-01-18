@@ -75,6 +75,8 @@ void VizPolyhedron::resetPointPositions() {
   for (VizPoint *vp : m_points) {
     int x, y;
     std::tie(x, y) = vp->scatteredCoordinates();
+    if (x == VizPoint::NO_COORD) x = 0;
+    if (y == VizPoint::NO_COORD) y = 0;
     setPointVisiblePos(vp, x - m_localHorizontalMin, y - m_localVerticalMin);
   }
 }
@@ -543,6 +545,8 @@ void VizPolyhedron::recomputeMinMax() {
   for (VizPoint *vp : m_points) {
     int x,y;
     std::tie(x, y) = vp->scatteredCoordinates();
+    if (x == VizPoint::NO_COORD) x = 0;
+    if (y == VizPoint::NO_COORD) y = 0;
     horizontalMin = std::min(horizontalMin, x);
     horizontalMax = std::max(horizontalMax, x);
     verticalMin = std::min(verticalMin, y);
