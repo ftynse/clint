@@ -356,3 +356,11 @@ void ClintScop::redoTransformation() {
 void ClintScop::clearRedo() {
   m_undoneTransformationSeq.groups.clear();
 }
+
+int ClintScop::dimensionality() {
+  int dimensions = 0;
+  for (auto it : m_vizBetaMap) {
+    dimensions = std::max(dimensions, static_cast<int>((it.first.size() - 1)));
+  }
+  return dimensions;
+}

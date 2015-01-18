@@ -129,6 +129,9 @@ public:
   bool hasRedo() const {
     return m_undoneTransformationSeq.groups.size() > 0;
   }
+
+  int dimensionality();
+
 signals:
   void transformExecuted();
 

@@ -177,9 +177,15 @@ void ClintWindow::fileClose() {
   m_program->setParent(nullptr);
   delete m_program;
   m_program = nullptr;
-  m_projection->setParent(nullptr);
-  delete m_projection;
-  m_projection = nullptr;
+//  m_projection->setParent(nullptr);
+//  delete m_projection;
+//  m_projection = nullptr;
+
+  for (VizProjection *vp : m_allProjections) {
+    vp->setParent(nullptr);
+    delete vp;
+  }
+  m_allProjections.clear();
 
   m_fileOpen = false;
   m_actionFileClose->setEnabled(false);
@@ -208,6 +214,34 @@ void ClintWindow::changeParameter(int value) {
     m_parameterValue = value;
     regenerateScop((*m_program)[0], value);
   }
+}
+
+void ClintWindow::createProjections(ClintScop *vscop) {
+  for (VizProjection *vp : m_allProjections) {
+    vp->setParent(nullptr);
+    delete vp;
+  }
+  m_allProjections.clear();
+
+  for (int i = 0, e = vscop->dimensionality(); i < e - 1; i++) {
+    for (int j = i + 1; j < e; j++) {
+      VizProjection *vp = new VizProjection(i, j, this);
+      vp->projectScop(vscop);
+      m_allProjections.push_back(vp);
+    }
+  }
+
+  QGridLayout *projectionsLayout = new QGridLayout;
+  int counter = 0;
+  for (int i = 0, e = vscop->dimensionality(); i < e - 1; i++) {
+    for (int j = i + 1; j < e; j++) {
+      projectionsLayout->addWidget(m_allProjections[counter++]->widget(), j-1, i);
+    }
+  }
+  QWidget *widget = new QWidget;
+  widget->setLayout(projectionsLayout);
+  resetCentralWidget(widget);
+
 }
 
 void ClintWindow::openFileByName(QString fileName) {
@@ -243,13 +277,16 @@ void ClintWindow::openFileByName(QString fileName) {
   m_program = new ClintProgram(scop, originalCode, this);
   ClintScop *vscop = (*m_program)[0];
   connect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
-  m_projection = new VizProjection(0, 1, this);
-  m_projection->projectScop(vscop);
+
+//  m_projection = new VizProjection(1, 2, this);
+//  m_projection->projectScop(vscop);
+
+  createProjections(vscop);
 
   m_codeEditor->setHtml(vscop->originalHtml());
   m_scriptEditor->setHtml(QString());
 
-  resetCentralWidget(m_projection->widget());
+//  resetCentralWidget(m_projection->widget());
 
   m_fileOpen = true;
   m_actionFileClose->setEnabled(true);
@@ -263,7 +300,8 @@ ClintScop *ClintWindow::regenerateScopOsl(ClintScop *vscop, osl_scop_p scop, int
     parameterValue = m_parameterValue;
 
   ClintScop *newscop = new ClintScop(scop, parameterValue, nullptr, m_program);
-  m_projection->projectScop(newscop);
+//  m_projection->projectScop(newscop);
+  createProjections(newscop);
   for (TransformationGroup g : vscop->transformationSequence().groups) {
     newscop->transform(g);
   }
@@ -328,10 +366,9 @@ void ClintWindow::editRedo() {
 }
 
 void ClintWindow::editVizProperties() {
-  if (!m_projection)
+  if (m_allProjections.size() == 0)
     return;
-
-  PropertiesDialog *dialog = new PropertiesDialog(m_projection->vizProperties(), this);
+  PropertiesDialog *dialog = new PropertiesDialog(m_allProjections[0]->vizProperties(), this);
   connect(dialog, &QDialog::rejected, dialog, &QDialog::deleteLater);
   connect(dialog, &PropertiesDialog::parameterChange, this, &ClintWindow::changeParameter);
   dialog->show();
@@ -424,4 +461,8 @@ void ClintWindow::scopTransformed() {
 
   m_actionEditUndo->setEnabled(vscop->hasUndo());
   m_actionEditRedo->setEnabled(false);
+
+  for (VizProjection *vp : m_allProjections) {
+    vp->updateProjection();
+  }
 }

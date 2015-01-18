@@ -17,6 +17,7 @@ public:
 
     ClintScop *regenerateScop(ClintScop *vscop, int parameterValue);
     ClintScop *regenerateScopOsl(ClintScop *vscop, osl_scop_p scop, int parameterValue, bool swapMapper);
+    void createProjections(ClintScop *vscop);
 signals:
 
 public slots:
@@ -57,6 +58,7 @@ private:
 
   ClintProgram *m_program = nullptr;
   VizProjection *m_projection = nullptr;
+  std::vector<VizProjection *> m_allProjections;
   QTextEdit *m_codeEditor = nullptr;
   QTextEdit *m_scriptEditor = nullptr;
   QPushButton *m_reparseCodeButton = nullptr,
