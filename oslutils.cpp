@@ -213,8 +213,9 @@ clay_array_p clayBetaFromVector(const std::vector<int> &betaVector) {
 osl_scop_p oslFromCCode(FILE *file) {
   clan_options_p clan_opts = clan_options_malloc();
   clan_opts->castle = 0;
-  clan_opts->autoscop = 1;
+  clan_opts->autoscop = 0;
   clan_opts->extbody = 1;
+  clan_opts->precision = 0;
   osl_scop_p clan_scop = clan_scop_extract(file, clan_opts);
   clan_options_free(clan_opts);
   return clan_scop;
