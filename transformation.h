@@ -72,6 +72,17 @@ public:
     return t;
   }
 
+  static Transformation issLast(const std::vector<int> &beta, int depth, int value) {
+    CLINT_ASSERT(beta.size() >= 1, "Beta too short");
+    Transformation t;
+    t.m_kind           = Kind::IndexSetSplitting;
+    t.m_targetBeta     = beta;
+    t.m_constantAmount = value;
+    t.m_depthOuter     = depth;
+    t.m_useFirstParameter = true;
+    return t;
+  }
+
   static Transformation putAfterLast(const std::vector<int> &beta, int size) {
     CLINT_ASSERT(beta.size() >= 1, "Cannot operate on the whole program");
     return putAfter(beta, size - 1, size);
@@ -159,6 +170,7 @@ public:
     return t;
   }
 
+  bool m_useFirstParameter = false;
 private:
   std::vector<int> m_targetBeta;
   int m_depthInner, m_depthOuter;

@@ -186,8 +186,11 @@ public:
       outputVector(m_stream, transformation.target()) << "], {";
       std::vector<int> iters;
       for (int i = 0, e = transformation.target().size(); i < e; i++)
-        iters.push_back(transformation.depth() == i ? -1 : 0);
-      outputVector(m_stream, iters) << "||" << transformation.constantAmount() - 1 << "});\n";
+        iters.push_back(transformation.depth() == i ?
+                          (transformation.m_useFirstParameter ? 1 : -1) :
+                          0);
+      outputVector(m_stream, iters) << "|" << (transformation.m_useFirstParameter ? "-1" : "") << "|" <<
+                                       (transformation.m_useFirstParameter ? transformation.constantAmount() : transformation.constantAmount() - 1) << "});\n";
     }
       break;
 

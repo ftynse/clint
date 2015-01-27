@@ -678,8 +678,13 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     std::vector<int> betaLoop(oldPolyhedron->occurrence()->betaVector());
     betaLoop.erase(betaLoop.end() - 1);
     TransformationGroup group;
-    group.transformations.push_back(
-          Transformation::issFirst(betaLoop, dimensionIdx, minValue + m_pointDetachValue));
+    if (m_pointDetachLast) {
+      group.transformations.push_back(
+            Transformation::issLast(betaLoop, dimensionIdx, minValue + m_pointDetachValue));
+    } else {
+      group.transformations.push_back(
+            Transformation::issFirst(betaLoop, dimensionIdx, minValue + m_pointDetachValue));
+    }
 
     Transformer *c = new ClayScriptGenerator(std::cerr);
     c->apply(nullptr, group);

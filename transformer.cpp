@@ -48,18 +48,35 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
   {
     // FIXME: only constant iss is supported
     clay_list_p list = clay_list_malloc();
-    clay_array_p array = clay_array_malloc();
-    for (size_t i = 0, e = transformation.target().size(); i < e; i++) {
-      if (i == transformation.depth())
-        clay_array_add(array, -1);
-      else
-        clay_array_add(array, 0);
+    if (transformation.m_useFirstParameter) {
+      clay_array_p array = clay_array_malloc();
+      for (size_t i = 0, e = transformation.target().size(); i < e; i++) {
+        if (i == transformation.depth())
+          clay_array_add(array, 1);
+        else
+          clay_array_add(array, 0);
+      }
+      clay_list_add(list, array);
+      array = clay_array_malloc();
+      clay_array_add(array, -1); // FIXME: uses only first parameter
+      clay_list_add(list, array);
+      array = clay_array_malloc();
+      clay_array_add(array, transformation.constantAmount());
+      clay_list_add(list, array);
+    } else {
+      clay_array_p array = clay_array_malloc();
+      for (size_t i = 0, e = transformation.target().size(); i < e; i++) {
+        if (i == transformation.depth())
+          clay_array_add(array, -1);
+        else
+          clay_array_add(array, 0);
+      }
+      clay_list_add(list, array);
+      clay_list_add(list, clay_array_malloc());
+      array = clay_array_malloc();
+      clay_array_add(array, transformation.constantAmount() - 1); // invert (change polygon insertion to before, then change this)
+      clay_list_add(list, array);
     }
-    clay_list_add(list, array);
-    clay_list_add(list, clay_array_malloc());
-    array = clay_array_malloc();
-    clay_array_add(array, transformation.constantAmount() - 1); // invert
-    clay_list_add(list, array);
     err = clay_iss(scop, ClayBeta(transformation.target()), list, nullptr, m_options);
     clay_list_free(list);
   }
