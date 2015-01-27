@@ -104,18 +104,19 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
     CLINT_ASSERT(std::find(std::begin(selectedPolyhedra), std::end(selectedPolyhedra), polyhedron) != std::end(selectedPolyhedra),
                  "The active polyhedra is not selected");
 
-    // TODO: vertical should be ignored (and movement forbidden) for 1D coordinate systems
     for (VizPolyhedron *vp : selectedPolyhedra) {
       const std::vector<int> beta = vp->occurrence()->betaVector();
       int horzDepth = vp->coordinateSystem()->horizontalDimensionIdx() + 1;
       int horzAmount = m_horzOffset;
       int vertDepth = vp->coordinateSystem()->verticalDimensionIdx() + 1;
       int vertAmount = m_vertOffset;
-      if (m_horzOffset != 0) {
+      bool oneDimensional = vp->occurrence()->dimensionality() < vp->coordinateSystem()->verticalDimensionIdx();
+      bool zeroDimensional = vp->occurrence()->dimensionality() < vp->coordinateSystem()->horizontalDimensionIdx();
+      if (!zeroDimensional && m_horzOffset != 0) {
         Transformation transformation = Transformation::consantShift(beta, horzDepth, -horzAmount);
         group.transformations.push_back(transformation);
       }
-      if (m_vertOffset != 0) {
+      if (!oneDimensional && m_vertOffset != 0) {
         Transformation transformation = Transformation::consantShift(beta, vertDepth, -vertAmount);
         group.transformations.push_back(transformation);
       }
@@ -136,6 +137,11 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
         vp->coordinateSystem()->setPolyhedronCoordinates(vp, hmin, INT_MAX, false, true);
       } else if (fixVertical) {
         vp->coordinateSystem()->setPolyhedronCoordinates(vp, INT_MAX, vmin, true, false);
+      }
+      if (zeroDimensional) {
+        vp->coordinateSystem()->setPolyhedronCoordinates(vp, vp->localHorizontalMin(), vp->localVerticalMin());
+      } else if (oneDimensional) {
+        vp->coordinateSystem()->setPolyhedronCoordinates(vp, INT_MAX, vp->localVerticalMin(), true, false);
       }
       CLINT_ASSERT(vp->scop() == polyhedron->scop(), "All statement occurrences in the transformation group must be in the same scop");
     }
