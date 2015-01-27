@@ -368,8 +368,8 @@ void ClintWindow::editRedo() {
 void ClintWindow::editVizProperties() {
   if (m_allProjections.size() == 0)
     return;
-  PropertiesDialog *dialog = new PropertiesDialog(m_allProjections[0]->vizProperties(), this);
-  connect(dialog, &QDialog::rejected, dialog, &QDialog::deleteLater);
+  PropertiesDialog *dialog = new PropertiesDialog(m_allProjections[0]->vizProperties());
+//  connect(dialog, &QDialog::rejected, dialog, &QDialog::deleteLater);
   connect(dialog, &PropertiesDialog::parameterChange, this, &ClintWindow::changeParameter);
   dialog->show();
 }
