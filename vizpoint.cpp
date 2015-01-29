@@ -48,6 +48,7 @@ QVariant VizPoint::itemChange(GraphicsItemChange change, const QVariant &value) 
 }
 
 void VizPoint::mousePressEvent(QGraphicsSceneMouseEvent *event) {
+  polyhedron()->hideHandles();
   QGraphicsItem::mousePressEvent(event);
   m_pressPos = pos();
   coordinateSystem()->projection()->manipulationManager()->pointAboutToMove(this);

@@ -6,6 +6,7 @@
 
 #include "vizcoordinatesystem.h"
 #include "vizdeparrow.h"
+#include "vizhandle.h"
 #include "clintprogram.h"
 #include "clintscop.h"
 #include "clintstmt.h"
@@ -85,6 +86,8 @@ public:
   void mousePressEvent(QGraphicsSceneMouseEvent *event);
   void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
   void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
+  void hoverEnterEvent(QGraphicsSceneHoverEvent *event);
+  void hoverLeaveEvent(QGraphicsSceneHoverEvent *event);
 
   QColor color() const {
     return m_backgroundColor;
@@ -120,6 +123,11 @@ public:
 
   void setOccurrenceSilent(ClintStmtOccurrence *occurrence);
 
+  void hideHandles() {
+    setHandleVisible(false);
+    m_hovered = false;
+  }
+
 signals:
   void positionChanged();
 
@@ -131,6 +139,9 @@ private:
   VizCoordinateSystem *m_coordinateSystem;
   QPainterPath m_polyhedronShape;
   QColor m_backgroundColor;
+
+  std::vector<VizHandle *> m_handles;
+  bool m_hovered = false;
 
   std::unordered_set<VizPoint *> m_points;
   std::unordered_set<VizDepArrow *> m_deps;
@@ -151,6 +162,9 @@ private:
   std::vector<VizPoint *> convexHull() const;
   QPolygonF computePolygon() const;
   void recomputeShape();
+
+  void updateHandlePositions();
+  void setHandleVisible(bool visible = true);
 
   QPointF mapToCoordinates(double x, double y) const;
 
