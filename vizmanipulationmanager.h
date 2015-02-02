@@ -17,6 +17,14 @@ public:
 
   void rearrangePiles2D(std::vector<int> &createdBeta, bool pileDeleted, TransformationGroup &group, int pileIdx, size_t pileNb);
   void rearrangeCSs2D(int coordinateSystemIdx, bool csDeleted, std::vector<int> &createdBeta, size_t pileSize, TransformationGroup &group);
+
+  enum class Dir {
+    LEFT,
+    RIGHT,
+    UP,
+    DOWN
+  };
+
 signals:
   void intentionMoveHorizontally(int amount);
   void intentionMoveVertically(int amount);
@@ -36,7 +44,7 @@ public slots:
   void pointMoving(QPointF position);
   void pointHasMoved(VizPoint *point);
 
-  void polyhedronAboutToResize(VizPolyhedron *polyhedron);
+  void polyhedronAboutToResize(VizPolyhedron *polyhedron, Dir direction);
   void polyhedronResizing(QPointF displacement);
   void polyhedronHasResized(VizPolyhedron *polyhedron);
 
@@ -50,6 +58,7 @@ private:
   int m_horzOffset, m_vertOffset;
   bool m_detached;
   bool m_firstMovement = false;
+  Dir m_direction;
 
   enum {
     PT_NODETACH,

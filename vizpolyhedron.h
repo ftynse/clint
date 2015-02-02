@@ -129,6 +129,9 @@ public:
   }
 
   void prepareExtendRight(double extra);
+  void prepareExtendLeft(double extra);
+  void prepareExtendUp(double extra);
+  void prepareExtendDown(double extra);
 
 signals:
   void positionChanged();
