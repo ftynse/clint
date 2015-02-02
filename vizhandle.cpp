@@ -1,8 +1,11 @@
 #include "vizhandle.h"
+#include "macros.h"
 #include <QtCore>
 #include <QtGui>
 
 #include <QtDebug>
+
+constexpr int VizHandle::updates[VizHandle::NB_KINDS][VizHandle::NB_KINDS];
 
 VizHandle::VizHandle(QGraphicsItem *item, Kind kind) :
   QGraphicsRectItem(item), m_kind(kind) {
@@ -21,6 +24,8 @@ void VizHandle::recomputePos() {
   double x,y;
   if (!parentItem())
     return;
+
+  setPos(0, 0);
 
   QRectF parentBoundingRect = parentItem()->boundingRect();
 
@@ -57,13 +62,15 @@ void VizHandle::recomputePos() {
     x = parentBoundingRect.right();
     y = parentBoundingRect.bottom();
     break;
+  default:
+    CLINT_UNREACHABLE;
   }
 
   setRect(x - m_size / 2, y - m_size / 2, m_size, m_size);
 }
 
 QVariant VizHandle::itemChange(GraphicsItemChange change, const QVariant &value) {
-  if (change == QGraphicsItem::ItemPositionChange) {
+  if (change == QGraphicsItem::ItemPositionChange && m_pressed) {
     QPointF oldPos = pos();
     QPointF newPos = value.toPointF();
     switch (m_kind) {
@@ -118,4 +125,38 @@ void VizHandle::hoverEnterEvent(QGraphicsSceneHoverEvent *event) {
 void VizHandle::hoverLeaveEvent(QGraphicsSceneHoverEvent *event) {
   QGraphicsRectItem::hoverLeaveEvent(event);
   setBrush(Qt::black);
+}
+
+void VizHandle::startFollowing(const VizHandle * const handle) {
+  Q_UNUSED(handle);
+  m_originalPos = pos();
+}
+
+void VizHandle::connectHandles(QList<VizHandle *> &list) {
+  for (VizHandle *v1 : list) {
+    for (VizHandle *v2 : list) {
+      if (v1 == v2 || VizHandle::updates[v1->m_kind][v2->m_kind] == NO_UPDATE)
+        continue;
+      connect(v1, &VizHandle::aboutToMove, v2, &VizHandle::startFollowing);
+      connect(v1, &VizHandle::moving, v2, &VizHandle::follow);
+    }
+  }
+}
+
+void VizHandle::follow(const VizHandle * const handle, QPointF displacement) {
+  int updateFlags = VizHandle::updates[handle->kind()][kind()];
+  QPointF newPos = m_originalPos;
+
+  if (updateFlags & HORIZONTAL_FULL) {
+    newPos.rx() += displacement.x();
+  } else if (updateFlags & HORIZONTAL_HALF) {
+    newPos.rx() += displacement.x() / 2;
+  }
+
+  if (updateFlags & VERTICAL_FULL) {
+    newPos.ry() += displacement.y();
+  } else if (updateFlags & VERTICAL_HALF) {
+    newPos.ry() += displacement.y() / 2;
+  }
+  setPos(newPos);
 }
