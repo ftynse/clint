@@ -193,6 +193,12 @@ public:
                                        (transformation.m_useFirstParameter ? transformation.constantAmount() : transformation.constantAmount() - 1) << "});\n";
     }
       break;
+    case Transformation::Kind::Grain:
+      m_stream << "grain([";
+      outputVector(m_stream, transformation.target()) << "], "
+          << transformation.depth() << ", "
+          << transformation.constantAmount() << ");\n";
+      break;
 
     default:
       m_stream << "###unkonwn transformation###\n";

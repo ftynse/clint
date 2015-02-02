@@ -128,11 +128,16 @@ public:
     m_hovered = false;
   }
 
+  void prepareExtendRight(double extra);
+
 signals:
   void positionChanged();
 
 public slots:
   void occurrenceChanged();
+  void handleMoving(const VizHandle *const handle, QPointF displacement);
+  void handleAboutToMove(const VizHandle *const handle);
+  void handleHasMoved(const VizHandle *const handle, QPointF displacement);
 
 private:
   ClintStmtOccurrence *m_occurrence;
@@ -142,6 +147,7 @@ private:
 
   std::vector<VizHandle *> m_handles;
   bool m_hovered = false;
+  QPainterPath m_originalPolyhedronShape;
 
   std::unordered_set<VizPoint *> m_points;
   std::unordered_set<VizDepArrow *> m_deps;

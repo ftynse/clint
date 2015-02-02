@@ -27,6 +27,12 @@ void VizPolyhedron::updateHandlePositions() {
   if (m_handles.empty()) {
     m_handles = VizHandle::createCenterCornerHandles(this).toVector().toStdVector();
     setHandleVisible(false);
+
+    for (VizHandle *vh : m_handles) {
+      connect(vh, &VizHandle::moving, this, &VizPolyhedron::handleMoving);
+      connect(vh, &VizHandle::aboutToMove, this, &VizPolyhedron::handleAboutToMove);
+      connect(vh, &VizHandle::hasMoved, this, &VizPolyhedron::handleHasMoved);
+    }
   } else {
     for (VizHandle *vh : m_handles) {
       vh->recomputePos();
@@ -150,6 +156,7 @@ void VizPolyhedron::occurrenceChanged() {
   CLINT_ASSERT(unmatchedNewPoints == 0, "All new points should match old points by original coordinates");
   CLINT_ASSERT(matchedPoints.size() == m_points.size(), "Not all old points were matched");
   coordinateSystem()->polyhedronUpdated(this);
+  updateHandlePositions();
 }
 
 VizPoint *VizPolyhedron::point(std::pair<int, int> &originalCoordinates) const {
@@ -606,6 +613,63 @@ void VizPolyhedron::recomputeMinMax() {
   m_localHorizontalMax = horizontalMax;
   m_localVerticalMin = verticalMin;
   m_localVerticalMax = verticalMax;
+}
+
+void VizPolyhedron::prepareExtendRight(double extra) {
+  VizProperties *props = m_coordinateSystem->projection()->vizProperties();
+  const double pointDistance = props->pointDistance();
+
+  // Update point positions.
+  for (VizPoint *vp : m_points) {
+    int xCoord, yCoord;
+    std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
+    double ratioCoord = static_cast<double>(xCoord - m_localHorizontalMin) /
+        static_cast<double>(m_localHorizontalMax - m_localHorizontalMin);
+    double ratio = ratioCoord * (extra / pointDistance);
+    vp->setPos(mapToCoordinates(xCoord + ratio, yCoord));
+  }
+
+  // Update polygonal shape positions (fast way without recomputing).
+  // This will deform arcs around corners temporarily.
+  const double xMax = (m_localHorizontalMax - m_localHorizontalMin) * pointDistance;
+  for (int i = 0, e = m_originalPolyhedronShape.elementCount(); i < e; i++) {
+    double x = m_originalPolyhedronShape.elementAt(i).x;
+    double y = m_originalPolyhedronShape.elementAt(i).y;
+    double ratio = x / xMax;
+    x += extra * ratio;
+    m_polyhedronShape.setElementPositionAt(i, x, y);
+  }
+  prepareGeometryChange();
+}
+
+void VizPolyhedron::handleAboutToMove(const VizHandle *const handle) {
+  VizManipulationManager *vmm = m_coordinateSystem->projection()->manipulationManager();
+  switch (handle->kind()) {
+  case VizHandle::Kind::RIGHT:
+    m_originalPolyhedronShape = m_polyhedronShape;
+    vmm->polyhedronAboutToResize(this);
+    break;
+  default:
+    break;
+  }
+}
+
+void VizPolyhedron::handleMoving(const VizHandle *const handle, QPointF displacement) {
+  VizManipulationManager *vmm = m_coordinateSystem->projection()->manipulationManager();
+  switch (handle->kind()) {
+  case VizHandle::Kind::RIGHT:
+    vmm->polyhedronResizing(displacement);
+    break;
+  default:
+    break;
+  }
+}
+
+void VizPolyhedron::handleHasMoved(const VizHandle *const handle, QPointF displacement) {
+  prepareGeometryChange();
+  VizManipulationManager *vmm = m_coordinateSystem->projection()->manipulationManager();
+  vmm->polyhedronHasResized(this);
+  updateHandlePositions();
 }
 
 void VizPolyhedron::setOccurrenceSilent(ClintStmtOccurrence *occurrence) {

@@ -36,6 +36,10 @@ public slots:
   void pointMoving(QPointF position);
   void pointHasMoved(VizPoint *point);
 
+  void polyhedronAboutToResize(VizPolyhedron *polyhedron);
+  void polyhedronResizing(QPointF displacement);
+  void polyhedronHasResized(VizPolyhedron *polyhedron);
+
 private:
   VizPolyhedron *m_polyhedron = nullptr;
   VizPoint *m_point = nullptr;

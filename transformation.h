@@ -14,7 +14,8 @@ public:
     Fuse,
     Split,
     Reorder,
-    IndexSetSplitting
+    IndexSetSplitting,
+    Grain
   };
 
   Kind kind() const {
@@ -41,7 +42,7 @@ public:
     return m_order;
   }
 
-  static Transformation consantShift(const std::vector<int> &beta, int dimension, int amount) {
+  static Transformation constantShift(const std::vector<int> &beta, int dimension, int amount) {
     CLINT_ASSERT(dimension <= beta.size(), "Dimension overflow");
     Transformation t;
     t.m_kind           = Kind::Shift;
@@ -80,6 +81,16 @@ public:
     t.m_constantAmount = value;
     t.m_depthOuter     = depth;
     t.m_useFirstParameter = true;
+    return t;
+  }
+
+  static Transformation grain(const std::vector<int> &beta, int depth, int value) {
+    CLINT_ASSERT(beta.size() >= 1, "Beta too short");
+    Transformation t;
+    t.m_kind           = Kind::Grain;
+    t.m_targetBeta     = beta;
+    t.m_constantAmount = value;
+    t.m_depthOuter     = depth;
     return t;
   }
 
