@@ -281,8 +281,9 @@ void VizCoordinateSystem::polyhedronUpdated(VizPolyhedron *polyhedron) {
 
   double horzDiff = expected.x() - polyhedron->pos().x();
   double vertDiff = expected.y() - polyhedron->pos().y();
-  CLINT_ASSERT(fabs(vertDiff) * 2. <= pointDistance, "Polyhedron position mismatch");
-  CLINT_ASSERT(fabs(horzDiff) * 2. <= pointDistance, "Polyhedron position mismatch");
+  // XXX: this was demoted to warning since it does not hold for grain (held initially for shift)
+  CLINT_WARNING(fabs(vertDiff) * 2. <= pointDistance, "Polyhedron position mismatch");
+  CLINT_WARNING(fabs(horzDiff) * 2. <= pointDistance, "Polyhedron position mismatch");
 
   // update it to fit in the grid (todo animation)
   polyhedron->setPos(expected);

@@ -148,7 +148,8 @@ void VizPolyhedron::occurrenceChanged() {
       QPointF position = vp->pos();
       position /= pointDistance;
       std::pair<int, int> visibleScatteredCoords {position.x(), -position.y()}; // inverted vertical axis
-      CLINT_ASSERT(realScatteredCoords == visibleScatteredCoords,
+      // XXX: this was demoted to warning as it does not hold for grain (initially held for shift)
+      CLINT_WARNING(realScatteredCoords == visibleScatteredCoords,
                    "Point projected to a different position than it is visible");
       matchedPoints.insert(vp);
     }
