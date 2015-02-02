@@ -775,8 +775,36 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
     break;
   }
 
+  TransformationGroup group;
+  // Check if reverse needed
+  bool reverse = false;
+  if (grainAmount < 0) {
+    reverse = true;
+    int dimension, halfShiftAmount;
+    if (m_direction == Dir::LEFT || m_direction == Dir::RIGHT) {
+      dimension = m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1;
+      halfShiftAmount = m_direction == Dir::RIGHT ?
+            m_polyhedron->localHorizontalMin() :
+            m_polyhedron->localHorizontalMax();
+    } else {
+      dimension = m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1;
+      halfShiftAmount = m_direction == Dir::UP ?
+            m_polyhedron->localVerticalMin() :
+            m_polyhedron->localVerticalMax();
+    }
+    group.transformations.push_back(Transformation::reverse(
+                                      polyhedron->occurrence()->betaVector(),
+                                      dimension));
+    if (halfShiftAmount != 0) {
+      group.transformations.push_back(Transformation::constantShift(
+                                        polyhedron->occurrence()->betaVector(),
+                                        dimension, -2 * halfShiftAmount));
+    }
+
+    grainAmount = -grainAmount;
+  }
+
   if (grainAmount > 1) {
-    TransformationGroup group;
     if (m_direction == Dir::LEFT || m_direction == Dir::RIGHT) {
       group.transformations.push_back(Transformation::grain(
                                         polyhedron->occurrence()->betaVector(),
@@ -794,19 +822,6 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
                                           polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
                                           m_polyhedron->localHorizontalMax() * (grainAmount - 1)));
       }
-
-      // Updating coordinate systems so that the scaled polyhedra fit inside.
-      if (m_direction == Dir::RIGHT) {
-        m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
-              m_polyhedron->coordinateSystem(),
-              m_polyhedron->localHorizontalMin(),
-              m_polyhedron->localHorizontalMax() + horizontalRange * (grainAmount - 1));
-      } else if (m_direction == Dir::LEFT) {
-        m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
-              m_polyhedron->coordinateSystem(),
-              m_polyhedron->localHorizontalMin() - horizontalRange * (grainAmount - 1),
-              m_polyhedron->localHorizontalMax());
-      }
     } else if (m_direction == Dir::DOWN || m_direction == Dir::UP) {
       group.transformations.push_back(Transformation::grain(
                                         polyhedron->occurrence()->betaVector(),
@@ -823,25 +838,39 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
                                           polyhedron->occurrence()->betaVector(),
                                           polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
                                           m_polyhedron->localVerticalMax() * (grainAmount - 1)));
-
-        if (m_direction == Dir::UP) {
-          m_polyhedron->coordinateSystem()->projection()->ensureFitsVertically(
-                m_polyhedron->coordinateSystem(),
-                m_polyhedron->localVerticalMin(),
-                m_polyhedron->localVerticalMax() + verticalRange * (grainAmount - 1));
-        } else if (m_direction == Dir::DOWN) {
-          m_polyhedron->coordinateSystem()->projection()->ensureFitsVertically(
-                m_polyhedron->coordinateSystem(),
-                m_polyhedron->localVerticalMin() - verticalRange * (grainAmount - 1),
-                m_polyhedron->localVerticalMax());
-        }
       }
+    }
+  }
+
+  if (!group.transformations.empty()) {
+    if (reverse) grainAmount = -grainAmount;
+    // Updating coordinate systems so that the scaled polyhedra fit inside.
+    if (m_direction == Dir::RIGHT) {
+      m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
+            m_polyhedron->coordinateSystem(),
+            m_polyhedron->localHorizontalMax() + horizontalRange * (grainAmount - 1),
+            m_polyhedron->localHorizontalMax() + horizontalRange * (grainAmount - 1));
+    } else if (m_direction == Dir::LEFT) {
+      m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
+            m_polyhedron->coordinateSystem(),
+            m_polyhedron->localHorizontalMin() - horizontalRange * (grainAmount - 1),
+            m_polyhedron->localHorizontalMin() - horizontalRange * (grainAmount - 1));
+    }
+
+    if (m_direction == Dir::UP) {
+      m_polyhedron->coordinateSystem()->projection()->ensureFitsVertically(
+            m_polyhedron->coordinateSystem(),
+            m_polyhedron->localVerticalMax() + verticalRange * (grainAmount - 1),
+            m_polyhedron->localVerticalMax() + verticalRange * (grainAmount - 1));
+    } else if (m_direction == Dir::DOWN) {
+      m_polyhedron->coordinateSystem()->projection()->ensureFitsVertically(
+            m_polyhedron->coordinateSystem(),
+            m_polyhedron->localVerticalMin() - verticalRange * (grainAmount - 1),
+            m_polyhedron->localVerticalMin() - verticalRange * (grainAmount - 1));
     }
 
     m_polyhedron->occurrence()->scop()->transform(group);
     m_polyhedron->occurrence()->scop()->executeTransformationSequence();
-  } else if (grainAmount < 0) {
-    CLINT_ASSERT(false, "Reverse not supported yet");
   } else {
     // Fix to the original position
     m_polyhedron->coordinateSystem()->resetPolyhedronPos(polyhedron);
@@ -859,26 +888,26 @@ void VizManipulationManager::polyhedronResizing(QPointF displacement) {
   if (displacement.x() != 0 && m_direction == Dir::RIGHT) {
     m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
           m_polyhedron->coordinateSystem(),
-          m_polyhedron->localHorizontalMin(),
+          m_polyhedron->localHorizontalMax() + m_horzOffset,
           m_polyhedron->localHorizontalMax() + m_horzOffset);
     m_polyhedron->prepareExtendRight(displacement.x());
   } else if (displacement.x() != 0 && m_direction == Dir::LEFT) {
     m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
           m_polyhedron->coordinateSystem(),
           m_polyhedron->localHorizontalMin() + m_horzOffset,
-          m_polyhedron->localHorizontalMax());
+          m_polyhedron->localHorizontalMin() + m_horzOffset);
     m_polyhedron->prepareExtendLeft(displacement.x());
   } else if (displacement.y() != 0 && m_direction == Dir::UP) {
     m_polyhedron->coordinateSystem()->projection()->ensureFitsVertically(
           m_polyhedron->coordinateSystem(),
-          m_polyhedron->localVerticalMin(),
+          m_polyhedron->localVerticalMax() - m_vertOffset,
           m_polyhedron->localVerticalMax() - m_vertOffset);
     m_polyhedron->prepareExtendUp(-displacement.y());
   } else if (displacement.y() != 0 && m_direction == Dir::DOWN) {
     m_polyhedron->coordinateSystem()->projection()->ensureFitsVertically(
           m_polyhedron->coordinateSystem(),
           m_polyhedron->localVerticalMin() - m_vertOffset,
-          m_polyhedron->localVerticalMax());
+          m_polyhedron->localVerticalMin() - m_vertOffset);
     m_polyhedron->prepareExtendDown(-displacement.y());
   }
 }

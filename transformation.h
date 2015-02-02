@@ -15,7 +15,8 @@ public:
     Split,
     Reorder,
     IndexSetSplitting,
-    Grain
+    Grain,
+    Reverse
   };
 
   Kind kind() const {
@@ -178,6 +179,15 @@ public:
     Transformation t;
     t.m_kind       = Kind::Fuse;
     t.m_targetBeta = beta;
+    return t;
+  }
+
+  static Transformation reverse(const std::vector<int> &beta, int dimension) {
+    CLINT_ASSERT(beta.size() >= 1, "Cannot operate on the whole program");
+    Transformation t;
+    t.m_kind       = Kind::Reverse;
+    t.m_targetBeta = beta;
+    t.m_depthOuter = dimension;
     return t;
   }
 

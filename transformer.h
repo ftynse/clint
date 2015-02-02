@@ -199,6 +199,11 @@ public:
           << transformation.depth() << ", "
           << transformation.constantAmount() << ");\n";
       break;
+    case Transformation::Kind::Reverse:
+      m_stream << "reverse([";
+      outputVector(m_stream, transformation.target()) << "], "
+          << transformation.depth() << ");\n";
+      break;
 
     default:
       m_stream << "###unkonwn transformation###\n";
