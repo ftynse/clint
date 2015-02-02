@@ -113,7 +113,7 @@ private:
 
   template <typename T>
   static osl_relation_p isl2osl(isl_printer *(&Func)(isl_printer *, T *), T *t) {
-    CLINT_ASSERT(t != nullptr, "ISL object is null")
+    CLINT_ASSERT(t != nullptr, "ISL object is null");
 
     isl_printer *prn = isl_printer_to_str(islContext_);
     prn = isl_printer_set_output_format(prn, ISL_FORMAT_EXT_POLYLIB);
