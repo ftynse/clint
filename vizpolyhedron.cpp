@@ -744,8 +744,83 @@ void VizPolyhedron::prepareSkewVerticalRight(double offset) {
   for (int i = 0, e = m_originalPolyhedronShape.elementCount(); i < e; i++) {
     double x = m_originalPolyhedronShape.elementAt(i).x;
     double y = m_originalPolyhedronShape.elementAt(i).y;
-    double ratio = -x / xMax;
-    y += offset * ratio;
+    double ratio = x / xMax;
+    y -= offset * ratio;
+    m_polyhedronShape.setElementPositionAt(i, x, y);
+  }
+  prepareGeometryChange();
+}
+
+void VizPolyhedron::prepareSkewVerticalLeft(double offset) {
+  VizProperties *props = m_coordinateSystem->projection()->vizProperties();
+  const double pointDistance = props->pointDistance();
+
+  // Update point positions.
+  for (VizPoint *vp : m_points) {
+    int xCoord, yCoord;
+    std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
+    double ratioCoord = static_cast<double>(m_localHorizontalMax - xCoord) /
+        static_cast<double>(m_localHorizontalMax - m_localHorizontalMin);
+    double ratio = ratioCoord * (offset / pointDistance);
+    vp->setPos(mapToCoordinates(xCoord, yCoord + ratio));
+  }
+
+  const double xMax = (m_localHorizontalMax - m_localHorizontalMin) * pointDistance;
+  for (int i = 0, e = m_originalPolyhedronShape.elementCount(); i < e; i++) {
+    double x = m_originalPolyhedronShape.elementAt(i).x;
+    double y = m_originalPolyhedronShape.elementAt(i).y;
+    double ratio = 1 - x / xMax;
+    y -= offset * ratio;
+    m_polyhedronShape.setElementPositionAt(i, x, y);
+  }
+  prepareGeometryChange();
+}
+
+void VizPolyhedron::prepareSkewHorizontalTop(double offset) {
+  VizProperties *props = m_coordinateSystem->projection()->vizProperties();
+  const double pointDistance = props->pointDistance();
+
+  // Update point positions.
+  for (VizPoint *vp : m_points) {
+    int xCoord, yCoord;
+    std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
+    double ratioCoord = static_cast<double>(yCoord - m_localVerticalMin) /
+        static_cast<double>(m_localVerticalMax - m_localVerticalMin);
+    double ratio = ratioCoord * (offset / pointDistance);
+    vp->setPos(mapToCoordinates(xCoord + ratio, yCoord));
+  }
+
+  const double yMax = (m_localVerticalMax - m_localVerticalMin) * pointDistance;
+  for (int i = 0, e = m_originalPolyhedronShape.elementCount(); i < e; i++) {
+    double x = m_originalPolyhedronShape.elementAt(i).x;
+    double y = m_originalPolyhedronShape.elementAt(i).y;
+    double ratio = y / yMax;
+    x -= offset * ratio;
+    m_polyhedronShape.setElementPositionAt(i, x, y);
+  }
+  prepareGeometryChange();
+}
+
+void VizPolyhedron::prepareSkewHorizontalBottom(double offset) {
+  VizProperties *props = m_coordinateSystem->projection()->vizProperties();
+  const double pointDistance = props->pointDistance();
+
+  // Update point positions.
+  for (VizPoint *vp : m_points) {
+    int xCoord, yCoord;
+    std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
+    double ratioCoord = static_cast<double>(m_localVerticalMax - yCoord) /
+        static_cast<double>(m_localVerticalMax - m_localVerticalMin);
+    double ratio = ratioCoord * (offset / pointDistance);
+    vp->setPos(mapToCoordinates(xCoord + ratio, yCoord));
+  }
+
+  const double yMax = (m_localVerticalMax - m_localVerticalMin) * pointDistance;
+  for (int i = 0, e = m_originalPolyhedronShape.elementCount(); i < e; i++) {
+    double x = m_originalPolyhedronShape.elementAt(i).x;
+    double y = m_originalPolyhedronShape.elementAt(i).y;
+    double ratio = 1 + y / yMax;
+    x += offset * ratio;
     m_polyhedronShape.setElementPositionAt(i, x, y);
   }
   prepareGeometryChange();
@@ -771,10 +846,19 @@ void VizPolyhedron::handleAboutToMove(const VizHandle *const handle) {
     vmm->polyhedronAboutToResize(this, VizManipulationManager::Dir::DOWN);
     break;
   case VizHandle::Kind::TOPRIGHT:
-  case VizHandle::Kind::BOTTOMRIGHT:
-    vmm->polyhedronAboutToSkew(this);
-  default:
+    vmm->polyhedronAboutToSkew(this, VizManipulationManager::C_TOP | VizManipulationManager::C_RIGHT);
     break;
+  case VizHandle::Kind::BOTTOMRIGHT:
+    vmm->polyhedronAboutToSkew(this, VizManipulationManager::C_BOTTOM | VizManipulationManager::C_RIGHT);
+    break;
+  case VizHandle::Kind::TOPLEFT:
+    vmm->polyhedronAboutToSkew(this, VizManipulationManager::C_TOP | VizManipulationManager::C_LEFT);
+    break;
+  case VizHandle::Kind::BOTTOMLEFT:
+    vmm->polyhedronAboutToSkew(this, VizManipulationManager::C_BOTTOM | VizManipulationManager::C_LEFT);
+    break;
+  case VizHandle::Kind::NB_KINDS:
+    CLINT_UNREACHABLE;
   }
 }
 
@@ -789,7 +873,15 @@ void VizPolyhedron::handleMoving(const VizHandle *const handle, QPointF displace
     break;
   case VizHandle::Kind::TOPRIGHT:
   case VizHandle::Kind::BOTTOMRIGHT:
+  case VizHandle::Kind::TOPLEFT:
+  case VizHandle::Kind::BOTTOMLEFT:
+    // Do not allow simultaneous horizontal and vertical skew (no support in clay)
+    if (fabs(displacement.x()) < 5 || fabs(displacement.y()) > fabs(displacement.x()))
+      displacement.rx() = 0;
+    else
+      displacement.ry() = 0;
     vmm->polyhedronSkewing(displacement);
+    break;
   default:
     break;
   }
@@ -811,6 +903,8 @@ void VizPolyhedron::handleHasMoved(const VizHandle *const handle, QPointF displa
   case VizHandle::Kind::BOTTOMLEFT:
     vmm->polyhedronHasSkewed(this);
     break;
+  default:
+    CLINT_UNREACHABLE;
   }
   updateHandlePositions();
 }

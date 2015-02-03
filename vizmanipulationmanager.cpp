@@ -912,9 +912,10 @@ void VizManipulationManager::polyhedronResizing(QPointF displacement) {
   }
 }
 
-void VizManipulationManager::polyhedronAboutToSkew(VizPolyhedron *polyhedron) {
+void VizManipulationManager::polyhedronAboutToSkew(VizPolyhedron *polyhedron, int corner) {
   CLINT_ASSERT(polyhedron != nullptr, "cannot resize null polyhedron");
   m_polyhedron = polyhedron;
+  m_corner = corner;
 
   // Do not allow multiple polyhedra resize yet.  This would require creating a graphicsGroup
   // and adding handles for the group to ensure UI consistency.
@@ -929,48 +930,66 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
   int horizontalRange = (m_polyhedron->localHorizontalMax() - m_polyhedron->localHorizontalMin());
   int verticalRange   = (m_polyhedron->localVerticalMax() - m_polyhedron->localVerticalMin());
 
-  int skewFactor = round(static_cast<double>(-m_vertOffset) / verticalRange);
+  int horizontalPreShiftAmount = m_corner & C_RIGHT ?
+        m_polyhedron->localHorizontalMin() :
+        m_polyhedron->localHorizontalMax();
+  int verticalPreShiftAmount = m_corner & C_BOTTOM ?
+        m_polyhedron->localVerticalMax() :
+        m_polyhedron->localVerticalMin();
+
+  // TODO: verify that this decomposition actually works...
+  int verticalSkewFactor = round(static_cast<double>(-m_vertOffset) / verticalRange);
+  int horizontalSkewFactor = round(static_cast<double>(m_horzOffset) / horizontalRange);
+  if (!(m_corner & C_RIGHT)) verticalSkewFactor = -verticalSkewFactor;
+  if (m_corner & C_BOTTOM) horizontalSkewFactor = -horizontalSkewFactor;
+
   TransformationGroup group;
-  if (skewFactor != 0) {
-    if (m_polyhedron->localHorizontalMin() != 0) {
+  if (verticalSkewFactor != 0 || horizontalSkewFactor != 0) {
+    if (horizontalPreShiftAmount != 0) {
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
                                         m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                        m_polyhedron->localHorizontalMin()));
+                                        horizontalPreShiftAmount));
     }
-    if (m_polyhedron->localVerticalMin() != 0) {
+    if (verticalPreShiftAmount != 0) {
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
                                         m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
-                                        m_polyhedron->localVerticalMin()));
+                                        verticalPreShiftAmount));
     }
 
-    group.transformations.push_back(Transformation::skew(
-                                      m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
-                                      skewFactor));
+    // vertical
+    if (verticalSkewFactor != 0) {
+      group.transformations.push_back(Transformation::skew(
+                                        m_polyhedron->occurrence()->betaVector(),
+                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        verticalSkewFactor));
+    }
+    // horizontal
+    if (horizontalSkewFactor != 0) {
+      group.transformations.push_back(Transformation::skew(
+                                        m_polyhedron->occurrence()->betaVector(),
+                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        horizontalSkewFactor));
+    }
 
-    if (m_polyhedron->localHorizontalMin() != 0) {
+    if (horizontalPreShiftAmount != 0) {
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
                                         m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                        -m_polyhedron->localHorizontalMin()));
+                                        -horizontalPreShiftAmount));
     }
-    if (m_polyhedron->localVerticalMin() != 0) {
+    if (verticalPreShiftAmount != 0) {
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
                                         m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
-                                        -m_polyhedron->localVerticalMin()));
+                                        -verticalPreShiftAmount));
     }
   }
 
   if (!group.transformations.empty()) {
-
-    Transformer *t = new ClayScriptGenerator(std::cerr);
-    t->apply(nullptr, group);
-    delete t;
-
     m_polyhedron->occurrence()->scop()->transform(group);
     m_polyhedron->occurrence()->scop()->executeTransformationSequence();
   } else {
@@ -993,6 +1012,21 @@ void VizManipulationManager::polyhedronSkewing(QPointF displacement) {
           m_polyhedron->coordinateSystem(),
           m_polyhedron->localVerticalMin() - m_vertOffset,
           m_polyhedron->localVerticalMax() - m_vertOffset);
-    m_polyhedron->prepareSkewVerticalRight(-displacement.y());
+    if (m_corner & C_RIGHT) {
+      m_polyhedron->prepareSkewVerticalRight(-displacement.y());
+    } else {
+      m_polyhedron->prepareSkewVerticalLeft(-displacement.y());
+    }
+  }
+  if (displacement.x() != 0) {
+    m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
+          m_polyhedron->coordinateSystem(),
+          m_polyhedron->localHorizontalMin() + m_horzOffset,
+          m_polyhedron->localHorizontalMax() + m_horzOffset);
+    if (m_corner & C_BOTTOM) {
+      m_polyhedron->prepareSkewHorizontalBottom(displacement.x());
+    } else {
+      m_polyhedron->prepareSkewHorizontalTop(displacement.x());
+    }
   }
 }

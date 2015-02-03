@@ -39,7 +39,7 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
     for (int i = 0, e = std::max(transformation.depth(), transformation.secondDepth()); i < e; ++i) {
       int value = 0;
       if (i + 1 == transformation.depth()) value = 1;
-      else if (i + 1 == transformation.secondDepth()) value = -1;
+      else if (i + 1 == transformation.secondDepth()) value = -transformation.constantAmount();
       clay_array_add(varArray, value);
     }
     clay_list_add(list, varArray);

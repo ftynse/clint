@@ -18,11 +18,22 @@ public:
   void rearrangePiles2D(std::vector<int> &createdBeta, bool pileDeleted, TransformationGroup &group, int pileIdx, size_t pileNb);
   void rearrangeCSs2D(int coordinateSystemIdx, bool csDeleted, std::vector<int> &createdBeta, size_t pileSize, TransformationGroup &group);
 
-  enum class Dir {
+  enum Dir {
     LEFT,
     RIGHT,
     UP,
     DOWN
+  };
+
+  enum Corner {
+    C_BOTTOM = 0x1, // TOP  = ~BOTTOM
+    C_RIGHT  = 0x2, // LEFT = ~RIGHT
+  };
+  enum {
+    C_LEFT = 0x0
+  };
+  enum {
+    C_TOP = 0x0
   };
 
 signals:
@@ -48,7 +59,7 @@ public slots:
   void polyhedronResizing(QPointF displacement);
   void polyhedronHasResized(VizPolyhedron *polyhedron);
 
-  void polyhedronAboutToSkew(VizPolyhedron *polyhedron);
+  void polyhedronAboutToSkew(VizPolyhedron *polyhedron, int corner);
   void polyhedronSkewing(QPointF displacement);
   void polyhedronHasSkewed(VizPolyhedron *polyhedron);
 
@@ -63,6 +74,7 @@ private:
   bool m_detached;
   bool m_firstMovement = false;
   Dir m_direction;
+  int m_corner;
 
   enum {
     PT_NODETACH,
@@ -75,6 +87,14 @@ private:
   bool m_pointDetachLast;
 
   void ensureTargetConsistency();
+
+  bool isFlagSet(int flags, int flag) {
+    if (flag == 0) {
+      return (~flags) & flag;
+    }
+    return flags & flag;
+  }
+
 };
 
 #endif // VIZMANIPULATIONMANAGER_H

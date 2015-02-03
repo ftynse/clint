@@ -216,7 +216,7 @@ public:
         if (i != 0) m_stream << ",";
 
         if (i + 1 == transformation.depth())            m_stream << "1";
-        else if (i + 1 == transformation.secondDepth()) m_stream << "-1";
+        else if (i + 1 == transformation.secondDepth()) m_stream << -transformation.constantAmount();
         else                                            m_stream << "0";
       }
       m_stream << "||});\n";
