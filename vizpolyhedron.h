@@ -133,6 +133,11 @@ public:
   void prepareExtendUp(double extra);
   void prepareExtendDown(double extra);
 
+  void prepareSkewHorizontalTop(double offset);
+  void prepareSkewHorizontalBottom(double offset);
+  void prepareSkewVerticalLeft(double offset);
+  void prepareSkewVerticalRight(double offset);
+
 signals:
   void positionChanged();
 

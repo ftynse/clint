@@ -58,6 +58,7 @@ public:
     CLINT_ASSERT(targetDimension <= beta.size(), "Dimension overflow");
     Transformation t;
     t.m_kind           = Kind::Skew;
+    t.m_targetBeta     = beta;
     t.m_depthInner     = sourceDimension;
     t.m_depthOuter     = targetDimension;
     t.m_constantAmount = factor;

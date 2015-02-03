@@ -724,27 +724,55 @@ void VizPolyhedron::prepareExtendDown(double extra) {
   prepareGeometryChange();
 }
 
+void VizPolyhedron::prepareSkewVerticalRight(double offset) {
+  VizProperties *props = m_coordinateSystem->projection()->vizProperties();
+  const double pointDistance = props->pointDistance();
+
+  // Update point positions.
+  for (VizPoint *vp : m_points) {
+    int xCoord, yCoord;
+    std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
+//    double ratioCoord = static_cast<double>(yCoord - m_localVerticalMin + xCoord - m_localHorizontalMin) /
+//        static_cast<double>(m_localVerticalMax - m_localVerticalMin + m_localHorizontalMax - m_localHorizontalMin);
+    double ratioCoord = static_cast<double>(xCoord - m_localHorizontalMin) /
+        static_cast<double>(m_localHorizontalMax - m_localHorizontalMin);
+    double ratio = ratioCoord * (offset / pointDistance);
+    vp->setPos(mapToCoordinates(xCoord, yCoord + ratio));
+  }
+
+  const double xMax = (m_localHorizontalMax - m_localHorizontalMin) * pointDistance;
+  for (int i = 0, e = m_originalPolyhedronShape.elementCount(); i < e; i++) {
+    double x = m_originalPolyhedronShape.elementAt(i).x;
+    double y = m_originalPolyhedronShape.elementAt(i).y;
+    double ratio = -x / xMax;
+    y += offset * ratio;
+    m_polyhedronShape.setElementPositionAt(i, x, y);
+  }
+  prepareGeometryChange();
+}
+
 void VizPolyhedron::handleAboutToMove(const VizHandle *const handle) {
   m_coordinateSystem->projection()->selectionManager()->clearSelection();
 
   VizManipulationManager *vmm = m_coordinateSystem->projection()->manipulationManager();
+
+  m_originalPolyhedronShape = m_polyhedronShape;
   switch (handle->kind()) {
   case VizHandle::Kind::RIGHT:
-    m_originalPolyhedronShape = m_polyhedronShape;
     vmm->polyhedronAboutToResize(this, VizManipulationManager::Dir::RIGHT);
     break;
   case VizHandle::Kind::LEFT:
-    m_originalPolyhedronShape = m_polyhedronShape;
     vmm->polyhedronAboutToResize(this, VizManipulationManager::Dir::LEFT);
     break;
   case VizHandle::Kind::TOP:
-    m_originalPolyhedronShape = m_polyhedronShape;
     vmm->polyhedronAboutToResize(this, VizManipulationManager::Dir::UP);
     break;
   case VizHandle::Kind::BOTTOM:
-    m_originalPolyhedronShape = m_polyhedronShape;
     vmm->polyhedronAboutToResize(this, VizManipulationManager::Dir::DOWN);
     break;
+  case VizHandle::Kind::TOPRIGHT:
+  case VizHandle::Kind::BOTTOMRIGHT:
+    vmm->polyhedronAboutToSkew(this);
   default:
     break;
   }
@@ -759,6 +787,9 @@ void VizPolyhedron::handleMoving(const VizHandle *const handle, QPointF displace
   case VizHandle::Kind::BOTTOM:
     vmm->polyhedronResizing(displacement);
     break;
+  case VizHandle::Kind::TOPRIGHT:
+  case VizHandle::Kind::BOTTOMRIGHT:
+    vmm->polyhedronSkewing(displacement);
   default:
     break;
   }
@@ -767,7 +798,20 @@ void VizPolyhedron::handleMoving(const VizHandle *const handle, QPointF displace
 void VizPolyhedron::handleHasMoved(const VizHandle *const handle, QPointF displacement) {
   prepareGeometryChange();
   VizManipulationManager *vmm = m_coordinateSystem->projection()->manipulationManager();
-  vmm->polyhedronHasResized(this);
+  switch (handle->kind()) {
+  case VizHandle::Kind::RIGHT:
+  case VizHandle::Kind::LEFT:
+  case VizHandle::Kind::TOP:
+  case VizHandle::Kind::BOTTOM:
+    vmm->polyhedronHasResized(this);
+    break;
+  case VizHandle::Kind::TOPRIGHT:
+  case VizHandle::Kind::BOTTOMRIGHT:
+  case VizHandle::Kind::TOPLEFT:
+  case VizHandle::Kind::BOTTOMLEFT:
+    vmm->polyhedronHasSkewed(this);
+    break;
+  }
   updateHandlePositions();
 }
 

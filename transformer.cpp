@@ -31,17 +31,22 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
     break;
   case Transformation::Kind::Skew:
   {
-    // TODO: skew transformation
-//    clay_list_p list = clay_list_malloc();
-//    clay_array_p constArray = clay_array_malloc();
-//    clay_array_p paramArray = clay_array_malloc();
-//    clay_array_p varArray   = clay_array_malloc();
-//    clay_list_add(list, constArray);
-//    clay_list_add(list, paramArray);
-//    clay_list_add(list, varArray);
-//    int depth = std::max(transformation.depth(), transformation.secondDepth());
-//    err = clay_shift(scop, ClayBeta(transformation.target()), depth, list, m_options);
-//    clay_list_free(list);
+    clay_list_p list = clay_list_malloc();
+    clay_array_p constArray = clay_array_malloc();
+    clay_array_p paramArray = clay_array_malloc();
+    clay_array_p varArray   = clay_array_malloc();
+    // Clay does not need all the variables, just those used in the transformation.
+    for (int i = 0, e = std::max(transformation.depth(), transformation.secondDepth()); i < e; ++i) {
+      int value = 0;
+      if (i + 1 == transformation.depth()) value = 1;
+      else if (i + 1 == transformation.secondDepth()) value = -1;
+      clay_array_add(varArray, value);
+    }
+    clay_list_add(list, varArray);
+    clay_list_add(list, paramArray);
+    clay_list_add(list, constArray);
+    err = clay_shift(scop, ClayBeta(transformation.target()), transformation.depth(), list, m_options);
+    clay_list_free(list);
   }
     break;
   case Transformation::Kind::IndexSetSplitting:

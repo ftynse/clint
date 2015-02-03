@@ -204,6 +204,23 @@ public:
       outputVector(m_stream, transformation.target()) << "], "
           << transformation.depth() << ");\n";
       break;
+    case Transformation::Kind::Skew:
+//      m_stream << "skew([";
+//      outputVector(m_stream, transformation.target()) << "], "
+//          << transformation.depth() << ", "
+//          << transformation.constantAmount() << ");\n";
+      m_stream << "shift([";
+      outputVector(m_stream, transformation.target()) << "], "
+          << transformation.depth() << ", {";
+      for (int i = 0, e = std::max(transformation.depth(), transformation.secondDepth()); i < e; ++i) {
+        if (i != 0) m_stream << ",";
+
+        if (i + 1 == transformation.depth())            m_stream << "1";
+        else if (i + 1 == transformation.secondDepth()) m_stream << "-1";
+        else                                            m_stream << "0";
+      }
+      m_stream << "||});\n";
+      break;
 
     default:
       m_stream << "###unkonwn transformation###\n";

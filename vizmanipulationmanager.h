@@ -48,6 +48,10 @@ public slots:
   void polyhedronResizing(QPointF displacement);
   void polyhedronHasResized(VizPolyhedron *polyhedron);
 
+  void polyhedronAboutToSkew(VizPolyhedron *polyhedron);
+  void polyhedronSkewing(QPointF displacement);
+  void polyhedronHasSkewed(VizPolyhedron *polyhedron);
+
 private:
   VizPolyhedron *m_polyhedron = nullptr;
   VizPoint *m_point = nullptr;

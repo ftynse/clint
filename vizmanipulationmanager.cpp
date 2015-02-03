@@ -911,3 +911,88 @@ void VizManipulationManager::polyhedronResizing(QPointF displacement) {
     m_polyhedron->prepareExtendDown(-displacement.y());
   }
 }
+
+void VizManipulationManager::polyhedronAboutToSkew(VizPolyhedron *polyhedron) {
+  CLINT_ASSERT(polyhedron != nullptr, "cannot resize null polyhedron");
+  m_polyhedron = polyhedron;
+
+  // Do not allow multiple polyhedra resize yet.  This would require creating a graphicsGroup
+  // and adding handles for the group to ensure UI consistency.
+  std::unordered_set<VizPolyhedron *> selectedPolyhedra =
+      polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
+  CLINT_ASSERT(selectedPolyhedra.size() == 0, "No selection allowed when resizing");
+}
+
+void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
+  CLINT_ASSERT(polyhedron == m_polyhedron, "Wrong polyhedron finished skewing");
+
+  int horizontalRange = (m_polyhedron->localHorizontalMax() - m_polyhedron->localHorizontalMin());
+  int verticalRange   = (m_polyhedron->localVerticalMax() - m_polyhedron->localVerticalMin());
+
+  int skewFactor = round(static_cast<double>(-m_vertOffset) / verticalRange);
+  TransformationGroup group;
+  if (skewFactor != 0) {
+    if (m_polyhedron->localHorizontalMin() != 0) {
+      group.transformations.push_back(Transformation::constantShift(
+                                        m_polyhedron->occurrence()->betaVector(),
+                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        m_polyhedron->localHorizontalMin()));
+    }
+    if (m_polyhedron->localVerticalMin() != 0) {
+      group.transformations.push_back(Transformation::constantShift(
+                                        m_polyhedron->occurrence()->betaVector(),
+                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        m_polyhedron->localVerticalMin()));
+    }
+
+    group.transformations.push_back(Transformation::skew(
+                                      m_polyhedron->occurrence()->betaVector(),
+                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                      skewFactor));
+
+    if (m_polyhedron->localHorizontalMin() != 0) {
+      group.transformations.push_back(Transformation::constantShift(
+                                        m_polyhedron->occurrence()->betaVector(),
+                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        -m_polyhedron->localHorizontalMin()));
+    }
+    if (m_polyhedron->localVerticalMin() != 0) {
+      group.transformations.push_back(Transformation::constantShift(
+                                        m_polyhedron->occurrence()->betaVector(),
+                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        -m_polyhedron->localVerticalMin()));
+    }
+  }
+
+  if (!group.transformations.empty()) {
+
+    Transformer *t = new ClayScriptGenerator(std::cerr);
+    t->apply(nullptr, group);
+    delete t;
+
+    m_polyhedron->occurrence()->scop()->transform(group);
+    m_polyhedron->occurrence()->scop()->executeTransformationSequence();
+  } else {
+    // Fix to the original position
+    m_polyhedron->coordinateSystem()->resetPolyhedronPos(polyhedron);
+    m_polyhedron->updateShape();
+  }
+
+  m_polyhedron = nullptr;
+}
+
+void VizManipulationManager::polyhedronSkewing(QPointF displacement) {
+  VizProperties *properties = m_polyhedron->coordinateSystem()->projection()->vizProperties();
+  const double pointDistance = properties->pointDistance();
+  m_horzOffset = round(displacement.x() / pointDistance);
+  m_vertOffset = round(displacement.y() / pointDistance);
+
+  if (displacement.y() != 0) {
+    m_polyhedron->coordinateSystem()->projection()->ensureFitsVertically(
+          m_polyhedron->coordinateSystem(),
+          m_polyhedron->localVerticalMin() - m_vertOffset,
+          m_polyhedron->localVerticalMax() - m_vertOffset);
+    m_polyhedron->prepareSkewVerticalRight(-displacement.y());
+  }
+}
