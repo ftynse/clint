@@ -36,6 +36,7 @@ public:
     C_TOP = 0x0
   };
 
+  int rotationCase();
 signals:
   void intentionMoveHorizontally(int amount);
   void intentionMoveVertically(int amount);
@@ -63,6 +64,10 @@ public slots:
   void polyhedronSkewing(QPointF displacement);
   void polyhedronHasSkewed(VizPolyhedron *polyhedron);
 
+  void polyhedronAboutToRotate(VizPolyhedron *polyhedron, int corner);
+  void polyhedronRotating(QPointF displacement);
+  void polyhedronHasRotated(VizPolyhedron *polyhedron);
+
 private:
   VizPolyhedron *m_polyhedron = nullptr;
   VizPoint *m_point = nullptr;
@@ -75,6 +80,7 @@ private:
   bool m_firstMovement = false;
   Dir m_direction;
   int m_corner;
+  double m_rotationAngle;
 
   enum {
     PT_NODETACH,

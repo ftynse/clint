@@ -48,6 +48,10 @@ public:
     return list;
   }
 
+  bool isModifierPressed() const {
+    return m_modifier;
+  }
+
   void recomputePos();
 
   void mousePressEvent(QGraphicsSceneMouseEvent *event);
@@ -75,6 +79,7 @@ private:
 
   QPointF m_pressPos = QPointF();
   bool    m_pressed  = false;
+  bool    m_modifier = false;
 
   QPointF m_originalPos;
 

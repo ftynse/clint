@@ -1030,3 +1030,106 @@ void VizManipulationManager::polyhedronSkewing(QPointF displacement) {
     }
   }
 }
+
+void VizManipulationManager::polyhedronAboutToRotate(VizPolyhedron *polyhedron, int corner) {
+  CLINT_ASSERT(polyhedron != nullptr, "Cannot rotate null polyhedron");
+  m_polyhedron = polyhedron;
+  m_corner = corner;
+  ensureTargetConsistency();
+  m_rotationAngle = 0;
+
+  int hmin, hmax, vmin, vmax;
+  m_polyhedron->coordinateSystem()->minMax(hmin, hmax, vmin, vmax);
+  int coordMin = std::min(hmin, vmin);
+  int coordMax = std::max(hmax, vmax);
+  m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
+        m_polyhedron->coordinateSystem(), coordMin, coordMax);
+  m_polyhedron->coordinateSystem()->projection()->ensureFitsVertically(
+        m_polyhedron->coordinateSystem(), coordMin, coordMax);
+}
+
+int VizManipulationManager::rotationCase()
+{
+  if (m_rotationAngle < 0) {
+    m_rotationAngle += 360 * ceil(-m_rotationAngle / 360.0);
+  } else if (m_rotationAngle >= 360) {
+    m_rotationAngle -= 360 * floor(m_rotationAngle / 360.0);
+  }
+  int rotateCase = static_cast<int>(round(m_rotationAngle / 90.0));
+  rotateCase = rotateCase % 4;
+
+  return rotateCase;
+}
+
+void VizManipulationManager::polyhedronHasRotated(VizPolyhedron *polyhedron) {
+  CLINT_ASSERT(polyhedron == m_polyhedron, "Wrong polyhedron finished rotating");
+
+  TransformationGroup group;
+
+  int rotateCase = rotationCase();
+  m_polyhedron->prepareRotateAngle(rotateCase * -90.0);
+  if (rotateCase == 1) {
+    group.transformations.push_back(Transformation::reverse(
+                                      m_polyhedron->occurrence()->betaVector(),
+                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1));
+    if (m_polyhedron->localVerticalMin() + m_polyhedron->localVerticalMax() != 0)
+      group.transformations.push_back(Transformation::constantShift(
+                                        m_polyhedron->occurrence()->betaVector(),
+                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        -m_polyhedron->localVerticalMin() - m_polyhedron->localVerticalMax()));
+    group.transformations.push_back(Transformation::interchange(
+                                      m_polyhedron->occurrence()->betaVector(),
+                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1));
+  } else if (rotateCase == 2) {
+    group.transformations.push_back(Transformation::reverse(
+                                      m_polyhedron->occurrence()->betaVector(),
+                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1));
+    if (m_polyhedron->localHorizontalMin() + m_polyhedron->localHorizontalMax() != 0)
+      group.transformations.push_back(Transformation::constantShift(
+                                        m_polyhedron->occurrence()->betaVector(),
+                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        -m_polyhedron->localHorizontalMin() - m_polyhedron->localHorizontalMax()));
+    group.transformations.push_back(Transformation::reverse(
+                                      m_polyhedron->occurrence()->betaVector(),
+                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1));
+    if (m_polyhedron->localVerticalMin() + m_polyhedron->localVerticalMax() != 0)
+      group.transformations.push_back(Transformation::constantShift(
+                                        m_polyhedron->occurrence()->betaVector(),
+                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        -m_polyhedron->localVerticalMin() - m_polyhedron->localVerticalMax()));
+  } else if (rotateCase == 3) {
+    group.transformations.push_back(Transformation::reverse(
+                                      m_polyhedron->occurrence()->betaVector(),
+                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1));
+    if (m_polyhedron->localHorizontalMin() + m_polyhedron->localHorizontalMax() != 0)
+      group.transformations.push_back(Transformation::constantShift(
+                                        m_polyhedron->occurrence()->betaVector(),
+                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        -m_polyhedron->localHorizontalMin() - m_polyhedron->localHorizontalMax()));
+    group.transformations.push_back(Transformation::interchange(
+                                      m_polyhedron->occurrence()->betaVector(),
+                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1));
+  } else if (rotateCase == 0) {
+    // Do nothing
+  } else {
+    CLINT_UNREACHABLE;
+  }
+
+  if (!group.transformations.empty()) {
+    m_polyhedron->occurrence()->scop()->transform(group);
+    m_polyhedron->occurrence()->scop()->executeTransformationSequence();
+  } else {
+    // Fix to the original position
+    m_polyhedron->coordinateSystem()->resetPolyhedronPos(polyhedron);
+    m_polyhedron->updateShape();
+  }
+
+  m_polyhedron = nullptr;
+}
+
+void VizManipulationManager::polyhedronRotating(QPointF displacement) {
+  if (!displacement.isNull())
+    m_rotationAngle = m_polyhedron->prepareRotate(displacement);
+}

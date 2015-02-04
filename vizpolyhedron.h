@@ -138,6 +138,10 @@ public:
   void prepareSkewVerticalLeft(double offset);
   void prepareSkewVerticalRight(double offset);
 
+  double prepareRotate(QPointF displacement);
+  void resetRotate();
+
+  void prepareRotateAngle(double angle);
 signals:
   void positionChanged();
 
@@ -170,6 +174,8 @@ private:
   bool m_wasShiftPressed = false;
   bool m_overrideSetPos = false;
   QPointF m_pressPos;
+
+  QPointF m_rotationCenter;
 
   void setPointVisiblePos(VizPoint *vp, int x, int y);
   static std::pair<int, int> pointScatteredCoordsReal(const VizPoint *vp);

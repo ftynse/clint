@@ -222,6 +222,13 @@ public:
       m_stream << "||});\n";
       break;
 
+    case Transformation::Kind::Interchange:
+      m_stream << "interchange([";
+      outputVector(m_stream, transformation.target()) << "], "
+         << transformation.depth() << ", "
+         << transformation.secondDepth() << ", 1);\n";
+      break;
+
     default:
       m_stream << "###unkonwn transformation###\n";
     }

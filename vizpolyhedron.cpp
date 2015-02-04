@@ -826,12 +826,41 @@ void VizPolyhedron::prepareSkewHorizontalBottom(double offset) {
   prepareGeometryChange();
 }
 
+void VizPolyhedron::prepareRotateAngle(double angle) {
+  prepareGeometryChange();
+  QTransform transform;
+  transform.translate(m_rotationCenter.x(), m_rotationCenter.y());
+  transform.rotate(angle);
+  transform.translate(-m_rotationCenter.x(), -m_rotationCenter.y());
+  m_polyhedronShape = transform.map(m_originalPolyhedronShape);
+  for (VizPoint *vp : m_points) {
+    QPointF position = transform.map(mapToCoordinates(pointScatteredCoordsReal(vp)));
+    vp->setPos(position);
+  }
+}
+
+double VizPolyhedron::prepareRotate(QPointF displacement) {
+  QLineF handleLine(m_rotationCenter, m_pressPos);
+  QLineF currentLine(m_rotationCenter, m_pressPos + displacement);
+  double angle = -handleLine.angleTo(currentLine);
+
+  prepareRotateAngle(angle);
+  return -angle;
+}
+
+void VizPolyhedron::resetRotate() {
+  m_polyhedronShape = m_originalPolyhedronShape;
+  resetPointPositions();
+}
+
 void VizPolyhedron::handleAboutToMove(const VizHandle *const handle) {
   m_coordinateSystem->projection()->selectionManager()->clearSelection();
 
   VizManipulationManager *vmm = m_coordinateSystem->projection()->manipulationManager();
 
   m_originalPolyhedronShape = m_polyhedronShape;
+  m_pressPos = handle->rect().center();
+  m_rotationCenter = boundingRect().center();
   switch (handle->kind()) {
   case VizHandle::Kind::RIGHT:
     vmm->polyhedronAboutToResize(this, VizManipulationManager::Dir::RIGHT);
@@ -846,7 +875,10 @@ void VizPolyhedron::handleAboutToMove(const VizHandle *const handle) {
     vmm->polyhedronAboutToResize(this, VizManipulationManager::Dir::DOWN);
     break;
   case VizHandle::Kind::TOPRIGHT:
-    vmm->polyhedronAboutToSkew(this, VizManipulationManager::C_TOP | VizManipulationManager::C_RIGHT);
+    if (handle->isModifierPressed())
+      vmm->polyhedronAboutToRotate(this, VizManipulationManager::C_TOP | VizManipulationManager::C_RIGHT);
+    else
+      vmm->polyhedronAboutToSkew(this, VizManipulationManager::C_TOP | VizManipulationManager::C_RIGHT);
     break;
   case VizHandle::Kind::BOTTOMRIGHT:
     vmm->polyhedronAboutToSkew(this, VizManipulationManager::C_BOTTOM | VizManipulationManager::C_RIGHT);
@@ -875,6 +907,11 @@ void VizPolyhedron::handleMoving(const VizHandle *const handle, QPointF displace
   case VizHandle::Kind::BOTTOMRIGHT:
   case VizHandle::Kind::TOPLEFT:
   case VizHandle::Kind::BOTTOMLEFT:
+    if (handle->isModifierPressed()) {
+      vmm->polyhedronRotating(displacement);
+      break;
+    }
+
     // Do not allow simultaneous horizontal and vertical skew (no support in clay)
     if (fabs(displacement.x()) < 5 || fabs(displacement.y()) > fabs(displacement.x()))
       displacement.rx() = 0;
@@ -890,6 +927,8 @@ void VizPolyhedron::handleMoving(const VizHandle *const handle, QPointF displace
 void VizPolyhedron::handleHasMoved(const VizHandle *const handle, QPointF displacement) {
   prepareGeometryChange();
   VizManipulationManager *vmm = m_coordinateSystem->projection()->manipulationManager();
+  m_rotationCenter = QPointF();
+  m_pressPos = QPointF();
   switch (handle->kind()) {
   case VizHandle::Kind::RIGHT:
   case VizHandle::Kind::LEFT:
@@ -901,7 +940,10 @@ void VizPolyhedron::handleHasMoved(const VizHandle *const handle, QPointF displa
   case VizHandle::Kind::BOTTOMRIGHT:
   case VizHandle::Kind::TOPLEFT:
   case VizHandle::Kind::BOTTOMLEFT:
-    vmm->polyhedronHasSkewed(this);
+    if (handle->isModifierPressed())
+      vmm->polyhedronHasRotated(this);
+    else
+      vmm->polyhedronHasSkewed(this);
     break;
   default:
     CLINT_UNREACHABLE;

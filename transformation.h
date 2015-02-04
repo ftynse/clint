@@ -16,7 +16,8 @@ public:
     Reorder,
     IndexSetSplitting,
     Grain,
-    Reverse
+    Reverse,
+    Interchange
   };
 
   Kind kind() const {
@@ -189,6 +190,17 @@ public:
     t.m_kind       = Kind::Reverse;
     t.m_targetBeta = beta;
     t.m_depthOuter = dimension;
+    return t;
+  }
+
+  static Transformation interchange(const std::vector<int> &beta, int dimension1, int dimension2) {
+    CLINT_ASSERT(beta.size() >= std::max(dimension1, dimension2),
+                 "Beta too short");
+    Transformation t;
+    t.m_kind       = Kind::Interchange;
+    t.m_targetBeta = beta;
+    t.m_depthInner = dimension1;
+    t.m_depthOuter = dimension2;
     return t;
   }
 

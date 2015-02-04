@@ -95,6 +95,11 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
     err = clay_reverse(scop, ClayBeta(transformation.target()),
                        transformation.depth(), m_options);
     break;
+  case Transformation::Kind::Interchange:
+    err = clay_interchange(scop, ClayBeta(transformation.target()),
+                           transformation.depth(), transformation.secondDepth(),
+                           1, m_options);
+    break;
   default:
     break;
   }
@@ -242,6 +247,7 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
   case Transformation::Kind::Skew:
   case Transformation::Kind::Grain:
   case Transformation::Kind::Reverse:
+  case Transformation::Kind::Interchange:
     // Do not affect beta
     m_updatedBeta = m_originalBeta;
     break;

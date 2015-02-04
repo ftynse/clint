@@ -2,6 +2,7 @@
 #include "macros.h"
 #include <QtCore>
 #include <QtGui>
+#include <QtWidgets>
 
 #include <QtDebug>
 
@@ -94,6 +95,7 @@ QVariant VizHandle::itemChange(GraphicsItemChange change, const QVariant &value)
 void VizHandle::mousePressEvent(QGraphicsSceneMouseEvent *event) {
   QGraphicsRectItem::mousePressEvent(event);
 
+  m_modifier = event->modifiers() & Qt::ShiftModifier;
   emit aboutToMove(this);
 
   m_pressPos = pos();
