@@ -206,6 +206,11 @@ VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult &csAt, int
     return insertPile(csAt, dimensionality);
     break;
   case IsCsAction::InsertCS:
+    if (m_coordinateSystems[csAt.pileIdx()].size() == 1 && // No loop in this pile
+        !m_coordinateSystems[csAt.pileIdx()][0]->isHorizontalAxisVisible()) {
+      csAt.m_action = IsCsAction::InsertPile;
+      return insertPile(csAt, dimensionality);
+    }
     return insertCs(csAt, dimensionality);
     break;
   }
