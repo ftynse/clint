@@ -917,6 +917,22 @@ void VizManipulationManager::polyhedronAboutToSkew(VizPolyhedron *polyhedron, in
   m_polyhedron = polyhedron;
   m_corner = corner;
 
+  // Skewings are not combinable as we think they are.
+  const TransformationSequence &sequence = polyhedron->scop()->transformationSequence();
+  auto iterator = std::find_if(std::begin(sequence.groups), std::end(sequence.groups),
+                               [](const TransformationGroup &group) {
+    return std::any_of(std::begin(group.transformations), std::end(group.transformations),
+                [](const Transformation &transformation) {
+      return transformation.kind() == Transformation::Kind::Skew;
+    });
+  });
+  if (iterator != std::end(sequence.groups)) {
+    CLINT_WARNING(false, "Trying to combine skew transformations");
+    return;
+  }
+
+  m_skewing = true;
+
   // Do not allow multiple polyhedra resize yet.  This would require creating a graphicsGroup
   // and adding handles for the group to ensure UI consistency.
   std::unordered_set<VizPolyhedron *> selectedPolyhedra =
@@ -938,8 +954,16 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
         m_polyhedron->localVerticalMin();
 
   // TODO: verify that this decomposition actually works...
+  // It does not, skew transformations are not trivially combinable
   int verticalSkewFactor = round(static_cast<double>(-m_vertOffset) / verticalRange);
   int horizontalSkewFactor = round(static_cast<double>(m_horzOffset) / horizontalRange);
+
+  if (!m_skewing) { // workaround to prevent unwanted (second+) skewing
+    verticalSkewFactor = 0;
+    horizontalSkewFactor = 0;
+  }
+  m_skewing = false;
+
   if (!(m_corner & C_RIGHT)) verticalSkewFactor = -verticalSkewFactor;
   if (m_corner & C_BOTTOM) horizontalSkewFactor = -horizontalSkewFactor;
 
