@@ -23,6 +23,7 @@ int addISLPointToVector(isl_point *point, void *vect) {
     isl_val_free(val);
   }
   isl_space_free(space);
+  isl_point_free(point);
   vector.push_back(std::move(pointVector));
 
   return 0;
