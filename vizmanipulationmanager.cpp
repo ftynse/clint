@@ -615,7 +615,7 @@ void VizManipulationManager::pointAboutToMove(VizPoint *point) {
       m_pointDetachValue = point->polyhedron()->localVerticalMin() + (verticalEnd - verticalStart + 1);
       m_pointDetachLast = false;
     }
-  } else if (verticalEnd == point->polyhedron()->localHorizontalMax() &&
+  } else if (verticalEnd == point->polyhedron()->localVerticalMax() &&
              verticalEnd - verticalStart == vertical.size() - 1 &&
              verticalEnd - verticalStart != verticalSize) {
     bool all = std::all_of(std::begin(vertical), std::end(vertical), [horizontalSize,point](const std::pair<int, std::set<int>> &pair) {
@@ -634,7 +634,6 @@ void VizManipulationManager::pointAboutToMove(VizPoint *point) {
     return; // no transformation;
     // TODO: if everything selected -> select the polyhedron; do not allow ISSing all points
   }
-
 }
 
 void VizManipulationManager::pointHasMoved(VizPoint *point) {
