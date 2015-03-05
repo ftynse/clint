@@ -183,6 +183,137 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
   }
 }
 
+static inline void negateBonudlikeForm(std::vector<int> &form) {
+  if (form.size() <= 2)
+    return;
+  for (size_t i = 1; i < form.size() - 1; i++) {
+    form[i] = -form[i];
+  }
+  form.back() = -form.back() - 1;
+}
+
+std::vector<int> ClintStmtOccurrence::makeBoundlikeForm(Bound bound, int dimIdx, int constValue,
+                                                        int constantBoundaryPart,
+                                                        const std::vector<int> &parameters,
+                                                        const std::vector<int> &parameterValues) {
+  bool isConstantForm = std::all_of(std::begin(parameters), std::end(parameters),
+                                    std::bind(std::equal_to<int>(), std::placeholders::_1, 0));
+  // Substitute parameters with current values.
+  // Constant will differ depending on the target form:
+  // for the constant form, all parameters are replaced with respective values;
+  // for the parametric form, adjust with the current constant part of the boundary.
+  int parameterSubstValue = 0;
+  for (size_t i = 0; i < parameters.size(); i++) {
+    parameterSubstValue += parameters[i] * parameterValues[i];
+  }
+  parameterSubstValue += constantBoundaryPart;
+  if (bound == Bound::LOWER && isConstantForm) {
+    constValue = constValue - 1;
+  } else if (bound == Bound::UPPER && isConstantForm) {
+    constValue = -constValue - 1;
+  } else if (bound == Bound::LOWER && !isConstantForm) {
+    constValue = -constantBoundaryPart + (constValue + parameterSubstValue - 1);
+  } else if (bound == Bound::UPPER && !isConstantForm) {
+    constValue = -constantBoundaryPart + (parameterSubstValue - constValue - 1);
+  } else {
+    CLINT_UNREACHABLE;
+  }
+
+  std::vector<int> form;
+  form.push_back(1); // Inequality
+  for (int i = 0; i < m_oslStatement->domain->nb_output_dims; i++) {
+    form.push_back(i == dimIdx ? (bound == Bound::LOWER ? -1 : 1) : 0);
+  }
+  for (int p : parameters) {
+    form.push_back(-p);
+  }
+  form.push_back(constValue);
+  return std::move(form);
+}
+
+static bool isVariableBoundary(int row, osl_relation_p scattering, int dimIdx) {
+  bool variable = false;
+  for (int i = 0; i < scattering->nb_input_dims + scattering->nb_output_dims + scattering->nb_local_dims; i++) {
+    if (i + 1 == dimIdx)
+      continue;
+    if (!osl_int_zero(scattering->precision, scattering->m[row][1 + i]))
+      variable = true;
+  }
+
+  return variable;
+}
+
+static bool isParametricBoundary(int row, osl_relation_p scattering) {
+  int firstParameterDim = scattering->nb_input_dims +
+      scattering->nb_output_dims +
+      scattering->nb_local_dims + 1;
+  for (int i = 0; i < scattering->nb_parameters; i++) {
+    if (!osl_int_zero(scattering->precision, scattering->m[row][firstParameterDim + i]))
+      return true;
+  }
+  return false;
+}
+
+std::vector<int> ClintStmtOccurrence::findBoundlikeForm(Bound bound, int dimIdx, int constValue) {
+  CLINT_ASSERT(m_oslScatterings.size() == 1, "Cannot find a form for multiple scatterings at the same time");
+
+  std::vector<int> zeroParameters(m_oslStatement->domain->nb_parameters, 0);
+  std::vector<int> parameterValues = scop()->parameterValues();
+
+  int oslDimIdx = 1 + dimIdx * 2 + 1;
+  osl_relation_p scheduledDomain = ISLEnumerator::scheduledDomain(m_oslStatement->domain, m_oslScatterings.front());
+  int lowerRow = oslRelationDimUpperBound(scheduledDomain, oslDimIdx);
+  int upperRow = oslRelationDimLowerBound(scheduledDomain, oslDimIdx);
+
+  // Check if the request boundary exists and is unique.
+  // If failed, try the opposite boundary.  If the opposite does not
+  // exist or is not unique, use constant form.
+  if (lowerRow < 0 && upperRow < 0) {
+    return makeBoundlikeForm(bound, dimIdx, constValue, 0, zeroParameters, parameterValues);
+  } else if (lowerRow < 0 && bound == Bound::LOWER) {
+    bound = Bound::UPPER;
+  } else if (upperRow < 0 && bound == Bound::UPPER) {
+    bound = Bound::LOWER;
+  }
+
+  // Check if the current boundary (either request or opposite) is
+  // variable.  If it is, try the opposite unless the opposite does
+  // not exist.  If both are variable or one is variable and another
+  // does not exit, use constant form.
+  bool upperVariable = upperRow >= 0 ? isVariableBoundary(upperRow, scheduledDomain, oslDimIdx) : true;
+  bool lowerVariable = lowerRow >= 0 ? isVariableBoundary(lowerRow, scheduledDomain, oslDimIdx) : true;
+  if (upperVariable && lowerVariable) {
+    return makeBoundlikeForm(bound, dimIdx, constValue, 0, zeroParameters, parameterValues);
+  }
+  if (upperVariable && lowerRow >= 0) {
+    bound = Bound::LOWER;
+  } else if (lowerVariable && upperRow >= 0) {
+    bound = Bound::UPPER;
+  }
+  int row = bound == Bound::UPPER ? upperRow : lowerRow;
+
+  int firstParameterIdx = 1 + scheduledDomain->nb_input_dims + scheduledDomain->nb_output_dims + scheduledDomain->nb_local_dims;
+  std::vector<int> parameters;
+  parameters.reserve(scheduledDomain->nb_parameters);
+  for (int i = 0; i < scheduledDomain->nb_parameters; i++) {
+    int p = osl_int_get_si(scheduledDomain->precision, scheduledDomain->m[row][firstParameterIdx + i]);
+    parameters.push_back(p);
+  }
+
+  // Make parametric form is the boundary itself is parametric.
+  // Make constant form otherwise.
+  if (isParametricBoundary(row, scheduledDomain)) {
+    int boundaryConstantPart = osl_int_get_si(scheduledDomain->precision,
+                                              scheduledDomain->m[row][scheduledDomain->nb_columns - 1]);
+    return makeBoundlikeForm(bound, dimIdx, constValue,
+                             boundaryConstantPart,
+                             parameters, parameterValues);
+  } else {
+    return makeBoundlikeForm(bound, dimIdx, constValue,
+                             0, zeroParameters, parameterValues);
+  }
+}
+
 int ClintStmtOccurrence::minimumValue(int dimIdx) const {
   if (dimIdx >= dimensionality() || dimIdx < 0)
     return 0;

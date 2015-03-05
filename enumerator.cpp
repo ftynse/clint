@@ -65,6 +65,20 @@ std::vector<std::vector<int> > ISLEnumerator::enumerate(osl_relation_p relation,
   return std::move(points); // Force RVO.
 }
 
+osl_relation_p ISLEnumerator::scheduledDomain(osl_relation_p domain, osl_relation_p schedule) {
+  CLINT_ASSERT(domain->nb_input_dims == 0, "Domain is not a set");
+  CLINT_ASSERT(domain->nb_parameters == schedule->nb_parameters,
+               "Domain and schedule have different sets of parameters");
+
+  isl_set *islDomain = setFromOSLRelation(domain);
+  isl_map *islSchedule = mapFromOSLRelation(schedule);
+  isl_set *islScheduledDomain =
+      isl_set_apply(islDomain, islSchedule);
+  osl_relation_p result = setToOSLRelation(islScheduledDomain);
+  isl_set_free(islScheduledDomain);
+  return result;
+}
+
 std::vector<int> ISLEnumerator::map(osl_statement_p stmt, const std::vector<int> &point) {
   (void) stmt;
   (void) point;

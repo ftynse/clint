@@ -73,7 +73,7 @@ void ClintScop::updateDependences(osl_scop_p transformed) {
 }
 
 ClintScop::ClintScop(osl_scop_p scop, int parameterValue, char *originalCode, ClintProgram *parent) :
-  QObject(parent), m_scopPart(scop), m_program(parent) {
+  QObject(parent), m_scopPart(scop), m_program(parent), m_parameterValue(parameterValue) {
   oslListForeach(scop->statement, [this](osl_statement_p stmt) {
     ClintStmt *vizStmt = new ClintStmt(stmt, this);
     oslListForeach(stmt->scattering, [this,vizStmt](osl_relation_p scatter) {

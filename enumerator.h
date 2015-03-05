@@ -89,11 +89,21 @@ public:
   }
 
   static inline __isl_give isl_set *setFromOSLRelation(osl_relation_p relation, osl_names_p names = nullptr) {
+    CLINT_ASSERT(relation->nb_input_dims == 0, "Relation is not a set");
     return osl2isl(isl_set_read_from_str, relation, names);
   }
 
   static inline __isl_give isl_map *mapFromOSLRelation(osl_relation_p relation, osl_names_p names = nullptr) {
     return osl2isl(isl_map_read_from_str, relation, names);
+  }
+
+  static inline __isl_give isl_basic_set *basicSetFromOSLRelation(osl_relation_p relation, osl_names_p names = nullptr) {
+    CLINT_ASSERT(relation->nb_input_dims == 0, "Relation is not a set");
+    return osl2isl(isl_basic_set_read_from_str, relation, names);
+  }
+
+  static inline __isl_give isl_basic_map *basicMapFromOSLRelation(osl_relation_p relation, osl_names_p names = nullptr) {
+    return osl2isl(isl_basic_map_read_from_str, relation, names);
   }
 
   static inline osl_relation_p setToOSLRelation(isl_set *set) {
@@ -107,6 +117,8 @@ public:
   static inline osl_relation_p mapToOSLRelation(isl_map *map) {
     return isl2osl(isl_printer_print_map, map);
   }
+
+  static osl_relation_p scheduledDomain(osl_relation_p domain, osl_relation_p schedule);
 
 private:
   static ISLContextRAII islContext_;

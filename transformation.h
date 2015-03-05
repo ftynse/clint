@@ -44,6 +44,14 @@ public:
     return m_order;
   }
 
+  const std::vector<int> &parameters() const {
+    return m_parameters;
+  }
+
+  const std::vector<int> &iterators() const {
+    return m_iterators;
+  }
+
   static Transformation constantShift(const std::vector<int> &beta, int dimension, int amount) {
     CLINT_ASSERT(dimension <= beta.size(), "Dimension overflow");
     Transformation t;
@@ -66,25 +74,20 @@ public:
     return t;
   }
 
-  static Transformation issFirst(const std::vector<int> &beta, int depth, int value) {
+  static Transformation issFromConstraint(const std::vector<int> &beta,
+                                          const std::vector<int> &issConstraint,
+                                          size_t nbInputDims) {
     CLINT_ASSERT(beta.size() >= 1, "Beta too short");
     Transformation t;
     t.m_kind           = Kind::IndexSetSplitting;
     t.m_targetBeta     = beta;
-    t.m_constantAmount = value;
-    t.m_depthOuter     = depth;
+    t.m_constantAmount = issConstraint.back();
+    t.m_iterators      = std::vector<int>(std::begin(issConstraint) + 1,
+                                         std::begin(issConstraint) + 1 + nbInputDims);
+    t.m_parameters     = std::vector<int>(std::begin(issConstraint) + 1 + nbInputDims,
+                                          std::end(issConstraint) - 1);
     return t;
-  }
 
-  static Transformation issLast(const std::vector<int> &beta, int depth, int value) {
-    CLINT_ASSERT(beta.size() >= 1, "Beta too short");
-    Transformation t;
-    t.m_kind           = Kind::IndexSetSplitting;
-    t.m_targetBeta     = beta;
-    t.m_constantAmount = value;
-    t.m_depthOuter     = depth;
-    t.m_useFirstParameter = true;
-    return t;
   }
 
   static Transformation grain(const std::vector<int> &beta, int depth, int value) {
@@ -204,12 +207,14 @@ public:
     return t;
   }
 
-  bool m_useFirstParameter = false;
 private:
   std::vector<int> m_targetBeta;
   int m_depthInner, m_depthOuter;
   int m_constantAmount;
   std::vector<int> m_order;
+
+  std::vector<int> m_parameters;
+  std::vector<int> m_iterators;
 
   Kind m_kind;
 };

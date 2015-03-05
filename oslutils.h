@@ -188,6 +188,9 @@ inline osl_relation_p oslRelationsWithContext(osl_relation_p relation, osl_relat
   return oslListTransform(relation, &oslRelationWithContext, context);
 }
 
+int oslRelationDimUpperBound(osl_relation_p relation, int dimension);
+int oslRelationDimLowerBound(osl_relation_p relation, int dimension);
+
 // Vectors are lexicographically-comparable.
 typedef std::map<std::vector<int>,
                  std::tuple<osl_scop_p, osl_statement_p, osl_relation_p>

@@ -194,6 +194,47 @@ osl_relation_p oslRelationFixAllParameters(osl_relation_p relation, int value) {
   return oslRelationFixParameters(relation, values);
 }
 
+static int oslRelationDimBoundHelper(osl_relation_p relation, int dimension, int sign) {
+  // Looking for a unique upper bound, which may be an actual upper bound
+  // or an equality.
+
+  // Incorrect input.
+  if (dimension >= relation->nb_columns - 1 || relation <= 0)
+    return -3;  // Dimension overflow.
+  if (relation == nullptr)
+    return -4;  // No relation given.
+
+  int row = -1;
+  osl_int_p v = osl_int_malloc(relation->precision);
+  for (int i = 0; i < relation->nb_rows; i++) {
+    osl_int_mul_si(relation->precision, v, relation->m[i][dimension], sign);
+    if (osl_int_neg(relation->precision, *v)) {
+      if (row == -1) {
+        row = i;
+      } else {
+        return -2;  // Multiple upper bounds.
+      }
+    }
+  }
+  osl_int_free(relation->precision, v);
+  return row;
+
+  // TODO: can handle several cases of multiple bounds:
+  //     1) all bounds costant => choose the smallest
+  //     2) constant vs parametric => depends on current parameter value in visualization:
+  //        2a) if parameteric substitution > constant => use constant
+  //        2b) else use parametric + substitution
+  //     3) constant vs variable => use variable + substitution
+  // This is more about treating in visualization...
+}
+
+int oslRelationDimUpperBound(osl_relation_p relation, int dimension) {
+  return oslRelationDimBoundHelper(relation, dimension, -1);
+}
+
+int oslRelationDimLowerBound(osl_relation_p relation, int dimension) {
+  return oslRelationDimBoundHelper(relation, dimension, 1);
+}
 
 std::vector<int> betaFromClay(clay_array_p beta) {
   std::vector<int> betavector;

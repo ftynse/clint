@@ -130,6 +130,11 @@ public:
     return m_undoneTransformationSeq.groups.size() > 0;
   }
 
+  std::vector<int> parameterValues() const {
+    std::vector<int> parameters(m_scopPart->context->nb_parameters, m_parameterValue);
+    return std::move(parameters);
+  }
+
   int dimensionality();
 
 signals:
@@ -152,6 +157,7 @@ private:
 
   osl_scop_p m_scopPart;
   ClintProgram *m_program;
+  int m_parameterValue;
   osl_relation_p m_fixedContext;
 //  std::vector<VizStatement *> statements_;
   // statements = unique values of m_vizBetaMap

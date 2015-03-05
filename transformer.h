@@ -181,17 +181,11 @@ public:
              << "{" << transformation.constantAmount() << "});\n";
       break;
     case Transformation::Kind::IndexSetSplitting:
-    {
       m_stream << "iss([";
       outputVector(m_stream, transformation.target()) << "], {";
-      std::vector<int> iters;
-      for (int i = 0, e = transformation.target().size(); i < e; i++)
-        iters.push_back(transformation.depth() == i ?
-                          (transformation.m_useFirstParameter ? 1 : -1) :
-                          0);
-      outputVector(m_stream, iters) << "|" << (transformation.m_useFirstParameter ? "-1" : "") << "|" <<
-                                       (transformation.m_useFirstParameter ? transformation.constantAmount() : transformation.constantAmount() - 1) << "});\n";
-    }
+      outputVector(m_stream, transformation.iterators()) << " | ";
+      outputNonZeroVector(m_stream, transformation.parameters()) << " | ";
+      m_stream << transformation.constantAmount() << "});\n";
       break;
     case Transformation::Kind::Grain:
       m_stream << "grain([";
@@ -248,6 +242,14 @@ private:
     std::copy(std::begin(vector), std::end(vector) - 1, std::ostream_iterator<T>(stream, ", "));
     stream << vector.back();
     return stream;
+  }
+
+  template <typename T>
+  std::ostream &outputNonZeroVector(std::ostream &stream, const std::vector<T> &vector) {
+    if (std::all_of(std::begin(vector), std::end(vector),
+                    std::bind(std::equal_to<int>(), std::placeholders::_1, 0)))
+      return stream;
+    return outputVector(stream, vector);
   }
 };
 

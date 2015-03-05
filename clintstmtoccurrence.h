@@ -63,6 +63,13 @@ public:
   void resetOccurrence(osl_statement_p stmt, const std::vector<int> &betaVector);
   void resetBetaVector(const std::vector<int> &betaVector);
 
+  enum class Bound {
+    LOWER,
+    UPPER
+  };
+
+  std::vector<int> findBoundlikeForm(Bound bound, int dimIdx, int constValue);
+
 signals:
   void pointsChanged();
   void betaChanged();
@@ -81,6 +88,7 @@ private:
 
   void computeMinMax(const std::vector<std::vector<int>> &points,
                      int horizontalDimIdx, int verticalDimIdx) const;
+  std::vector<int> makeBoundlikeForm(Bound bound, int dimIdx, int constValue, int constantBoundaryPart, const std::vector<int> &parameters, const std::vector<int> &parameterValues);
 };
 
 struct VizStmtOccurrencePtrComparator {

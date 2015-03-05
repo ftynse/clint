@@ -581,7 +581,7 @@ void VizManipulationManager::pointAboutToMove(VizPoint *point) {
     if (all) {
       // Vertical (inner) iss
       m_pointDetachState = PT_DETACH_VERTICAL;
-      m_pointDetachValue = point->polyhedron()->localVerticalMin() + (horizontalEnd - horizontalStart + 1);
+      m_pointDetachValue = point->polyhedron()->localHorizontalMin() + (horizontalEnd - horizontalStart + 1);
       m_pointDetachLast = false;
     }
   } else if (horizontalEnd == point->polyhedron()->localHorizontalMax() &&
@@ -597,7 +597,7 @@ void VizManipulationManager::pointAboutToMove(VizPoint *point) {
     if (all) {
       // Vertical (inner) iss
       m_pointDetachState = PT_DETACH_VERTICAL;
-      m_pointDetachValue = point->polyhedron()->localVerticalMin() + (horizontalEnd - horizontalStart + 1);
+      m_pointDetachValue = point->polyhedron()->localHorizontalMax() - (horizontalEnd - horizontalStart + 1);
       m_pointDetachLast = true;
     }
 
@@ -612,7 +612,7 @@ void VizManipulationManager::pointAboutToMove(VizPoint *point) {
     });
     if (all) {
       m_pointDetachState = PT_DETACH_HORIZONTAL;
-      m_pointDetachValue = point->polyhedron()->localHorizontalMin() + (verticalEnd - verticalStart + 1);
+      m_pointDetachValue = point->polyhedron()->localVerticalMin() + (verticalEnd - verticalStart + 1);
       m_pointDetachLast = false;
     }
   } else if (verticalEnd == point->polyhedron()->localHorizontalMax() &&
@@ -626,7 +626,7 @@ void VizManipulationManager::pointAboutToMove(VizPoint *point) {
     });
     if (all) {
       m_pointDetachState = PT_DETACH_HORIZONTAL;
-      m_pointDetachValue = point->polyhedron()->localHorizontalMin() + (verticalEnd - verticalStart + 1);
+      m_pointDetachValue = point->polyhedron()->localVerticalMax() - (verticalEnd - verticalStart + 1);
       m_pointDetachLast = true;
     }
   } else {
@@ -664,13 +664,10 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     VizPolyhedron *oldPolyhedron = point->polyhedron();
 
     int dimensionIdx;
-    int minValue;
     if (m_pointDetachState == PT_DETACHED_HORIZONTAL) {
       dimensionIdx = oldPolyhedron->coordinateSystem()->verticalDimensionIdx();
-      minValue = oldPolyhedron->localVerticalMin();
     } else {
       dimensionIdx = oldPolyhedron->coordinateSystem()->horizontalDimensionIdx();
-      minValue = oldPolyhedron->localHorizontalMin();
     }
 
     for (VizPoint *vp : selectedPoints) {
@@ -684,17 +681,14 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     std::vector<int> betaLoop(oldPolyhedron->occurrence()->betaVector());
     betaLoop.erase(betaLoop.end() - 1);
     TransformationGroup group;
-    if (m_pointDetachLast) {
-      group.transformations.push_back(
-            Transformation::issLast(betaLoop, dimensionIdx, minValue + m_pointDetachValue));
-    } else {
-      group.transformations.push_back(
-            Transformation::issFirst(betaLoop, dimensionIdx, minValue + m_pointDetachValue));
-    }
+    std::vector<int> issVector = oldPolyhedron->occurrence()->findBoundlikeForm(
+          m_pointDetachLast ? ClintStmtOccurrence::Bound::UPPER :
+                              ClintStmtOccurrence::Bound::LOWER,
+          dimensionIdx,
+          m_pointDetachValue);
+    CLINT_ASSERT(issVector.size() >= 2, "malformed ISS vector");
 
-    Transformer *c = new ClayScriptGenerator(std::cerr);
-    c->apply(nullptr, group);
-    delete c;
+    group.transformations.push_back(Transformation::issFromConstraint(betaLoop, issVector, betaLoop.size()));
 
     oldPolyhedron->scop()->transform(group);
     oldPolyhedron->scop()->executeTransformationSequence();
