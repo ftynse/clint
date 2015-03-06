@@ -48,6 +48,10 @@ QVariant VizPoint::itemChange(GraphicsItemChange change, const QVariant &value) 
 }
 
 void VizPoint::mousePressEvent(QGraphicsSceneMouseEvent *event) {
+  if (coordinateSystem()->projection()->selectionManager()->selectedPoints().empty()) {
+    polyhedron()->mousePressEvent(event);
+    return;
+  }
   polyhedron()->hideHandles();
   QGraphicsItem::mousePressEvent(event);
   m_pressPos = pos();
@@ -55,12 +59,20 @@ void VizPoint::mousePressEvent(QGraphicsSceneMouseEvent *event) {
 }
 
 void VizPoint::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
+  if (coordinateSystem()->projection()->selectionManager()->selectedPoints().empty()) {
+    polyhedron()->mouseReleaseEvent(event);
+    return;
+  }
   QGraphicsItem::mouseReleaseEvent(event);
   m_pressPos = QPointF(0,0);
   coordinateSystem()->projection()->manipulationManager()->pointHasMoved(this);
 }
 
 void VizPoint::mouseMoveEvent(QGraphicsSceneMouseEvent *event) {
+  if (coordinateSystem()->projection()->selectionManager()->selectedPoints().empty()) {
+    polyhedron()->mouseMoveEvent(event);
+    return;
+  }
   QGraphicsItem::mouseMoveEvent(event);
   QPointF diff = pos() - m_pressPos;
   coordinateSystem()->projection()->manipulationManager()->pointMoving(diff);

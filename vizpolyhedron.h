@@ -177,6 +177,8 @@ private:
 
   QPointF m_rotationCenter;
 
+  bool m_mouseEventForwarding = false;
+
   void setPointVisiblePos(VizPoint *vp, int x, int y);
   static std::pair<int, int> pointScatteredCoordsReal(const VizPoint *vp);
   std::vector<VizPoint *> convexHull() const;

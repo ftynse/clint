@@ -508,6 +508,19 @@ void VizPolyhedron::mousePressEvent(QGraphicsSceneMouseEvent *event) {
     return;
   }
 
+  std::unordered_set<VizPoint *> selectedPoints =
+      coordinateSystem()->projection()->selectionManager()->selectedPoints();
+  if (!selectedPoints.empty()) {
+    m_mouseEventForwarding = std::all_of(std::begin(selectedPoints), std::end(selectedPoints), [this](VizPoint *v) {
+      return v->polyhedron() == this;
+    });
+    if (m_mouseEventForwarding) {
+      VizPoint *vp = *selectedPoints.begin();
+      vp->mousePressEvent(event);
+      return;
+    }
+  }
+
   // Only left click.
   if (event->button() == Qt::LeftButton) {
     CLINT_ASSERT(m_wasPressed == false, "Button pressed twice without being released.");
@@ -529,6 +542,14 @@ void VizPolyhedron::mouseMoveEvent(QGraphicsSceneMouseEvent *event) {
     return;
   }
 
+  std::unordered_set<VizPoint *> selectedPoints =
+      coordinateSystem()->projection()->selectionManager()->selectedPoints();
+  if (m_mouseEventForwarding && !selectedPoints.empty()) {
+    VizPoint *vp = *selectedPoints.begin();
+    vp->mouseMoveEvent(event);
+    return;
+  }
+
   QGraphicsItem::mouseMoveEvent(event);
 
   QPointF displacement = pos() - m_pressPos;
@@ -543,6 +564,15 @@ void VizPolyhedron::mouseMoveEvent(QGraphicsSceneMouseEvent *event) {
 
 void VizPolyhedron::mouseReleaseEvent(QGraphicsSceneMouseEvent *event) {
   if (m_hovered && !m_polyhedronShape.contains(event->pos())) {
+    return;
+  }
+
+  std::unordered_set<VizPoint *> selectedPoints =
+      coordinateSystem()->projection()->selectionManager()->selectedPoints();
+  if (m_mouseEventForwarding && !selectedPoints.empty()) {
+    m_mouseEventForwarding = false;
+    VizPoint *vp = *selectedPoints.begin();
+    vp->mouseReleaseEvent(event);
     return;
   }
 
