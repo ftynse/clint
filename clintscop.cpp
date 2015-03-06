@@ -72,6 +72,14 @@ void ClintScop::updateDependences(osl_scop_p transformed) {
   processDependenceMap(dependenceMap, violated);
 }
 
+static inline void replaceNewlinesHtml(std::string &str) {
+  size_t pos = 0;
+  while ((pos = str.find('\n', pos)) != std::string::npos) {
+    str.replace(pos, 1, "\n<br/>");
+    pos += 6;
+  }
+}
+
 ClintScop::ClintScop(osl_scop_p scop, int parameterValue, char *originalCode, ClintProgram *parent) :
   QObject(parent), m_scopPart(scop), m_program(parent), m_parameterValue(parameterValue) {
   oslListForeach(scop->statement, [this](osl_statement_p stmt) {
@@ -101,7 +109,9 @@ ClintScop::ClintScop(osl_scop_p scop, int parameterValue, char *originalCode, Cl
     updateGeneratedHtml(m_scopPart, m_originalHtml);
   } else {
     m_originalCode = strdup(originalCode);
-    m_originalHtml = std::string(originalCode);
+    m_originalHtml = std::string(escapeHtml(originalCode));
+
+    replaceNewlinesHtml(m_originalHtml);
   }
 }
 
@@ -173,14 +183,7 @@ void ClintScop::updateGeneratedHtml(osl_scop_p transformedScop, std::string &str
   string.clear();
   string = html.str();
 
-  size_t index = 0;
-  while (true) {
-    index = string.find("\n", index);
-    if (index == string.npos)
-      break;
-    string.replace(index, 1, "\n<br/>");
-    index += 6;
-  }
+  replaceNewlinesHtml(string);
 
   delete props;
 }
