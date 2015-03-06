@@ -572,7 +572,8 @@ void VizManipulationManager::pointAboutToMove(VizPoint *point) {
   if (horizontalStart == point->polyhedron()->localHorizontalMin() && // Attached to the horizontal beginning
       horizontalEnd - horizontalStart == horizontal.size() - 1 &&     // All consecutive lines selected
       horizontalEnd - horizontalStart != horizontalSize) {            // Not all lines selected
-    bool all = std::all_of(std::begin(horizontal), std::end(horizontal), [verticalSize,point](const std::pair<int, std::set<int>> &pair) {
+    bool all = !point->polyhedron()->coordinateSystem()->isVerticalAxisVisible(); // If 1D polygon, no need to check for all selected.
+    all = all || std::all_of(std::begin(horizontal), std::end(horizontal), [verticalSize,point](const std::pair<int, std::set<int>> &pair) {
       const std::set<int> &s = pair.second;
       return s.size() == verticalSize + 1 &&
           *(s.begin()) == point->polyhedron()->localVerticalMin() &&
@@ -588,7 +589,8 @@ void VizManipulationManager::pointAboutToMove(VizPoint *point) {
              horizontalEnd - horizontalStart == horizontal.size() - 1 &&
              horizontalEnd - horizontalStart != horizontalSize) {
 
-    bool all = std::all_of(std::begin(horizontal), std::end(horizontal), [verticalSize,point](const std::pair<int, std::set<int>> &pair) {
+    bool all = !point->polyhedron()->coordinateSystem()->isVerticalAxisVisible(); // If 1D polygon, no need to check for all selected.
+    all = all || std::all_of(std::begin(horizontal), std::end(horizontal), [verticalSize,point](const std::pair<int, std::set<int>> &pair) {
       const std::set<int> &s = pair.second;
       return s.size() == verticalSize + 1 &&
           *(s.begin()) == point->polyhedron()->localVerticalMin() &&
@@ -653,7 +655,6 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
   case PT_DETACHED_HORIZONTAL:
   case PT_DETACHED_VERTICAL:
   {
-    // FIXME: 2d only
     VizPolyhedron *polyhedron = new VizPolyhedron(nullptr, point->coordinateSystem());
     VizSelectionManager *sm = point->coordinateSystem()->projection()->selectionManager();
     const std::unordered_set<VizPoint *> selectedPoints = sm->selectedPoints();
@@ -692,7 +693,8 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     oldPolyhedron->scop()->transform(group);
     oldPolyhedron->scop()->executeTransformationSequence();
 
-    betaLoop.push_back(1); // FIXME: works only if one polygon in CS
+    betaLoop.push_back(1); // FIXME: works only if one polygon in CS (not the problem of 1, but of clay doing iss only on loops)
+                           // have to first split the statement out of the loop
     ClintStmtOccurrence *occurrence = oldPolyhedron->scop()->occurrence(betaLoop);
     polyhedron->setOccurrenceSilent(occurrence);
     oldPolyhedron->updateInternalDependences();
