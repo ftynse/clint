@@ -110,6 +110,9 @@ public:
   }
 
   VizPoint *point(std::pair<int, int> &originalCoordinates) const;
+  const std::unordered_set<VizPoint *> &points() const {
+    return m_points;
+  }
 
   void reparentPoint(VizPoint *point);
 

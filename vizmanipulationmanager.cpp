@@ -544,91 +544,89 @@ void VizManipulationManager::pointAboutToMove(VizPoint *point) {
   if (selectedPoints.size() == 0)
     return;
 
-  std::map<int, std::set<int>> horizontal, vertical;
   bool samePolyhedron = true;
+  int selectionHorizontalMin = INT_MAX,
+      selectionHorizontalMax = INT_MIN,
+      selectionVerticalMin   = INT_MAX,
+      selectionVerticalMax   = INT_MIN;
   for (VizPoint *pt : selectedPoints) {
     int horzCoordinate, vertCoordinate;
     std::tie(horzCoordinate, vertCoordinate) = pt->scatteredCoordinates();
-    horizontal[horzCoordinate].emplace(vertCoordinate);
-    vertical[vertCoordinate].emplace(horzCoordinate);
+
+    selectionHorizontalMin = std::min(selectionHorizontalMin, horzCoordinate);
+    selectionHorizontalMax = std::max(selectionHorizontalMax, horzCoordinate);
+    selectionVerticalMin   = std::min(selectionVerticalMin, vertCoordinate);
+    selectionVerticalMax   = std::max(selectionVerticalMax, vertCoordinate);
+
     samePolyhedron = samePolyhedron && (pt->polyhedron() == point->polyhedron());
   }
 
   if (!samePolyhedron)
     return;
 
-  int horizontalSize = point->polyhedron()->localHorizontalMax() -
-      point->polyhedron()->localHorizontalMin();
-  int verticalSize = point->polyhedron()->localVerticalMax() -
-      point->polyhedron()->localVerticalMin();
+  VizPolyhedron *polyhedron = point->polyhedron();
+  std::unordered_set<VizPoint *> allPoints = polyhedron->points();
+
+  int polyhedronHorizontalSize = polyhedron->localHorizontalMax() -
+      polyhedron->localHorizontalMin();
+  int polyhedronVerticalSize = polyhedron->localVerticalMax() -
+      polyhedron->localVerticalMin();
 
   // Condition 1: adjacent to one of borders and consecutive (w/o localdim)
   // std::map is ordered by key
-  // Condition 2: all points in line selected (w/o localdim; fails for triangles)
-  int horizontalStart = (horizontal.begin())->first;
-  int horizontalEnd   = (horizontal.rbegin())->first;
-  int verticalStart   = (vertical.begin())->first;
-  int verticalEnd     = (vertical.rbegin())->first;
-  if (horizontalStart == point->polyhedron()->localHorizontalMin() && // Attached to the horizontal beginning
-      horizontalEnd - horizontalStart == horizontal.size() - 1 &&     // All consecutive lines selected
-      horizontalEnd - horizontalStart != horizontalSize) {            // Not all lines selected
-    bool all = !point->polyhedron()->coordinateSystem()->isVerticalAxisVisible(); // If 1D polygon, no need to check for all selected.
-    all = all || std::all_of(std::begin(horizontal), std::end(horizontal), [verticalSize,point](const std::pair<int, std::set<int>> &pair) {
-      const std::set<int> &s = pair.second;
-      return s.size() == verticalSize + 1 &&
-          *(s.begin()) == point->polyhedron()->localVerticalMin() &&
-          *(s.rbegin()) == point->polyhedron()->localVerticalMax();
+  // Condition 2: there does not exist a point such that it has a
+  // horizontalCoorinate less than or equal to horizontalMax and it is not in
+  // the selection (for the first case; others adapted accordingly).
+  if (selectionHorizontalMin == polyhedron->localHorizontalMin() && // Attached to the horizontal beginning
+      selectionHorizontalMax - selectionHorizontalMin != polyhedronHorizontalSize) {   // Not all lines selected
+    auto missingPoint = std::find_if(std::begin(allPoints), std::end(allPoints), [selectionHorizontalMax,&selectedPoints](VizPoint *vp) {
+      int horzCoordinate, vertCoordinate;
+      std::tie(horzCoordinate, vertCoordinate) = vp->scatteredCoordinates();
+      return horzCoordinate <= selectionHorizontalMax && selectedPoints.count(vp) == 0;
     });
-    if (all) {
-      // Vertical (inner) iss
+
+    if (missingPoint == std::end(allPoints)) {
       m_pointDetachState = PT_DETACH_VERTICAL;
-      m_pointDetachValue = point->polyhedron()->localHorizontalMin() + (horizontalEnd - horizontalStart + 1);
+      m_pointDetachValue = polyhedron->localHorizontalMin() + (selectionHorizontalMax - selectionHorizontalMin + 1);
       m_pointDetachLast = false;
     }
-  } else if (horizontalEnd == point->polyhedron()->localHorizontalMax() &&
-             horizontalEnd - horizontalStart == horizontal.size() - 1 &&
-             horizontalEnd - horizontalStart != horizontalSize) {
-
-    bool all = !point->polyhedron()->coordinateSystem()->isVerticalAxisVisible(); // If 1D polygon, no need to check for all selected.
-    all = all || std::all_of(std::begin(horizontal), std::end(horizontal), [verticalSize,point](const std::pair<int, std::set<int>> &pair) {
-      const std::set<int> &s = pair.second;
-      return s.size() == verticalSize + 1 &&
-          *(s.begin()) == point->polyhedron()->localVerticalMin() &&
-          *(s.rbegin()) == point->polyhedron()->localVerticalMax();
+  } else if (selectionHorizontalMax == polyhedron->localHorizontalMax() &&
+             selectionHorizontalMax - selectionHorizontalMin != polyhedronHorizontalSize) {
+    auto missingPoint = std::find_if(std::begin(allPoints), std::end(allPoints), [selectionHorizontalMin,&selectedPoints](VizPoint *vp) {
+      int horzCoordinate, vertCoordinate;
+      std::tie(horzCoordinate, vertCoordinate) = vp->scatteredCoordinates();
+      return horzCoordinate >= selectionHorizontalMin && selectedPoints.count(vp) == 0;
     });
-    if (all) {
-      // Vertical (inner) iss
+    if (missingPoint == std::end(allPoints)) {
       m_pointDetachState = PT_DETACH_VERTICAL;
-      m_pointDetachValue = point->polyhedron()->localHorizontalMax() - (horizontalEnd - horizontalStart + 1);
+      m_pointDetachValue = polyhedron->localHorizontalMax() - (selectionHorizontalMax - selectionHorizontalMin + 1);
       m_pointDetachLast = true;
     }
 
-  } else if (verticalStart == point->polyhedron()->localVerticalMin() &&
-             verticalEnd - verticalStart == vertical.size() - 1 &&
-             verticalEnd - verticalStart != verticalSize) {
-    bool all = std::all_of(std::begin(vertical), std::end(vertical), [horizontalSize,point](const std::pair<int, std::set<int>> &pair) {
-      const std::set<int> &s = pair.second;
-      return s.size() == horizontalSize + 1 &&
-          *(s.begin()) == point->polyhedron()->localHorizontalMin() &&
-          *(s.rbegin()) == point->polyhedron()->localHorizontalMax();
+  } else if (selectionVerticalMin == polyhedron->localVerticalMin() &&
+             selectionVerticalMax - selectionVerticalMin != polyhedronVerticalSize) {
+    auto missingPoint = std::find_if(std::begin(allPoints), std::end(allPoints), [selectionVerticalMax,&selectedPoints](VizPoint *vp) {
+      int horzCoordinate, vertCoordinate;
+      std::tie(horzCoordinate, vertCoordinate) = vp->scatteredCoordinates();
+      return vertCoordinate <= selectionVerticalMax && selectedPoints.count(vp) == 0;
     });
-    if (all) {
+
+    if (missingPoint == std::end(allPoints)) {
       m_pointDetachState = PT_DETACH_HORIZONTAL;
-      m_pointDetachValue = point->polyhedron()->localVerticalMin() + (verticalEnd - verticalStart + 1);
+      m_pointDetachValue = polyhedron->localVerticalMin() + (selectionVerticalMax - selectionVerticalMin + 1);
       m_pointDetachLast = false;
     }
-  } else if (verticalEnd == point->polyhedron()->localVerticalMax() &&
-             verticalEnd - verticalStart == vertical.size() - 1 &&
-             verticalEnd - verticalStart != verticalSize) {
-    bool all = std::all_of(std::begin(vertical), std::end(vertical), [horizontalSize,point](const std::pair<int, std::set<int>> &pair) {
-      const std::set<int> &s = pair.second;
-      return s.size() == horizontalSize + 1 &&
-          *(s.begin()) == point->polyhedron()->localHorizontalMin() &&
-          *(s.rbegin()) == point->polyhedron()->localHorizontalMax();
+  } else if (selectionVerticalMax == polyhedron->localVerticalMax() &&
+             selectionVerticalMax - selectionVerticalMin != polyhedronVerticalSize) {
+    auto missingPoint = std::find_if(std::begin(allPoints), std::end(allPoints), [selectionVerticalMin,&selectedPoints](VizPoint *vp) {
+      int horzCoordinate, vertCoordinate;
+      std::tie(horzCoordinate, vertCoordinate) = vp->scatteredCoordinates();
+      return vertCoordinate >= selectionVerticalMin && selectedPoints.count(vp) == 0;
     });
-    if (all) {
+
+    if (missingPoint == std::end(allPoints)) {
       m_pointDetachState = PT_DETACH_HORIZONTAL;
-      m_pointDetachValue = point->polyhedron()->localVerticalMax() - (verticalEnd - verticalStart + 1);
+      m_pointDetachValue = polyhedron->localVerticalMax() - (selectionVerticalMax - selectionVerticalMin + 1);
       m_pointDetachLast = true;
     }
   } else {
