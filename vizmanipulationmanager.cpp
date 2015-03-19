@@ -493,7 +493,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       bool happy = true;
       std::map<std::vector<int>, std::vector<int>> mapping;
       for (ClintStmt *stmt : polyhedron->scop()->statements()) {
-        for (ClintStmtOccurrence *occurrence : stmt->occurences()) {
+        for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
           int result;
           std::vector<int> beta = occurrence->betaVector();
           std::vector<int> updatedBeta;

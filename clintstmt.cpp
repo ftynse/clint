@@ -80,7 +80,7 @@ void ClintStmt::updateBetas(const std::map<std::vector<int>, std::vector<int> > 
   }
 }
 
-std::vector<ClintStmtOccurrence *> ClintStmt::occurences() const {
+std::vector<ClintStmtOccurrence *> ClintStmt::occurrences() const {
   std::vector<ClintStmtOccurrence *> result;
   for (auto occurence : m_occurrences) {
     result.push_back(occurence.second);

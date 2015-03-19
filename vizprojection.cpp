@@ -316,7 +316,7 @@ void VizProjection::projectScop(ClintScop *vscop) {
   // results in a new container creation.
   std::vector<ClintStmtOccurrence *> allOccurrences;
   for (ClintStmt *vstmt : vscop->statements()) {
-    std::vector<ClintStmtOccurrence *> stmtOccurrences = vstmt->occurences();
+    std::vector<ClintStmtOccurrence *> stmtOccurrences = vstmt->occurrences();
     allOccurrences.insert(std::end(allOccurrences),
                           std::make_move_iterator(std::begin(stmtOccurrences)),
                           std::make_move_iterator(std::end(stmtOccurrences)));

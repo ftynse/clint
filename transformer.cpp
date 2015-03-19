@@ -84,7 +84,7 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
 
 ClayBetaMapper::ClayBetaMapper(ClintScop *scop) {
   for (ClintStmt *stmt : scop->statements()) {
-    for (ClintStmtOccurrence *occurrence : stmt->occurences()) {
+    for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
       std::vector<int> beta = occurrence->betaVector();
       m_originalBeta[occurrence] = beta;
       m_originalOccurrences[beta] = occurrence;

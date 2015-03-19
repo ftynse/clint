@@ -24,7 +24,7 @@ public:
     return m_scop->program();
   }
 
-  std::vector<ClintStmtOccurrence *> occurences() const;
+  std::vector<ClintStmtOccurrence *> occurrences() const;
 
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const {
     auto iterator = m_occurrences.find(beta);
