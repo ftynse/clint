@@ -24,15 +24,8 @@ void ClintScop::clearDependences() {
   m_internalDeps.clear();
 }
 
-#include <QtDebug>
 void ClintScop::processDependenceMap(const DependenceMap &dependenceMap,
                                      const std::vector<osl_dependence_p> &violated) {
-  for (ClintStmt *s : statements()) {
-    for (ClintStmtOccurrence *o : s->occurences()) {
-      qDebug() << QVector<int>::fromStdVector(o->betaVector());
-    }
-  }
-
   for (auto element : dependenceMap) {
     std::pair<std::vector<int>, std::vector<int>> betas;
     betas = element.first;
