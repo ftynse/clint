@@ -80,6 +80,10 @@ void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points,
       vp->setOriginalCoordinates(point[1]);
       vp->setScatteredCoordinates(point[0]);
       setPointVisiblePos(vp, point[0] - horizontalMin, 0);
+    } else if (point.size() == 3) { // FIXME: does not take into account potential flatten, assumes stripmine only
+      vp->setOriginalCoordinates(point[2]);
+      vp->setScatteredCoordinates(point[0], point[1]);
+      setPointVisiblePos(vp, point[0] - horizontalMin, point[1] - verticalMin);
     } else if (point.size() == 4) {
       vp->setOriginalCoordinates(point[2], point[3]);
       vp->setScatteredCoordinates(point[0], point[1]);
@@ -129,6 +133,12 @@ void VizPolyhedron::occurrenceChanged() {
     } else if (point.size() == 2) {
       scatteredCoordinates.first = point[0];
       originalCoordinates.first = point[1];
+    } else if (point.size() == 3) { // FIXME: assumes stripmine
+                                    // XXX: this code kinda duplicates setProjectedPoints, look for simplification
+                                    // it may come from using a structure with optional<int> instead of vector
+      scatteredCoordinates.first = point[0];
+      scatteredCoordinates.second = point[1];
+      originalCoordinates.first = point[2];
     } else if (point.size() == 4) {
       scatteredCoordinates.first = point[0];
       scatteredCoordinates.second = point[1];

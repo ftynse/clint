@@ -39,7 +39,7 @@ public:
     CLINT_ASSERT(dimension >= 0, "Dimension index should be positive");
     if (dimension < m_dimensionNames.size())
       return m_dimensionNames[dimension];
-    CLINT_UNREACHABLE;
+//    CLINT_UNREACHABLE;
     return std::string("??");
   }
 

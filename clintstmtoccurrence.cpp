@@ -62,12 +62,16 @@ bool operator ==(const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs)
 }
 
 std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimIdx, int verticalDimIdx) const {
+  CLINT_ASSERT(m_oslScatterings.size() == 1,
+               "Multiple scatterings for one occurrence are not supported yet");
+  osl_relation_p scattering = m_oslScatterings[0];
+
   // Transform iterator (alpha only) indices to enumerator (beta-alpha-beta) indices
   // betaDims are found properly iff the dimensionalityChecker assertion holds.
-  int horizontalDimOsl    = 1 + 2 * horizontalDimIdx;
-  int verticalDimOsl      = 1 + 2 * verticalDimIdx;
-  int horizontalBetaDim   = 1 + 2 * m_oslStatement->domain->nb_output_dims + horizontalDimIdx;
-  int verticalBetaDim     = 1 + 2 * m_oslStatement->domain->nb_output_dims + verticalDimIdx;
+  int horizontalScatDimIdx    = 1 + 2 * horizontalDimIdx;
+  int verticalScatDimIdx      = 1 + 2 * verticalDimIdx;
+  int horizontalOrigDimIdx   = scattering->nb_output_dims + horizontalDimIdx;
+  int verticalOrigDimIdx     = scattering->nb_output_dims + verticalDimIdx;
   // Checking if all the relations for the same beta have the same structure.
   // AZ: Not sure if it is theoretically possible: statements with the same beta-vector
   // should normally be in the same part of the domain union and therefore have same
@@ -79,6 +83,9 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
   // to the scattering (indices in applied matrix) since different parts of the domain and scattering
   // relation unions may have different number of input/output dimensions for the codes
   // originating from outside Clan/Clay toolset.
+  // AZ: is this even possible without extra information?  Two problematic cases,
+  // 1. a1 = i + j, a2 = i - j; no clear mapping between a and i,j
+  // 2. stripmine a1 >/< f(i), a2 = i; two a correspond to i in the same time.
   auto dimensionalityCheckerFunction = [](osl_relation_p rel, int output_dims,
                                           int input_dims, int parameters) {
     CLINT_ASSERT(rel->nb_output_dims == output_dims,
@@ -96,24 +103,42 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
                           m_oslScatterings.front()->nb_input_dims,
                           m_oslScatterings.front()->nb_parameters));
 
+  bool horizontalOrigDimValid = horizontalOrigDimIdx < scattering->nb_output_dims
+      + m_oslStatement->domain->nb_output_dims;
+  bool verticalOrigDimValid = verticalOrigDimIdx < scattering->nb_output_dims
+      + m_oslStatement->domain->nb_output_dims;
+
   // Get original and scattered iterator values depending on the axis displayed.
   std::vector<int> visibleDimensions;
   bool projectHorizontal = (horizontalDimIdx != -2) && (dimensionality() > horizontalDimIdx); // FIXME: -2 is in VizProperties::NO_DIMENSION, but should be in a different class since it has nothing to do with viz
   bool projectVertical   = (verticalDimIdx != -2) && (dimensionality() > verticalDimIdx);
+  CLINT_ASSERT(!(projectHorizontal ^ (horizontalScatDimIdx < scattering->nb_output_dims)),
+               "Trying to project to the horizontal dimension that is not present in scattering");
+  CLINT_ASSERT(!(projectVertical ^ (verticalScatDimIdx < scattering->nb_output_dims)),
+               "Trying to project to the vertical dimension that is not present in scattering");
+
+  // Deal with stripmine cases in inner ifs.
+  // TODO: use a structure with optional<int> for each point rather than plain vector
+  // it would allow to differentiate cases where some values are not present and why;
+  // namely 2 scattered for 1 original in case of stripmine vs 1 scattered for 2 original in case of flatten
   if (!projectHorizontal && !projectVertical) {
     // This is just a point, no actual enumeration needed.
     // All the dimensions being projected out, the result of enumeration is a single zero-dimensional point.
   } else if (projectHorizontal && !projectVertical) {
-    visibleDimensions.push_back(horizontalDimOsl);
-    visibleDimensions.push_back(horizontalBetaDim);
+    visibleDimensions.push_back(horizontalScatDimIdx);
+    if (horizontalOrigDimValid)
+      visibleDimensions.push_back(horizontalOrigDimIdx);
   } else if (!projectHorizontal && projectVertical) {
-    visibleDimensions.push_back(verticalDimOsl);
-    visibleDimensions.push_back(verticalBetaDim);
+    visibleDimensions.push_back(verticalScatDimIdx);
+    if (verticalOrigDimValid)
+      visibleDimensions.push_back(verticalOrigDimIdx);
   } else {
-    visibleDimensions.push_back(horizontalDimOsl);
-    visibleDimensions.push_back(verticalDimOsl);
-    visibleDimensions.push_back(horizontalBetaDim);
-    visibleDimensions.push_back(verticalBetaDim);
+    visibleDimensions.push_back(horizontalScatDimIdx);
+    visibleDimensions.push_back(verticalScatDimIdx);
+    if (horizontalOrigDimValid)
+      visibleDimensions.push_back(horizontalOrigDimIdx);
+    if (verticalOrigDimValid)
+      visibleDimensions.push_back(verticalOrigDimIdx);
   }
 
   osl_relation_p applied = oslApplyScattering(oslListToVector(m_oslStatement->domain),
@@ -144,12 +169,16 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
   size_t pointSize = points.front().size();
   switch (pointSize) {
   case 4:
+  case 3: // FIXME: does not take into accout possible flatten
     verticalMin   = INT_MAX;
     verticalMax   = INT_MIN;
     // fall through
   case 2:
     horizontalMin = INT_MAX;
     horizontalMax = INT_MIN;
+    break;
+  case 1:
+    CLINT_ASSERT(false, "Trying to project on the dimension that was flattened.");
     break;
   case 0:
     return;
@@ -165,7 +194,7 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
                  "Enumerated points have different dimensionality");
     horizontalMin = std::min(horizontalMin, point[0]);
     horizontalMax = std::max(horizontalMax, point[0]);
-    if (pointSize == 4) {
+    if (pointSize >= 3) {
       verticalMin = std::min(verticalMin, point[1]);
       verticalMax = std::max(verticalMax, point[1]);
     }
@@ -177,7 +206,7 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
 
   m_cachedDimMins[horizontalDimIdx] = horizontalMin;
   m_cachedDimMaxs[horizontalDimIdx] = horizontalMax;
-  if (pointSize == 4) {
+  if (pointSize >= 3) {
     m_cachedDimMins[verticalDimIdx] = verticalMin;
     m_cachedDimMaxs[verticalDimIdx] = verticalMax;
   }
