@@ -73,12 +73,12 @@ public:
   static std::tuple<isl_dim_type, int> dimFromOSL(osl_relation_p relation, int dimension) {
     CLINT_ASSERT(dimension >= 0, "Negative dimension");
     CLINT_ASSERT(dimension < relation->nb_columns - 2, "Dimension overflow");
-    if (dimension < relation->nb_input_dims)
-      return std::make_tuple(isl_dim_in, dimension);
-    dimension -= relation->nb_input_dims;
     if (dimension < relation->nb_output_dims)
       return std::make_tuple(isl_dim_out, dimension);
     dimension -= relation->nb_output_dims;
+    if (dimension < relation->nb_input_dims)
+      return std::make_tuple(isl_dim_in, dimension);
+    dimension -= relation->nb_input_dims;
     if (dimension < relation->nb_local_dims)
       CLINT_ASSERT(false, "Local dimensions are not directly accessible in ISL");
     dimension -= relation->nb_local_dims;
