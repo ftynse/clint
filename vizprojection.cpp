@@ -301,6 +301,20 @@ void VizProjection::updateInnerDependences() {
   }
 }
 
+static int firstDifferentDimension(const std::vector<int> &beta1, const std::vector<int> &beta2) {
+  // With beta-vectors for statements, we cannot have a match that is not equality,
+  // i.e. we cannot have simultaneously [1] and [1,3] as beta-vectors for statements.
+  CLINT_ASSERT(!std::equal(std::begin(beta1),
+                           std::begin(beta1) + std::min(beta1.size(), beta2.size()),
+                           std::begin(beta2)),
+               "One statement occurence corresponds to the beta-prefix (loop)");
+  auto mismatchIterators =
+      std::mismatch(std::begin(beta1), std::end(beta1),
+      std::begin(beta2), std::end(beta2));
+  int difference = mismatchIterators.first - std::begin(beta1);
+  return difference;
+}
+
 void VizProjection::projectScop(ClintScop *vscop) {
   m_selectionManager->clearSelection();
   for (int i = 0; i < m_coordinateSystems.size(); i++) {
@@ -335,7 +349,8 @@ void VizProjection::projectScop(ClintScop *vscop) {
   int verticalMax   = 0;
   for (ClintStmtOccurrence *occurrence : allOccurrences) {
     int difference = previousOccurrence ?
-          previousOccurrence->firstDifferentDimension(*occurrence) :
+          firstDifferentDimension(previousOccurrence->untiledBetaVector(),
+                                  occurrence->untiledBetaVector()) :
           -1;
     if (difference < m_horizontalDimensionIdx + 1 &&
         visiblePile) {

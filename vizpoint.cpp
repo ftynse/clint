@@ -53,6 +53,12 @@ void VizPoint::mousePressEvent(QGraphicsSceneMouseEvent *event) {
     return;
   }
   polyhedron()->hideHandles();
+
+  if (event->button() == Qt::RightButton) {
+    coordinateSystem()->projection()->manipulationManager()->pointRightClicked(this);
+    return;
+  }
+
   QGraphicsItem::mousePressEvent(event);
   m_pressPos = pos();
   coordinateSystem()->projection()->manipulationManager()->pointAboutToMove(this);

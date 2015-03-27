@@ -164,6 +164,8 @@ private:
   bool m_hovered = false;
   QPainterPath m_originalPolyhedronShape;
 
+  std::vector<QLineF> m_tileLines;
+
   std::unordered_set<VizPoint *> m_points;
   std::unordered_set<VizDepArrow *> m_deps;
   int m_localHorizontalMin = 0;

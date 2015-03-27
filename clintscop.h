@@ -3,13 +3,13 @@
 
 #include <QObject>
 
-#include "clintprogram.h"
-
 #include <map>
+#include <set>
+#include <sstream>
 #include <unordered_set>
 #include <vector>
-#include <sstream>
 
+#include "clintprogram.h"
 #include "transformation.h"
 #include "transformer.h"
 
@@ -66,6 +66,8 @@ public:
   ClintStmtOccurrence *mappedOccurrence(const std::vector<int> &beta) const;
   std::unordered_set<ClintDependence *> internalDependences(ClintStmtOccurrence *occurrence) const;
   std::unordered_set<ClintDependence *> dependencesBetween(ClintStmtOccurrence *occ1, ClintStmtOccurrence *occ2) const;
+  std::vector<int> untiledBetaVector(const std::vector<int> &beta) const;
+  const std::set<int> &tilingDimensions(const std::vector<int> &beta) const;
 
   void updateBetas(std::map<std::vector<int>, std::vector<int> > &mapping);
 
@@ -139,6 +141,7 @@ public:
 
 signals:
   void transformExecuted();
+  void dimensionalityChanged();
 
 public slots:
   void undoTransformation();

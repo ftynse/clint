@@ -61,6 +61,17 @@ bool operator ==(const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs)
   return lhs.m_betaVector == rhs.m_betaVector;
 }
 
+int ClintStmtOccurrence::ignoreTilingDim(int dim) const {
+  // Ignore projections on tiled dimensions.
+  for (int tilingDim : m_tilingDimensions) {
+    if (tilingDim > dim) {
+      return dim;
+    }
+    dim++;
+  }
+  return dim;
+}
+
 std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimIdx, int verticalDimIdx) const {
   CLINT_ASSERT(m_oslScatterings.size() == 1,
                "Multiple scatterings for one occurrence are not supported yet");
@@ -72,6 +83,12 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
   int verticalScatDimIdx      = 1 + 2 * verticalDimIdx;
   int horizontalOrigDimIdx   = scattering->nb_output_dims + horizontalDimIdx;
   int verticalOrigDimIdx     = scattering->nb_output_dims + verticalDimIdx;
+
+  horizontalScatDimIdx  = ignoreTilingDim(horizontalScatDimIdx);
+  verticalScatDimIdx    = ignoreTilingDim(verticalScatDimIdx);
+//  horizontalOrigDimIdx = ignoreTilingDim(horizontalOrigDimIdx);
+//  verticalOrigDimIdx   = ignoreTilingDim(verticalOrigDimIdx);
+
   // Checking if all the relations for the same beta have the same structure.
   // AZ: Not sure if it is theoretically possible: statements with the same beta-vector
   // should normally be in the same part of the domain union and therefore have same
@@ -112,9 +129,9 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
   std::vector<int> visibleDimensions;
   bool projectHorizontal = (horizontalDimIdx != -2) && (dimensionality() > horizontalDimIdx); // FIXME: -2 is in VizProperties::NO_DIMENSION, but should be in a different class since it has nothing to do with viz
   bool projectVertical   = (verticalDimIdx != -2) && (dimensionality() > verticalDimIdx);
-  CLINT_ASSERT(!(projectHorizontal ^ (horizontalScatDimIdx < scattering->nb_output_dims)),
+  CLINT_ASSERT(!(projectHorizontal ^ (horizontalScatDimIdx >= 0 && horizontalScatDimIdx < scattering->nb_output_dims)),
                "Trying to project to the horizontal dimension that is not present in scattering");
-  CLINT_ASSERT(!(projectVertical ^ (verticalScatDimIdx < scattering->nb_output_dims)),
+  CLINT_ASSERT(!(projectVertical ^ (verticalScatDimIdx >= 0 && verticalScatDimIdx < scattering->nb_output_dims)),
                "Trying to project to the vertical dimension that is not present in scattering");
 
   // Deal with stripmine cases in inner ifs.
@@ -363,4 +380,18 @@ int ClintStmtOccurrence::maximumValue(int dimIdx) const {
   CLINT_ASSERT(m_cachedDimMaxs.count(dimIdx) == 1,
                "max cache failure");
   return m_cachedDimMaxs[dimIdx];
+}
+
+std::vector<int> ClintStmtOccurrence::untiledBetaVector() const {
+  std::vector<int> beta(m_betaVector);
+  // m_tilingDimensions is an ordered set, start from the end to remove higher
+  // indices from beta-vector first.  Thus lower indices will remain the same.
+  for (auto it = m_tilingDimensions.rbegin(), eit = m_tilingDimensions.rend();
+       it != eit; it++) {
+    if ((*it) % 2 == 0) {
+      int index = (*it) / 2;
+      beta.erase(beta.begin() + index);
+    }
+  }
+  return std::move(beta);
 }

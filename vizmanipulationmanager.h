@@ -10,6 +10,8 @@ class VizCoordinateSystem;
 
 struct TransformationGroup;
 
+class ClintScop;
+
 class VizManipulationManager : public QObject {
   Q_OBJECT
 public:
@@ -55,6 +57,8 @@ public slots:
   void pointAboutToMove(VizPoint *point);
   void pointMoving(QPointF position);
   void pointHasMoved(VizPoint *point);
+
+  void pointRightClicked(VizPoint *point);
 
   void polyhedronAboutToResize(VizPolyhedron *polyhedron, Dir direction);
   void polyhedronResizing(QPointF displacement);
@@ -102,6 +106,7 @@ private:
     return flags & flag;
   }
 
+  void remapBetas(TransformationGroup group, ClintScop *scop);
 };
 
 #endif // VIZMANIPULATIONMANAGER_H

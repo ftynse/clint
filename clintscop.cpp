@@ -5,11 +5,12 @@
 #include "clintstmt.h"
 #include "clintstmtoccurrence.h"
 
+#include <exception>
+#include <map>
+#include <set>
+#include <sstream>
 #include <tuple>
 #include <utility>
-#include <set>
-#include <map>
-#include <sstream>
 
 #include <QColor>
 #include <QString>
@@ -205,7 +206,6 @@ void ClintScop::executeTransformationSequence() {
     originalStmt = originalStmt->next;
   }
 
-
   oslListForeachSingle(transformedScop->statement, [this,&transformedScop,&statementMapping](osl_statement_p stmt) {
     oslListForeachSingle(stmt->scattering, [this,&stmt,&statementMapping](osl_relation_p scattering) {
       std::vector<int> beta = betaExtract(scattering);
@@ -228,6 +228,17 @@ void ClintScop::executeTransformationSequence() {
   updateGeneratedHtml(transformedScop, m_generatedHtml);
 
   emit transformExecuted();
+  bool dimensionNbChanged =
+      std::find_if(std::begin(m_transformationSeq.groups), std::end(m_transformationSeq.groups),
+                   [] (const TransformationGroup &group) {
+    return std::find_if(std::begin(group.transformations), std::end(group.transformations),
+                        [] (const Transformation &transformation) {
+      return transformation.kind() == Transformation::Kind::Tile;
+    }) != std::end(group.transformations);
+  }) != std::end(m_transformationSeq.groups);
+  if (dimensionNbChanged) {
+    emit dimensionalityChanged();
+  }
 }
 
 std::unordered_set<ClintStmt *> ClintScop::statements() const {
@@ -251,6 +262,20 @@ ClintStmtOccurrence *ClintScop::mappedOccurrence(const std::vector<int> &beta) c
   if (result != ClayBetaMapper::SUCCESS)
     return nullptr;
   return occurrence(mappedBeta);
+}
+
+std::vector<int> ClintScop::untiledBetaVector(const std::vector<int> &beta) const {
+  ClintStmtOccurrence *o = occurrence(beta);
+  if (o == nullptr)
+    throw std::invalid_argument("Could not find an occurrence with the given beta");
+  return o->untiledBetaVector();
+}
+
+const std::set<int> &ClintScop::tilingDimensions(const std::vector<int> &beta) const {
+  ClintStmtOccurrence *o = occurrence(beta);
+  if (o == nullptr)
+    throw std::invalid_argument("Could not find an occurrence with the given beta");
+  return o->tilingDimensions();
 }
 
 // old->new
@@ -355,8 +380,10 @@ void ClintScop::clearRedo() {
 
 int ClintScop::dimensionality() {
   int dimensions = 0;
-  for (auto it : m_vizBetaMap) {
-    dimensions = std::max(dimensions, static_cast<int>((it.first.size() - 1)));
+  for (ClintStmt *stmt : statements()) {
+    for (ClintStmtOccurrence *occ : stmt->occurrences()) {
+      dimensions = std::max(dimensions, occ->dimensionality());
+    }
   }
   return dimensions;
 }

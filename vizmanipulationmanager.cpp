@@ -233,6 +233,34 @@ void VizManipulationManager::rearrangeCSs2D(int coordinateSystemIdx, bool csDele
   }
 }
 
+// TODO: move this function to the ClintScop
+void VizManipulationManager::remapBetas(TransformationGroup group, ClintScop *scop) {
+  ClayBetaMapper *mapper = new ClayBetaMapper(scop);
+  mapper->apply(nullptr, group);
+  bool happy = true;
+  std::map<std::vector<int>, std::vector<int>> mapping;
+  for (ClintStmt *stmt : scop->statements()) {
+    for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
+      int result;
+      std::vector<int> beta = occurrence->betaVector();
+      std::vector<int> updatedBeta;
+      std::tie(updatedBeta, result) = mapper->map(occurrence->betaVector());
+
+      qDebug() << result << QVector<int>::fromStdVector(beta) << "->" << QVector<int>::fromStdVector(updatedBeta);
+      if (result == ClayBetaMapper::SUCCESS &&
+          beta != updatedBeta) {
+        occurrence->resetBetaVector(updatedBeta);
+        mapping[beta] = updatedBeta;
+      }
+      happy = happy && result == ClayBetaMapper::SUCCESS;
+    }
+  }
+  delete mapper;
+  CLINT_ASSERT(happy, "Beta mapping failed");
+
+  scop->updateBetas(mapping);
+}
+
 void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
   CLINT_ASSERT(m_polyhedron == polyhedron, "Signaled end of polyhedron movement that was never initiated");
   m_polyhedron = nullptr;
@@ -488,30 +516,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
 
       // Update betas after each polyhedron moved as we use them to determine beta-prefixes
       // of the coordinate systems.
-      ClayBetaMapper *mapper = new ClayBetaMapper(polyhedron->scop());
-      mapper->apply(nullptr, iterGroup);
-      bool happy = true;
-      std::map<std::vector<int>, std::vector<int>> mapping;
-      for (ClintStmt *stmt : polyhedron->scop()->statements()) {
-        for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
-          int result;
-          std::vector<int> beta = occurrence->betaVector();
-          std::vector<int> updatedBeta;
-          std::tie(updatedBeta, result) = mapper->map(occurrence->betaVector());
-
-          qDebug() << result << QVector<int>::fromStdVector(beta) << "->" << QVector<int>::fromStdVector(updatedBeta);
-          if (result == ClayBetaMapper::SUCCESS &&
-              beta != updatedBeta) {
-            occurrence->resetBetaVector(updatedBeta);
-            mapping[beta] = updatedBeta;
-          }
-          happy = happy && result == ClayBetaMapper::SUCCESS;
-        }
-      }
-      delete mapper;
-      CLINT_ASSERT(happy, "Beta mapping failed");
-
-      polyhedron->scop()->updateBetas(mapping);
+      remapBetas(iterGroup, polyhedron->scop());
 
       std::copy(std::begin(iterGroup.transformations), std::end(iterGroup.transformations), std::back_inserter(group.transformations));
       iterGroup.transformations.clear();
@@ -1149,4 +1154,66 @@ void VizManipulationManager::polyhedronHasRotated(VizPolyhedron *polyhedron) {
 void VizManipulationManager::polyhedronRotating(QPointF displacement) {
   if (!displacement.isNull())
     m_rotationAngle = m_polyhedron->prepareRotate(displacement);
+}
+
+void VizManipulationManager::pointRightClicked(VizPoint *point) {
+  if (point == nullptr)
+    return;
+
+  const std::unordered_set<VizPoint *> &selectedPoints =
+      point->coordinateSystem()->projection()->selectionManager()->selectedPoints();
+
+  // FIXME: the selection manager should provide information on the polygon enclosing
+  // selected points, rather than straightforward computation in manipulation manager
+  // This is also the case for index-set splitting (some functionality is in occurrence).
+  bool samePolyhedron = true;
+  int selectionHorizontalMin = INT_MAX,
+      selectionHorizontalMax = INT_MIN,
+      selectionVerticalMin   = INT_MAX,
+      selectionVerticalMax   = INT_MIN;
+  std::set<std::pair<int, int>> scatteredCoords;
+  for (VizPoint *pt : selectedPoints) {
+    int horzCoordinate, vertCoordinate;
+    std::tie(horzCoordinate, vertCoordinate) = pt->scatteredCoordinates();
+
+    selectionHorizontalMin = std::min(selectionHorizontalMin, horzCoordinate);
+    selectionHorizontalMax = std::max(selectionHorizontalMax, horzCoordinate);
+    selectionVerticalMin   = std::min(selectionVerticalMin, vertCoordinate);
+    selectionVerticalMax   = std::max(selectionVerticalMax, vertCoordinate);
+
+    scatteredCoords.insert(pt->scatteredCoordinates());
+
+    samePolyhedron = samePolyhedron && (pt->polyhedron() == point->polyhedron());
+  }
+
+  if (!samePolyhedron)
+    return;
+
+  int horizontalTileSize = selectionHorizontalMax - selectionHorizontalMin + 1;
+  int verticalTileSize   = selectionVerticalMax - selectionVerticalMin + 1;
+
+  // The selection is a perfect rectangle (do not know what to do with triangles yet).
+  // All points have unique coordinates, and cover the whole space defined by min/max
+  if (scatteredCoords.size() != selectedPoints.size() ||
+      scatteredCoords.size() != horizontalTileSize * verticalTileSize)
+    return;
+
+  // TODO: shift the polyhedron if the selection does not start at its beginning so that
+  // the selection would match the tile.
+
+  TransformationGroup group;
+  group.transformations.push_back(Transformation::tile(
+            point->polyhedron()->occurrence()->betaVector(),
+            point->polyhedron()->coordinateSystem()->horizontalDimensionIdx() + 1,
+            horizontalTileSize));
+
+  remapBetas(group, point->scop());
+
+  point->polyhedron()->occurrence()->tile(point->coordinateSystem()->horizontalDimensionIdx(),
+                                          horizontalTileSize);
+
+  if (!group.transformations.empty()) {
+    point->polyhedron()->occurrence()->scop()->transform(group);
+    point->polyhedron()->occurrence()->scop()->executeTransformationSequence();
+  }
 }

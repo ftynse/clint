@@ -75,6 +75,17 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
                            transformation.depth(), transformation.secondDepth(),
                            1, m_options);
     break;
+  case Transformation::Kind::Tile:
+    err = clay_tile(scop, ClayBeta(transformation.target()),
+                    transformation.depth(), transformation.depth(),
+                    transformation.constantAmount(), 0, m_options);
+//    err = clay_stripmine(scop, ClayBeta(transformation.target()),
+//                         transformation.depth(), transformation.constantAmount(),
+//                         0, m_options);
+//    err += clay_interchange(scop, ClayBeta(transformation.target()),
+//                            transformation.depth(), transformation.depth() + 1,
+//                            0, m_options);
+    break;
   default:
     break;
   }
@@ -214,6 +225,27 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
 
       // XXX: wtf method to keep track of occurrences created by iss
       m_updatedBeta[(ClintStmtOccurrence *) m_lastOccurrenceFakePtr++] = updatedBeta;
+    }
+  }
+    break;
+
+  case Transformation::Kind::Tile:
+  {
+    // FIXME: m_cscop is null here; is it even used?
+//    m_updatedBeta = m_originalBeta; // Keep all statements
+//    ClintStmtOccurrence *occ = m_cscop->occurrence(transformation.target());
+//    std::vector<int> updatedBeta(transformation.target());
+//    updatedBeta.insert(std::begin(updatedBeta) + transformation.depth(), 0);
+//    m_updatedBeta[occ] = updatedBeta;
+    for (auto it : m_originalOccurrences) {
+      const std::vector<int> &originalBeta = it.first;
+      const std::vector<int> &target = transformation.target();
+      std::vector<int> updatedBeta(originalBeta);
+      if (isPrefix(target, originalBeta) ||
+          target == originalBeta) {
+        updatedBeta.insert(std::begin(updatedBeta) + transformation.depth(), 0);
+      }
+      m_updatedBeta[it.second] = updatedBeta;
     }
   }
     break;

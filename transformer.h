@@ -223,6 +223,15 @@ public:
          << transformation.secondDepth() << ", 1);\n";
       break;
 
+    case Transformation::Kind::Tile:
+      m_stream << "tile([";
+      outputVector(m_stream, transformation.target()) << "], "
+         << transformation.depth() << ", "
+         << transformation.depth() << ", "
+         << transformation.constantAmount() << ", "
+         << "0);\n";
+      break;
+
     default:
       m_stream << "###unkonwn transformation###\n";
     }

@@ -166,6 +166,20 @@ void VizPolyhedron::occurrenceChanged() {
   }
   CLINT_ASSERT(unmatchedNewPoints == 0, "All new points should match old points by original coordinates");
   CLINT_ASSERT(matchedPoints.size() == m_points.size(), "Not all old points were matched");
+
+  // Create lines that symbolize tiles.
+  VizProperties *props = coordinateSystem()->projection()->vizProperties();
+  m_tileLines.clear();
+  if (m_occurrence->isTiled()) {
+    int tileSize = m_occurrence->tileSize();
+    for (int h = (m_localHorizontalMin / tileSize + 1) * tileSize; h <= m_localHorizontalMax; h += tileSize) {
+      m_tileLines.emplace_back((h - 0.5) * props->pointDistance(),
+                               -(m_localVerticalMin - 0.5) * props->pointDistance(),
+                               (h - 0.5) * props->pointDistance(),
+                               -(m_localVerticalMax + 0.5) * props->pointDistance());
+    }
+  }
+
   coordinateSystem()->polyhedronUpdated(this);
   updateHandlePositions();
 }
@@ -487,6 +501,9 @@ void VizPolyhedron::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
   }
   painter->setBrush(m_backgroundColor);
   painter->drawPath(m_polyhedronShape);
+
+  painter->drawLines(m_tileLines.data(), m_tileLines.size());
+
   painter->restore();
 }
 

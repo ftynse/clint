@@ -17,7 +17,8 @@ public:
     IndexSetSplitting,
     Grain,
     Reverse,
-    Interchange
+    Interchange,
+    Tile,
   };
 
   Kind kind() const {
@@ -204,6 +205,17 @@ public:
     t.m_targetBeta = beta;
     t.m_depthInner = dimension1;
     t.m_depthOuter = dimension2;
+    return t;
+  }
+
+  static Transformation tile(const std::vector<int> &beta, int dimension, int size) {
+    CLINT_ASSERT(beta.size() > dimension,
+                 "Beta too short");
+    Transformation t;
+    t.m_kind           = Kind::Tile;
+    t.m_targetBeta     = beta;
+    t.m_depthOuter     = dimension;
+    t.m_constantAmount = size;
     return t;
   }
 
