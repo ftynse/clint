@@ -395,3 +395,27 @@ std::vector<int> ClintStmtOccurrence::untiledBetaVector() const {
   }
   return std::move(beta);
 }
+
+void ClintStmtOccurrence::tile(int dimensionIdx, unsigned tileSize) {
+  CLINT_ASSERT(tileSize != 0,
+               "Cannot tile by 0 elements");
+
+  std::set<int> tilingDimensions;
+  std::unordered_map<int, unsigned> tileSizes;
+  for (int dim : m_tilingDimensions) {
+    if (dim >= 2 * dimensionIdx) {
+      tilingDimensions.insert(dim + 2);
+      if (m_tileSizes.count(dim))
+        tileSizes[dim + 2] = m_tileSizes[dim];
+    } else {
+      tilingDimensions.insert(dim);
+      if (m_tileSizes.count(dim))
+        tileSizes[dim] = m_tileSizes[dim];
+    }
+  }
+  tilingDimensions.insert(2 * dimensionIdx);
+  tilingDimensions.insert(2 * dimensionIdx + 1);
+  tileSizes[2 * dimensionIdx + 1] = tileSize;
+  m_tilingDimensions = tilingDimensions;
+  m_tileSizes = tileSizes;
+}

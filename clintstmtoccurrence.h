@@ -52,23 +52,24 @@ public:
     return m_tilingDimensions;
   }
 
-  void tile(int dimensionIdx, unsigned tileSize) {
-    m_tileSize = tileSize;
-    if (tileSize == 0) {
-      m_tilingDimensions.erase(2 * dimensionIdx);
-      m_tilingDimensions.erase(2 *dimensionIdx + 1);
-    } else {
-      m_tilingDimensions.insert(2 * dimensionIdx);
-      m_tilingDimensions.insert(2 *dimensionIdx + 1);
-    }
-  }
+  void tile(int dimensionIdx, unsigned tileSize);
 
   bool isTiled() const {
-    return m_tileSize != 0;
+    return !m_tilingDimensions.empty();
   }
 
-  unsigned tileSize() const {
-    return m_tileSize;
+  bool isTiled(int dimension) const {
+    dimension = ignoreTilingDim(dimension);
+    return m_tilingDimensions.find(dimension - 2) != std::end(m_tilingDimensions);
+  }
+
+  unsigned tileSize(int dim) const {
+    if (m_tilingDimensions.find(dim) == std::end(m_tilingDimensions)) {
+      return 0;
+    }
+    CLINT_ASSERT(m_tileSizes.find(dim) != std::end(m_tileSizes),
+                 "Dimension is tiled, but no tile size associated."); // Probably, a beta dimension.
+    return m_tileSizes.at(dim);
   }
 
   std::vector<int> untiledBetaVector() const;
@@ -98,7 +99,8 @@ private:
   std::vector<int> m_betaVector;
   std::set<int> m_tilingDimensions;
   ClintStmt *m_statement;
-  unsigned m_tileSize = 0;
+  // FIXME: m_tilingDImensions just duplicates the set of keys of m_tileSizes.
+  std::unordered_map<int, unsigned> m_tileSizes;
 
   // Caches for min/max.
   mutable std::unordered_map<int, int> m_cachedDimMins;

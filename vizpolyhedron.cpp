@@ -170,13 +170,31 @@ void VizPolyhedron::occurrenceChanged() {
   // Create lines that symbolize tiles.
   VizProperties *props = coordinateSystem()->projection()->vizProperties();
   m_tileLines.clear();
-  if (m_occurrence->isTiled()) {
-    int tileSize = m_occurrence->tileSize();
+  int horizontalScatDim = 2 * horizontalDim + 1;
+  int verticalScatDim   = 2 * verticalDim + 1;
+  // We assume one dimension in only tiled one time (which is consitent with the current implementaiton).
+  if (horizontalDim != VizProperties::NO_DIMENSION &&
+      m_occurrence->isTiled(horizontalScatDim)) {
+    int tileSize = m_occurrence->tileSize(m_occurrence->ignoreTilingDim(horizontalScatDim) - 2);
+    CLINT_ASSERT(tileSize != 0,
+                 "Dimension appears to be tiled, but the tile size is zero");
     for (int h = (m_localHorizontalMin / tileSize + 1) * tileSize; h <= m_localHorizontalMax; h += tileSize) {
-      m_tileLines.emplace_back((h - 0.5) * props->pointDistance(),
-                               -(m_localVerticalMin - 0.5) * props->pointDistance(),
-                               (h - 0.5) * props->pointDistance(),
-                               -(m_localVerticalMax + 0.5) * props->pointDistance());
+      m_tileLines.emplace_back((h - 0.5 - m_localHorizontalMin) * props->pointDistance(),
+                               -(-0.5) * props->pointDistance(),
+                               (h - 0.5 - m_localHorizontalMin) * props->pointDistance(),
+                               -(m_localVerticalMax - m_localHorizontalMin + 0.5) * props->pointDistance());
+    }
+  }
+  if (verticalDim != VizProperties::NO_DIMENSION &&
+      m_occurrence->isTiled(verticalScatDim)) {
+    int tileSize = m_occurrence->tileSize(m_occurrence->ignoreTilingDim(verticalScatDim) - 2);
+    CLINT_ASSERT(tileSize != 0,
+                 "Dimension appears to be tiled, but the tile size is zero");
+    for (int v = (m_localVerticalMin / tileSize + 1) * tileSize; v <= m_localVerticalMax; v += tileSize) {
+      m_tileLines.emplace_back((-0.5) * props->pointDistance(),
+                               -(v - 0.5 - m_localVerticalMin) * props->pointDistance(),
+                               (m_localHorizontalMax - m_localHorizontalMin + 0.5) * props->pointDistance(),
+                               -(v - 0.5 - m_localVerticalMin) * props->pointDistance());
     }
   }
 

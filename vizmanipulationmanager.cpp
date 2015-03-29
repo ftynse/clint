@@ -1189,6 +1189,8 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
   if (!samePolyhedron)
     return;
 
+  ClintStmtOccurrence *occurrence = point->polyhedron()->occurrence();
+
   int horizontalTileSize = selectionHorizontalMax - selectionHorizontalMin + 1;
   int verticalTileSize   = selectionVerticalMax - selectionVerticalMin + 1;
 
@@ -1201,19 +1203,45 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
   // TODO: shift the polyhedron if the selection does not start at its beginning so that
   // the selection would match the tile.
 
+  int horizontalOccurrenceSpan = occurrence->maximumValue(point->coordinateSystem()->horizontalDimensionIdx())
+      - occurrence->minimumValue(point->coordinateSystem()->horizontalDimensionIdx()) + 1;
+  int verticalOccurrenceSpan = occurrence->maximumValue(point->coordinateSystem()->verticalDimensionIdx())
+      - occurrence->minimumValue(point->coordinateSystem()->verticalDimensionIdx()) + 1;
+
+  std::cerr << horizontalOccurrenceSpan << " x " << verticalOccurrenceSpan << std::endl;
+
+  bool horizontalTiling = point->coordinateSystem()->isHorizontalAxisVisible() &&
+                          horizontalTileSize != horizontalOccurrenceSpan;
+  bool verticalTiling   = point->coordinateSystem()->isVerticalAxisVisible() &&
+                          verticalTileSize != verticalOccurrenceSpan;
+
   TransformationGroup group;
-  group.transformations.push_back(Transformation::tile(
-            point->polyhedron()->occurrence()->betaVector(),
-            point->polyhedron()->coordinateSystem()->horizontalDimensionIdx() + 1,
-            horizontalTileSize));
+  if (verticalTiling) {
+    group.transformations.push_back(Transformation::tile(
+                                      occurrence->betaVector(),
+                                      point->coordinateSystem()->verticalDimensionIdx() + 1,
+                                      verticalTileSize));
+  }
+  if (horizontalTiling) {
+    group.transformations.push_back(Transformation::tile(
+                                      occurrence->betaVector(),
+                                      point->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                      horizontalTileSize));
+  }
 
   remapBetas(group, point->scop());
 
-  point->polyhedron()->occurrence()->tile(point->coordinateSystem()->horizontalDimensionIdx(),
-                                          horizontalTileSize);
+  if (verticalTiling) {
+    occurrence->tile(point->coordinateSystem()->verticalDimensionIdx(),
+                     verticalTileSize);
+  }
+  if (horizontalTiling) {
+    occurrence->tile(point->coordinateSystem()->horizontalDimensionIdx(),
+                     horizontalTileSize);
+  }
 
   if (!group.transformations.empty()) {
-    point->polyhedron()->occurrence()->scop()->transform(group);
-    point->polyhedron()->occurrence()->scop()->executeTransformationSequence();
+    occurrence->scop()->transform(group);
+    occurrence->scop()->executeTransformationSequence();
   }
 }
