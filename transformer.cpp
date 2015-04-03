@@ -273,6 +273,214 @@ void ClayBetaMapper::apply(osl_scop_p scop, const TransformationSequence &sequen
   iterativeApply(scop, sequence.groups);
 }
 
+ClayBetaMapper2::ClayBetaMapper2(ClintScop *scop) {
+  for (ClintStmt *stmt : scop->statements()) {
+    for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
+      std::vector<int> beta = occurrence->betaVector();
+      m_forwardMapping.emplace(beta, beta);
+      syncReverseMapping();
+    }
+  }
+}
+
+ClayBetaMapper2::~ClayBetaMapper2() {
+
+}
+
+void ClayBetaMapper2::replaceMappings(Identifier original, Identifier oldModified, Identifier newModified) {
+  removeMappings(original, oldModified);
+  addMappings(original, newModified);
+}
+
+void ClayBetaMapper2::addMappings(Identifier original, Identifier modified) {
+  m_forwardMapping.insert(std::make_pair(original, modified));
+  m_reverseMapping.insert(std::make_pair(modified, original));
+}
+
+template <typename K, typename M>
+static void removeMultimapPair(std::multimap<K, M> &map, const K &key, const M &mapped) {
+  typename std::multimap<K, M>::iterator beginIt, endIt, foundIt;
+  std::tie(beginIt, endIt) = map.equal_range(key);
+  foundIt = std::find_if(beginIt, endIt, [mapped] (const typename std::multimap<K, M>::value_type &element) {
+    return element.second == mapped;
+  });
+  if (foundIt == endIt)
+    return;
+  map.erase(foundIt);
+}
+
+void ClayBetaMapper2::removeMappings(Identifier original, Identifier modified) {
+  removeMultimapPair(m_forwardMapping, original, modified);
+  removeMultimapPair(m_reverseMapping, modified, original);
+}
+
+int ClayBetaMapper2::countMatches(Identifier target) {
+  return std::count_if(std::begin(m_forwardMapping),
+                             std::end(m_forwardMapping),
+                [this,target] (typename IdentifierMultiMap::value_type &v) {
+    return isPrefix(target, v.first);
+  });
+}
+
+void ClayBetaMapper2::apply(osl_scop_p scop, const Transformation &transformation) {
+  (void) scop;
+
+  switch (transformation.kind()) {
+  case Transformation::Kind::Fuse:
+  {
+    Identifier target = transformation.target();
+    int insertOrder = maximumAt(target);
+    nextInLoop(target);
+
+    IdentifierMultiMap updatedForwardMapping;
+    std::set<Identifier> updatedCreatedMappings;
+    for (auto m : m_forwardMapping) {
+      Identifier identifier = m.second;
+      int matchingLength = partialMatch(target, identifier);
+      if (matchingLength == target.size()) {
+        prevInLoop(identifier, transformation.depth() - 1);
+        changeOrderAt(identifier, insertOrder + orderAt(identifier, transformation.depth()) + 1, transformation.depth());
+      } else if (matchingLength == target.size() - 1 && follows(target, identifier)) {
+        prevInLoop(identifier, transformation.depth() - 1);
+      }
+
+      if (m_createdMappings.find(m.second) != std::end(m_createdMappings)) {
+        updatedCreatedMappings.insert(identifier);
+      }
+      updatedForwardMapping.emplace(m.first, identifier);
+    }
+    m_forwardMapping = updatedForwardMapping;
+    m_createdMappings = updatedCreatedMappings;
+    syncReverseMapping();
+  }
+    break;
+
+  case Transformation::Kind::Split:
+  {
+    Identifier target = transformation.target();
+    IdentifierMultiMap updatedForwardMapping;
+    std::set<Identifier> updatedCreatedMappings;
+    for (auto m : m_forwardMapping) {
+      Identifier identifier = m.second;
+
+      int matchingLength = partialMatch(target, identifier);
+      if (matchingLength == transformation.depth() &&
+          followsAt(target, identifier, transformation.depth())) {
+        nextInLoop(identifier, transformation.depth() - 1);
+        changeOrderAt(identifier, orderAt(identifier, transformation.depth()) - orderAt(target, transformation.depth()) - 1 /*-(orderAt(identifier) + 1)*/, transformation.depth());
+      } else if (matchingLength == transformation.depth() - 1 &&
+                 followsAt(target, identifier, transformation.depth() - 1)) {
+        nextInLoop(identifier, transformation.depth() - 1);
+      }
+
+      if (m_createdMappings.find(m.second) != std::end(m_createdMappings)) {
+        updatedCreatedMappings.insert(identifier);
+      }
+      updatedForwardMapping.emplace(m.first, identifier);
+    }
+    m_forwardMapping = updatedForwardMapping;
+    m_createdMappings = updatedCreatedMappings;
+    syncReverseMapping();
+  }
+    break;
+
+  case Transformation::Kind::Reorder:
+  {
+    Identifier target = transformation.target();
+    IdentifierMultiMap updatedForwardMapping;
+    std::set<Identifier> updatedCreatedMappings;
+//    int stmtNb = maximumAt(target) + 1;
+//    CLINT_ASSERT(stmtNb == transformation.order().size(),
+//                 "Order vector size mismatch");  // This assumes the normalized beta tree.
+
+    std::vector<int> ordering = transformation.order();
+    for (auto m : m_forwardMapping) {
+      Identifier identifier = m.second;
+      if (isPrefix(target, identifier)) {
+        int oldOrder = orderAt(identifier, target.size());
+        CLINT_ASSERT(oldOrder < ordering.size(),
+                     "Reorder transformation vector too short");
+        changeOrderAt(identifier, ordering.at(oldOrder), target.size());
+      }
+
+      if (m_createdMappings.find(m.second) != std::end(m_createdMappings)) {
+        updatedCreatedMappings.insert(identifier);
+      }
+      updatedForwardMapping.emplace(m.first, identifier);
+    }
+    m_forwardMapping = updatedForwardMapping;
+    m_createdMappings = updatedCreatedMappings;
+    syncReverseMapping();
+  }
+    break;
+
+  case Transformation::Kind::IndexSetSplitting:
+  {
+    Identifier target = transformation.target();
+    int stmtNb = countMatches(target);
+    // TOOD: assert statement number are consecutive (or beta structure is normalized)
+
+    IdentifierMultiMap updatedForwardMapping;
+    for (auto m : m_forwardMapping) {
+      Identifier identifer  = m.second;
+      // Insert the original statement.
+      updatedForwardMapping.emplace(m.first, identifer);
+      if (isPrefix(target, identifer)) {
+        appendStmt(identifer, stmtNb++);
+        // Insert the iss-ed statement if needed.
+        updatedForwardMapping.emplace(m.first, identifer);
+        m_createdMappings.insert(identifer);
+      }
+    }
+    m_forwardMapping = updatedForwardMapping;
+    syncReverseMapping();
+  }
+    break;
+
+  case Transformation::Kind::Tile:
+  {
+    Identifier target = transformation.target();
+    IdentifierMultiMap updatedForwardMapping;
+    std::set<Identifier> updatedCreatedMappings;
+
+    for (auto m : m_forwardMapping) {
+      Identifier identifier = m.second;
+      if (isPrefixOrEqual(target, identifier)) {
+        createLoop(identifier, transformation.depth());
+      }
+
+      if (m_createdMappings.find(m.second) != std::end(m_createdMappings)) {
+        updatedCreatedMappings.insert(identifier);
+      }
+      updatedForwardMapping.emplace(m.first, identifier);
+    }
+    m_forwardMapping = updatedForwardMapping;
+    m_createdMappings = updatedCreatedMappings;
+    syncReverseMapping();
+  }
+    break;
+
+  case Transformation::Kind::Shift:
+  case Transformation::Kind::Skew:
+  case Transformation::Kind::Grain:
+  case Transformation::Kind::Reverse:
+  case Transformation::Kind::Interchange:
+    // Do not affect beta
+    break;
+
+  default:
+    CLINT_UNREACHABLE;
+  }
+}
+
+void ClayBetaMapper2::apply(osl_scop_p scop, const TransformationGroup &group) {
+  iterativeApply(group.transformations);
+}
+
+void ClayBetaMapper2::apply(osl_scop_p scop, const TransformationSequence &sequence) {
+  iterativeApply(sequence.groups);
+}
+
 std::vector<int> ClayTransformer::transformedBeta(const std::vector<int> &beta, const Transformation &transformation) {
   std::vector<int> tBeta(beta);
   switch (transformation.kind()) {

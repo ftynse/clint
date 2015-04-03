@@ -185,6 +185,7 @@ public:
     Transformation t;
     t.m_kind       = Kind::Fuse;
     t.m_targetBeta = beta;
+    t.m_depthOuter = beta.size();
     return t;
   }
 
