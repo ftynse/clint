@@ -182,7 +182,7 @@ void VizPolyhedron::occurrenceChanged() {
       m_tileLines.emplace_back((h - 0.5 - m_localHorizontalMin) * props->pointDistance(),
                                -(-0.5) * props->pointDistance(),
                                (h - 0.5 - m_localHorizontalMin) * props->pointDistance(),
-                               -(m_localVerticalMax - m_localHorizontalMin + 0.5) * props->pointDistance());
+                               -(m_localVerticalMax - m_localVerticalMin + 0.5) * props->pointDistance());
     }
   }
   if (verticalDim != VizProperties::NO_DIMENSION &&
