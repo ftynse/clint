@@ -61,6 +61,7 @@ public:
   }
 
   void executeTransformationSequence();
+  void remapBetas(const TransformationGroup &tg);
 
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
   ClintStmtOccurrence *mappedOccurrence(const std::vector<int> &beta) const;

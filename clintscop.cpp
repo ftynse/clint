@@ -278,6 +278,63 @@ const std::set<int> &ClintScop::tilingDimensions(const std::vector<int> &beta) c
   return o->tilingDimensions();
 }
 
+// TODO: figure out usage conditions for this function
+// it may be private, combined with updatedBetas and called in
+// transformed() or executeTransformationSequence() to prevent from modifying betas using a transformation group
+// different from the one being added to the sequence.
+void ClintScop::remapBetas(const TransformationGroup &group) {
+  ClayBetaMapper *mapper = new ClayBetaMapper(this); // FIXME: doesn't it already have a mapper? :)
+  //ClayBetaMapper *mapper = m_betaMapper;
+  mapper->apply(nullptr, group);
+
+  ClayBetaMapper2 *mapper2 = new ClayBetaMapper2(this);
+  mapper2->apply(nullptr, group);
+  bool identical = true;
+  for (ClintStmt *stmt : statements()) {
+    for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
+      std::vector<int> beta1;
+      int result;
+      std::tie(beta1, result) = mapper->map(occurrence->betaVector());
+      CLINT_ASSERT(result == ClayBetaMapper::SUCCESS, "FAIL! not success");
+      std::set<std::vector<int>> betas2;
+      betas2 = mapper2->forwardMap(occurrence->betaVector());
+      CLINT_ASSERT(betas2.size() != 0, "FAIL! not mapped by 2");
+//      qDebug() << QVector<int>::fromStdVector(occurrence->betaVector());
+//      qDebug() << QVector<int>::fromStdVector(beta1);
+//      for (auto v : betas2) {
+//        qDebug() << QVector<int>::fromStdVector(v);
+//      }
+//      qDebug() << "===";
+      if (betas2.find(beta1) == std::end(betas2))
+        identical = false;
+    }
+  }
+  CLINT_ASSERT(identical, "beta mapper mismatch");
+
+  bool happy = true;
+  std::map<std::vector<int>, std::vector<int>> mapping;
+  for (ClintStmt *stmt : statements()) {
+    for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
+      int result;
+      std::vector<int> beta = occurrence->betaVector();
+      std::vector<int> updatedBeta;
+      std::tie(updatedBeta, result) = mapper->map(occurrence->betaVector());
+
+      qDebug() << result << QVector<int>::fromStdVector(beta) << "->" << QVector<int>::fromStdVector(updatedBeta);
+      if (result == ClayBetaMapper::SUCCESS &&
+          beta != updatedBeta) {
+        occurrence->resetBetaVector(updatedBeta);
+        mapping[beta] = updatedBeta;
+      }
+      happy = happy && result == ClayBetaMapper::SUCCESS;
+    }
+  }
+  delete mapper;
+  CLINT_ASSERT(happy, "Beta mapping failed");
+
+  updateBetas(mapping);
+}
+
 // old->new
 void ClintScop::updateBetas(std::map<std::vector<int>, std::vector<int>> &mapping) {
   // Update beta map.

@@ -233,34 +233,6 @@ void VizManipulationManager::rearrangeCSs2D(int coordinateSystemIdx, bool csDele
   }
 }
 
-// TODO: move this function to the ClintScop
-void VizManipulationManager::remapBetas(TransformationGroup group, ClintScop *scop) {
-  ClayBetaMapper *mapper = new ClayBetaMapper(scop);
-  mapper->apply(nullptr, group);
-  bool happy = true;
-  std::map<std::vector<int>, std::vector<int>> mapping;
-  for (ClintStmt *stmt : scop->statements()) {
-    for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
-      int result;
-      std::vector<int> beta = occurrence->betaVector();
-      std::vector<int> updatedBeta;
-      std::tie(updatedBeta, result) = mapper->map(occurrence->betaVector());
-
-      qDebug() << result << QVector<int>::fromStdVector(beta) << "->" << QVector<int>::fromStdVector(updatedBeta);
-      if (result == ClayBetaMapper::SUCCESS &&
-          beta != updatedBeta) {
-        occurrence->resetBetaVector(updatedBeta);
-        mapping[beta] = updatedBeta;
-      }
-      happy = happy && result == ClayBetaMapper::SUCCESS;
-    }
-  }
-  delete mapper;
-  CLINT_ASSERT(happy, "Beta mapping failed");
-
-  scop->updateBetas(mapping);
-}
-
 void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
   CLINT_ASSERT(m_polyhedron == polyhedron, "Signaled end of polyhedron movement that was never initiated");
   m_polyhedron = nullptr;
@@ -516,7 +488,10 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
 
       // Update betas after each polyhedron moved as we use them to determine beta-prefixes
       // of the coordinate systems.
-      remapBetas(iterGroup, polyhedron->scop());
+      if (!iterGroup.transformations.empty()) {
+        polyhedron->scop()->transform(iterGroup);
+      }
+//      polyhedron->scop()->remapBetas(iterGroup);
 
       std::copy(std::begin(iterGroup.transformations), std::end(iterGroup.transformations), std::back_inserter(group.transformations));
       iterGroup.transformations.clear();
@@ -532,7 +507,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
   }
 
   if (!group.transformations.empty()) {
-    polyhedron->scop()->transform(group);
+//    polyhedron->scop()->transform(group);
     polyhedron->scop()->executeTransformationSequence();
     polyhedron->coordinateSystem()->projection()->updateOuterDependences();
     polyhedron->coordinateSystem()->projection()->updateInnerDependences();
@@ -1239,6 +1214,8 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
     occurrence->tile(point->coordinateSystem()->horizontalDimensionIdx(),
                      horizontalTileSize);
   }
+
+//  point->scop()->remapBetas(group);
 
   if (!group.transformations.empty()) {
     occurrence->scop()->transform(group);
