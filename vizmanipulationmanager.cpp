@@ -1189,34 +1189,30 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
   int verticalOccurrenceSpan = occurrence->maximumValue(point->coordinateSystem()->verticalDimensionIdx())
       - occurrence->minimumValue(point->coordinateSystem()->verticalDimensionIdx()) + 1;
 
-  std::cerr << horizontalOccurrenceSpan << " x " << verticalOccurrenceSpan << std::endl;
-
   bool horizontalTiling = point->coordinateSystem()->isHorizontalAxisVisible() &&
                           horizontalTileSize != horizontalOccurrenceSpan;
   bool verticalTiling   = point->coordinateSystem()->isVerticalAxisVisible() &&
                           verticalTileSize != verticalOccurrenceSpan;
 
   TransformationGroup group;
+  std::vector<int> beta = occurrence->betaVector();
   if (verticalTiling) {
+    int verticalDepth = occurrence->depth(point->coordinateSystem()->verticalDimensionIdx());
     group.transformations.push_back(Transformation::tile(
-                                      occurrence->betaVector(),
-                                      point->coordinateSystem()->verticalDimensionIdx() + 1,
+                                      beta,
+                                      verticalDepth,
                                       verticalTileSize));
-  }
-  if (horizontalTiling) {
-    group.transformations.push_back(Transformation::tile(
-                                      occurrence->betaVector(),
-                                      point->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                      horizontalTileSize));
-  }
-
-  remapBetas(group, point->scop());
-
-  if (verticalTiling) {
+    beta.insert(std::begin(beta) + verticalDepth - 1, 0);
     occurrence->tile(point->coordinateSystem()->verticalDimensionIdx(),
                      verticalTileSize);
   }
   if (horizontalTiling) {
+    int horizontalDepth = occurrence->depth(point->coordinateSystem()->horizontalDimensionIdx());
+    group.transformations.push_back(Transformation::tile(
+                                      beta,
+                                      horizontalDepth,
+                                      horizontalTileSize));
+    beta.insert(std::begin(beta) + horizontalDepth - 1, 0);
     occurrence->tile(point->coordinateSystem()->horizontalDimensionIdx(),
                      horizontalTileSize);
   }
@@ -1226,5 +1222,6 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
   if (!group.transformations.empty()) {
     occurrence->scop()->transform(group);
     occurrence->scop()->executeTransformationSequence();
+    //point->polyhedron()->occurrenceChanged();
   }
 }
