@@ -53,11 +53,20 @@ public:
   void transform(const Transformation &t) {
     TransformationGroup tg;
     tg.transformations.push_back(t);
-    m_transformationSeq.groups.push_back(std::move(tg));
+    transform(tg);
   }
 
   void transform(const TransformationGroup &tg) {
     m_transformationSeq.groups.push_back(tg);
+    for (const Transformation &transformation : tg.transformations) {
+      if (transformation.kind() == Transformation::Kind::Fuse ||
+          transformation.kind() == Transformation::Kind::Split ||
+          transformation.kind() == Transformation::Kind::Reorder ||
+          transformation.kind() == Transformation::Kind::Tile) {
+        remapBetas(tg);
+        break;
+      }
+    }
   }
 
   void executeTransformationSequence();
@@ -158,6 +167,7 @@ private:
                             const std::vector<osl_dependence_p> &violated);
   void createDependences(osl_scop_p scop);
   void updateDependences(osl_scop_p transformed);
+  void resetOccurrences(osl_scop_p transformed);
 
   osl_scop_p m_scopPart;
   ClintProgram *m_program;
@@ -174,6 +184,7 @@ private:
   Transformer *m_transformer;
   Transformer *m_scriptGenerator;
   ClayBetaMapper *m_betaMapper;
+  size_t m_groupsExecuted = 0;
 
   char *m_originalCode  = nullptr;
   char *m_generatedCode = nullptr;

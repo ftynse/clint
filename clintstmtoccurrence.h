@@ -20,6 +20,8 @@ public:
                     const std::vector<int> &betaVector,
                     ClintStmt *parent = 0);
 
+  ClintStmtOccurrence *split(osl_statement_p stmt, const std::vector<int> &betaVector);
+
   friend bool operator < (const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs);
   friend bool operator ==(const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs);
 

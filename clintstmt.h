@@ -34,6 +34,7 @@ public:
   }
 
   ClintStmtOccurrence *makeOccurrence(osl_statement_p stmt, const std::vector<int> &beta);
+  ClintStmtOccurrence *splitOccurrence(ClintStmtOccurrence *occurrence, osl_statement_p stmt, const std::vector<int> &beta);
 
   std::string dimensionName(int dimension) const {
     CLINT_ASSERT(dimension >= 0, "Dimension index should be positive");

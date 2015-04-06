@@ -96,3 +96,9 @@ ClintStmtOccurrence *ClintStmt::makeOccurrence(osl_statement_p stmt, const std::
   m_occurrences[beta] = occurrence;
   return occurrence;
 }
+
+ClintStmtOccurrence *ClintStmt::splitOccurrence(ClintStmtOccurrence *occurrence, osl_statement_p stmt, const std::vector<int> &beta) {
+  ClintStmtOccurrence *otherOccurrence = occurrence->split(stmt, beta);
+  m_occurrences[beta] = otherOccurrence;
+  return otherOccurrence;
+}

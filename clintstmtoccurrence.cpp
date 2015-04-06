@@ -10,15 +10,36 @@ ClintStmtOccurrence::ClintStmtOccurrence(osl_statement_p stmt, const std::vector
   resetOccurrence(stmt, betaVector);
 }
 
+ClintStmtOccurrence *ClintStmtOccurrence::split(osl_statement_p stmt, const std::vector<int> &betaVector) {
+  ClintStmtOccurrence *occurrence = new ClintStmtOccurrence(stmt, betaVector, m_statement);
+  occurrence->m_tilingDimensions = m_tilingDimensions;
+  occurrence->m_tileSizes = m_tileSizes;
+  return occurrence;
+}
+
 void ClintStmtOccurrence::resetOccurrence(osl_statement_p stmt, const std::vector<int> &betaVector) {
   bool differentBeta = (m_betaVector == betaVector);
   bool differentPoints = false;
   std::vector<osl_relation_p> oslScatterings;
-  m_betaVector.clear();
+  m_betaVector = betaVector;
+  m_oslStatement = stmt; // XXX: check if it's okay everywhere
+                         // I am not sure that adding the transformed statement is a good idea, but otherwise we cannot call occurrenceChanged/projectOn for this occurrence
+                         // Furthermore, storing the statement in ClintStmtOccurrence rather than in ClintStmt is questionable
+                         // There is a comment somewhere saying m_oslStatement may go out of sync with transformed scop, this should fix it...
+
+  if (stmt == nullptr) {
+    if (m_oslScatterings.size() != 0)
+      emit pointsChanged();
+    if (differentBeta)
+      emit betaChanged();
+    return;
+  }
 
   oslListForeach(stmt->scattering, [this,&betaVector,&oslScatterings,&differentPoints](osl_relation_p scattering) {
     if (betaExtract(scattering) == betaVector) {
       oslScatterings.push_back(scattering);
+      if (m_oslScatterings.size() == 0)
+        differentPoints = true;
       // Check if the scattering relation is equal to any other old scattering relation in this occurrence.
       // If it is not, than this occurrence was indeed affected by the transformation and should send corresponding updates.
       if (!differentPoints) {

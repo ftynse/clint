@@ -182,9 +182,67 @@ void ClintScop::updateGeneratedHtml(osl_scop_p transformedScop, std::string &str
   delete props;
 }
 
+// This functions assumes betas have been remapped already.
+void ClintScop::resetOccurrences(osl_scop_p transformed) {
+  oslListForeachSingle(transformed->statement, [this](osl_statement_p stmt) {
+    oslListForeachSingle(stmt->scattering, [this,stmt](osl_relation_p scattering) {
+      std::vector<int> beta = betaExtract(scattering);
+      ClintStmtOccurrence *occ = occurrence(beta);
+      CLINT_ASSERT(occ, "No occurrence corresond to the beta-vector");
+      occ->resetOccurrence(stmt, beta);
+    });
+  });
+}
+
 void ClintScop::executeTransformationSequence() {
+  // XXX: speed/memory+code_quality tradeoff
+  // ClintScop stores the original (non-transfomed) scop and we perform the entire transformation sequence after each action
+  // However, it may store the current transformed scop along with the original (original is still needed for, e.g., undo)
+  // and perform only the transformations from the last group that is identifiable by m_groupsExecuted.
+  osl_scop_p transformed = osl_scop_clone(m_scopPart);
+  size_t groupsExecuted = 0;
+  for (const TransformationGroup &group : m_transformationSeq.groups) {
+    for (const Transformation &transformation : group.transformations) {
+      m_transformer->apply(transformed, transformation);
+
+      if (groupsExecuted >= m_groupsExecuted) {
+        // Create the occurrence to reflect the ISS result.
+        if (transformation.kind() == Transformation::Kind::IndexSetSplitting) {
+          std::vector<int> loopBeta = transformation.target();
+          loopBeta.push_back(0); // FIXME: this assumes the loop being issed has only one statement (and makes assumptions on beta structure and transformation)
+          ClintStmtOccurrence *occ = occurrence(loopBeta);
+          loopBeta.back() = 1;
+          occ->statement()->splitOccurrence(occ, nullptr, loopBeta); // XXX: nullptr statement was not checked and will fail.  fix ClintStmtOccurrence::resetOccurrence and ::projectOn (if called)
+          m_vizBetaMap[loopBeta] = occ->statement();                 // The subsequent call to resetOccurrences will replace the statement anyway
+        }
+        // Remap betas when needed.  FIXME: ClintScop should not know which transformation may modify betas
+        // introduce bool Transformation::modifiesLoopStmtOrder() and use it.  Same for checking for ISS transformation.
+//        if (transformation.kind() == Transformation::Kind::Fuse ||
+//            transformation.kind() == Transformation::Kind::Split ||
+//            transformation.kind() == Transformation::Kind::Reorder ||
+//            transformation.kind() == Transformation::Kind::Tile /*||
+//              transformation.kind() == Transformation::Kind::IndexSetSplitting*/) {
+//          TransformationGroup tg;
+//          tg.transformations.push_back(transformation);
+//          remapBetas(tg);
+//        }
+      }
+    }
+    ++groupsExecuted;
+  }
+  resetOccurrences(transformed);
+  m_groupsExecuted = groupsExecuted;
+
+//  updateDependences(transformed);
+  updateGeneratedHtml(transformed, m_generatedHtml);
+
+#if 0
   osl_scop_p transformedScop = osl_scop_clone(m_scopPart);
   m_transformer->apply(transformedScop, m_transformationSeq);
+  m_betaMapper->apply(m_scopPart, m_transformationSeq);
+
+  ClayBetaMapper2 betaMapper2(this);
+  betaMapper2.apply(nullptr, m_transformationSeq);
 
   // TODO: load clay script from file as TransformationSequence
   // TODO(osl): create another extension to OSL that describes transformation groups
@@ -200,7 +258,16 @@ void ClintScop::executeTransformationSequence() {
   osl_statement_p transformedStmt = transformedScop->statement;
   osl_statement_p originalStmt = m_scopPart->statement;
   for (int i = 0; i < size; i++) {
-    ClintStmt *clintStmt = statement(betaExtract(originalStmt->scattering));
+#if 0
+    std::vector<int> newbeta;
+    int result;
+    std::tie(newbeta, result) = m_betaMapper->map(betaExtract(originalStmt->scattering));
+    CLINT_ASSERT(result == ClayBetaMapper::SUCCESS,
+                 "Could not map beta to the new statement");
+#endif
+//    ClintStmt *clintStmt = statement(betaExtract(originalStmt->scattering));
+    std::vector<int> newbeta = betaMapper2.map(betaExtract(originalStmt->scattering)); // FIXME: this assumes original statement has only one scattering
+    ClintStmt *clintStmt = statement(newbeta);
     statementMapping[transformedStmt] = clintStmt;
     transformedStmt = transformedStmt->next;
     originalStmt = originalStmt->next;
@@ -210,10 +277,17 @@ void ClintScop::executeTransformationSequence() {
     oslListForeachSingle(stmt->scattering, [this,&stmt,&statementMapping](osl_relation_p scattering) {
       std::vector<int> beta = betaExtract(scattering);
       ClintStmtOccurrence *occ = occurrence(beta);
-//      CLINT_ASSERT(occ != nullptr, "Occurrence corresponding to the beta-vector not found");
       if (occ == nullptr) {
         ClintStmt *clintStmt = statementMapping[stmt];
+        CLINT_ASSERT(clintStmt, "no statement found");
+#if 0
         occ = clintStmt->makeOccurrence(stmt, beta);
+#endif
+        // TODO: get the beta of the statement occurrence this was issed from
+        std::set<std::vector<int>> reversed = betaMapper2.reverseMap(beta);
+        // Is coalescing already implemented (>1) or mapping failed (<1) ?
+        CLINT_ASSERT(reversed.size() == 1, "Reverse beta mapping yielded more than one identifier.");
+
         m_vizBetaMap[beta] = clintStmt;
       } else {
         occ->resetOccurrence(stmt, beta);
@@ -221,12 +295,11 @@ void ClintScop::executeTransformationSequence() {
     });
   });
 
-  m_betaMapper->apply(m_scopPart, m_transformationSeq);
   // Do not create new dependences, but rather maintain the old?
   updateDependences(transformedScop);
 
   updateGeneratedHtml(transformedScop, m_generatedHtml);
-
+#endif
   emit transformExecuted();
   bool dimensionNbChanged =
       std::find_if(std::begin(m_transformationSeq.groups), std::end(m_transformationSeq.groups),
@@ -420,6 +493,7 @@ void ClintScop::undoTransformation() {
     return;
   m_undoneTransformationSeq.groups.push_back(m_transformationSeq.groups.back());
   m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1);
+  --m_groupsExecuted;
 //  executeTransformationSequence();
 }
 
@@ -428,6 +502,7 @@ void ClintScop::redoTransformation() {
     return;
   m_transformationSeq.groups.push_back(m_undoneTransformationSeq.groups.back());
   m_undoneTransformationSeq.groups.erase(std::end(m_undoneTransformationSeq.groups) - 1);
+  ++m_groupsExecuted;
 //  executeTransformationSequence();
 }
 

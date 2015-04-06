@@ -675,6 +675,7 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
                            // have to first split the statement out of the loop
     ClintStmtOccurrence *occurrence = oldPolyhedron->scop()->occurrence(betaLoop);
     polyhedron->setOccurrenceSilent(occurrence);
+    polyhedron->occurrenceChanged(); // FIXME: check why tile lines do not appear after ClintScop::resetOccurrences without this call (drawing functionality is now implemented in VizPolyhedron::occurrenceChanged())
     oldPolyhedron->updateInternalDependences();
     polyhedron->updateInternalDependences();
     polyhedron->coordinateSystem()->projection()->updateInnerDependences();
