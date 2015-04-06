@@ -106,9 +106,13 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
 
     for (VizPolyhedron *vp : selectedPolyhedra) {
       const std::vector<int> beta = vp->occurrence()->betaVector();
-      int horzDepth = vp->coordinateSystem()->horizontalDimensionIdx() + 1;
+      int horzDepth = vp->coordinateSystem()->horizontalDimensionIdx() == VizProperties::NO_DIMENSION ?
+            VizProperties::NO_DIMENSION :
+            vp->occurrence()->depth(vp->coordinateSystem()->horizontalDimensionIdx());
       int horzAmount = m_horzOffset;
-      int vertDepth = vp->coordinateSystem()->verticalDimensionIdx() + 1;
+      int vertDepth = vp->coordinateSystem()->verticalDimensionIdx() == VizProperties::NO_DIMENSION ?
+            VizProperties::NO_DIMENSION :
+            vp->occurrence()->depth(vp->coordinateSystem()->verticalDimensionIdx());
       int vertAmount = m_vertOffset;
       bool oneDimensional = vp->occurrence()->dimensionality() < vp->coordinateSystem()->verticalDimensionIdx();
       bool zeroDimensional = vp->occurrence()->dimensionality() < vp->coordinateSystem()->horizontalDimensionIdx();
@@ -647,6 +651,7 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     } else {
       dimensionIdx = oldPolyhedron->coordinateSystem()->horizontalDimensionIdx();
     }
+    int depth = oldPolyhedron->occurrence()->depth(dimensionIdx);
 
     for (VizPoint *vp : selectedPoints) {
       polyhedron->reparentPoint(vp);
@@ -662,7 +667,7 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     std::vector<int> issVector = oldPolyhedron->occurrence()->findBoundlikeForm(
           m_pointDetachLast ? ClintStmtOccurrence::Bound::UPPER :
                               ClintStmtOccurrence::Bound::LOWER,
-          dimensionIdx,
+          depth - 1,
           m_pointDetachValue);
     CLINT_ASSERT(issVector.size() >= 2, "malformed ISS vector");
 

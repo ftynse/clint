@@ -185,7 +185,9 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
 
   std::vector<std::vector<int>> points =
       program()->enumerator()->enumerate(ready, std::move(visibleDimensions));
-  computeMinMax(points, horizontalDimIdx, verticalDimIdx);
+  computeMinMax(points,
+                horizontalDimIdx != -2 ? depth(horizontalDimIdx) - 1 : horizontalDimIdx,
+                verticalDimIdx != -2 ? depth(verticalDimIdx) - 1 : verticalDimIdx);
 
   return std::move(points);
 }
@@ -417,9 +419,24 @@ std::vector<int> ClintStmtOccurrence::untiledBetaVector() const {
   return std::move(beta);
 }
 
+static void updateMinMaxCache(std::unordered_map<int, int> &cache, int dimensionIdx) {
+  std::unordered_map<int, int> updated;
+  for (auto v : cache) {
+    if (v.first >= dimensionIdx) {
+      updated[v.first + 1] = v.second;
+    } else {
+      updated[v.first] = v.second;
+    }
+  }
+  cache = updated;
+}
+
 void ClintStmtOccurrence::tile(int dimensionIdx, unsigned tileSize) {
   CLINT_ASSERT(tileSize != 0,
                "Cannot tile by 0 elements");
+
+  // Ignore previously tiled dimensions.
+  dimensionIdx = depth(dimensionIdx) - 1;
 
   std::set<int> tilingDimensions;
   std::unordered_map<int, unsigned> tileSizes;
@@ -439,4 +456,8 @@ void ClintStmtOccurrence::tile(int dimensionIdx, unsigned tileSize) {
   tileSizes[2 * dimensionIdx + 1] = tileSize;
   m_tilingDimensions = tilingDimensions;
   m_tileSizes = tileSizes;
+
+  // Update min/max caches wrt to new dimensionality.
+  updateMinMaxCache(m_cachedDimMaxs, dimensionIdx);
+  updateMinMaxCache(m_cachedDimMins, dimensionIdx);
 }

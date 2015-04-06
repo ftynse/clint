@@ -74,6 +74,29 @@ public:
     return m_tileSizes.at(dim);
   }
 
+  /**
+   * Get the 1-based depth that may be used for transformation.
+   * Takes tiling dimensions into account.
+   * \param[in]  dimension 0-based visible dimension index.
+   * \returns    1-based depth for Clay transformations.
+   */
+  int depth(int dimension) const {
+    CLINT_ASSERT(dimension >= 0,
+                 "Visible dimension must be positive");
+    int scatDimension = 2 * dimension + 1;
+    int scatDimensionNb = (m_betaVector.size() - 1) * 2 + 1;
+    CLINT_ASSERT(scatDimension < scatDimensionNb,
+                 "Dimension overflow");
+    int result = dimension + 1;
+    for (int i = 1; i <= scatDimension; i += 2) {
+      if (m_tilingDimensions.count(i)) {
+        scatDimension += 2;
+        result++;
+      }
+    }
+    return result;
+  }
+
   std::vector<int> untiledBetaVector() const;
 
   int minimumValue(int dimIdx) const;
@@ -88,6 +111,19 @@ public:
   };
 
   std::vector<int> findBoundlikeForm(Bound bound, int dimIdx, int constValue);
+
+
+  void debugDumpMinMaxCache(std::ostream &out) {
+    out << "Minima: " << std::endl;
+    for (auto v : m_cachedDimMins) {
+      out << v.first << " : " << v.second << std::endl;
+    }
+    out << "Maxima: " << std::endl;
+    for (auto v : m_cachedDimMaxs) {
+      out << v.first << " : " << v.second << std::endl;
+    }
+    out << std::endl;
+  }
 
 signals:
   void pointsChanged();
