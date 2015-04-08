@@ -72,7 +72,6 @@ public:
   }
 
   void executeTransformationSequence();
-  void remapBetas(const TransformationGroup &tg);
 
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
   ClintStmtOccurrence *mappedOccurrence(const std::vector<int> &beta) const;
@@ -170,6 +169,8 @@ private:
   void createDependences(osl_scop_p scop);
   void updateDependences(osl_scop_p transformed);
   void resetOccurrences(osl_scop_p transformed);
+
+  void remapBetas(const TransformationGroup &tg);
 
   osl_scop_p m_scopPart;
   ClintProgram *m_program;

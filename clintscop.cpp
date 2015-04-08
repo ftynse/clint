@@ -215,15 +215,6 @@ void ClintScop::executeTransformationSequence() {
           occ->statement()->splitOccurrence(occ, nullptr, loopBeta); // XXX: nullptr statement was not checked and will fail.  fix ClintStmtOccurrence::resetOccurrence and ::projectOn (if called)
           m_vizBetaMap[loopBeta] = occ->statement();                 // The subsequent call to resetOccurrences will replace the statement anyway
         }
-//        if (transformation.kind() == Transformation::Kind::Fuse ||
-//            transformation.kind() == Transformation::Kind::Split ||
-//            transformation.kind() == Transformation::Kind::Reorder ||
-//            transformation.kind() == Transformation::Kind::Tile /*||
-//              transformation.kind() == Transformation::Kind::IndexSetSplitting*/) {
-//          TransformationGroup tg;
-//          tg.transformations.push_back(transformation);
-//          remapBetas(tg);
-//        }
       }
     }
     ++groupsExecuted;
@@ -234,70 +225,6 @@ void ClintScop::executeTransformationSequence() {
   updateDependences(transformed);
   updateGeneratedHtml(transformed, m_generatedHtml);
 
-#if 0
-  osl_scop_p transformedScop = osl_scop_clone(m_scopPart);
-  m_transformer->apply(transformedScop, m_transformationSeq);
-  m_betaMapper->apply(m_scopPart, m_transformationSeq);
-
-  ClayBetaMapper2 betaMapper2(this);
-  betaMapper2.apply(nullptr, m_transformationSeq);
-
-  // TODO: load clay script from file as TransformationSequence
-  // TODO(osl): create another extension to OSL that describes transformation groups
-
-  // Since shift transformation does not affect betas, we can use them as statement identifiers
-  // TODO(osl): maintain an ID for scattering union part throughout Clay transformations
-  // and use them as identifiers, rather than betas
-
-  // As in whiteboxing, assuming that statement order is not changed.
-  std::map<osl_statement_p, ClintStmt *> statementMapping;
-  int size = oslListSize(m_scopPart->statement);
-  CLINT_ASSERT(size == oslListSize(transformedScop->statement), "Number of statements changed in the transformation");
-  osl_statement_p transformedStmt = transformedScop->statement;
-  osl_statement_p originalStmt = m_scopPart->statement;
-  for (int i = 0; i < size; i++) {
-#if 0
-    std::vector<int> newbeta;
-    int result;
-    std::tie(newbeta, result) = m_betaMapper->map(betaExtract(originalStmt->scattering));
-    CLINT_ASSERT(result == ClayBetaMapper::SUCCESS,
-                 "Could not map beta to the new statement");
-#endif
-//    ClintStmt *clintStmt = statement(betaExtract(originalStmt->scattering));
-    std::vector<int> newbeta = betaMapper2.map(betaExtract(originalStmt->scattering)); // FIXME: this assumes original statement has only one scattering
-    ClintStmt *clintStmt = statement(newbeta);
-    statementMapping[transformedStmt] = clintStmt;
-    transformedStmt = transformedStmt->next;
-    originalStmt = originalStmt->next;
-  }
-
-  oslListForeachSingle(transformedScop->statement, [this,&transformedScop,&statementMapping](osl_statement_p stmt) {
-    oslListForeachSingle(stmt->scattering, [this,&stmt,&statementMapping](osl_relation_p scattering) {
-      std::vector<int> beta = betaExtract(scattering);
-      ClintStmtOccurrence *occ = occurrence(beta);
-      if (occ == nullptr) {
-        ClintStmt *clintStmt = statementMapping[stmt];
-        CLINT_ASSERT(clintStmt, "no statement found");
-#if 0
-        occ = clintStmt->makeOccurrence(stmt, beta);
-#endif
-        // TODO: get the beta of the statement occurrence this was issed from
-        std::set<std::vector<int>> reversed = betaMapper2.reverseMap(beta);
-        // Is coalescing already implemented (>1) or mapping failed (<1) ?
-        CLINT_ASSERT(reversed.size() == 1, "Reverse beta mapping yielded more than one identifier.");
-
-        m_vizBetaMap[beta] = clintStmt;
-      } else {
-        occ->resetOccurrence(stmt, beta);
-      }
-    });
-  });
-
-  // Do not create new dependences, but rather maintain the old?
-  updateDependences(transformedScop);
-
-  updateGeneratedHtml(transformedScop, m_generatedHtml);
-#endif
   emit transformExecuted();
   bool dimensionNbChanged =
       std::find_if(std::begin(m_transformationSeq.groups), std::end(m_transformationSeq.groups),
@@ -349,15 +276,7 @@ const std::set<int> &ClintScop::tilingDimensions(const std::vector<int> &beta) c
   return o->tilingDimensions();
 }
 
-// TODO: figure out usage conditions for this function
-// it may be private, combined with updatedBetas and called in
-// transformed() or executeTransformationSequence() to prevent from modifying betas using a transformation group
-// different from the one being added to the sequence.
 void ClintScop::remapBetas(const TransformationGroup &group) {
-  // This previous version of mapper is kept for checking consistency.
-//  ClayBetaMapper *mapper = new ClayBetaMapper(this); // FIXME: doesn't it already have a mapper? :)
-//  mapper->apply(nullptr, group);
-
   // m_betaMapper keeps the mapping from the original beta-vectors to the current ones,
   // but we cannot find get a ClintStmtOccurrence by original beta-vector if their beta-vectors
   // were changed during transformation: some of them may have been created by ISS thus making
@@ -383,53 +302,6 @@ void ClintScop::remapBetas(const TransformationGroup &group) {
   }
 
   delete mapper2;
-
-
-#if 0
-  // We do not need the explicit updateBetas() function anymore...
-  m_betaMapper2->apply(nullptr, group);
-  std::map<std::vector<int>, std::vector<int>> mapp;
-  for (ClintStmt *stmt : statements()) {
-    for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
-      std::vector<int> oldBeta = occurrence->betaVector();
-      std::set<std::vector<int>> betas = m_betaMapper2->forwardMap(oldBeta); // old beta should be the _original_ beta here, but occurrence contains the beta from the previous step of transformation
-      if (betas.size() > 1) {
-        mapp[oldBeta] = *betas.begin();
-        // what to do if there are three betas after two iss?
-      } else if (betas.size() == 1) {
-        mapp[oldBeta] = *betas.begin();
-      } else {
-        CLINT_ASSERT(false, "Coalescing not implemented yet, but beta-vector is not mapped to anything");
-      }
-    }
-  }
-#endif
-
-
-  // Old mapper call
-#if 0
-  bool happy = true;
-  std::map<std::vector<int>, std::vector<int>> mapping;
-  for (ClintStmt *stmt : statements()) {
-    for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
-      int result;
-      std::vector<int> beta = occurrence->betaVector();
-      std::vector<int> updatedBeta;
-      std::tie(updatedBeta, result) = mapper->map(occurrence->betaVector());
-
-      qDebug() << result << QVector<int>::fromStdVector(beta) << "->" << QVector<int>::fromStdVector(updatedBeta);
-      if (result == ClayBetaMapper::SUCCESS &&
-          beta != updatedBeta) {
-        occurrence->resetBetaVector(updatedBeta);
-        mapping[beta] = updatedBeta;
-      }
-      happy = happy && result == ClayBetaMapper::SUCCESS;
-    }
-  }
-  delete mapper;
-  CLINT_ASSERT(happy, "Beta mapping failed");
-#endif
-
   updateBetas(mapping);
 }
 
