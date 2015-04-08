@@ -481,6 +481,27 @@ void ClayBetaMapper2::apply(osl_scop_p scop, const TransformationSequence &seque
   iterativeApply(sequence.groups);
 }
 
+void ClayBetaMapper2::dump(std::ostream &out) const {
+  std::set<Identifier> uniqueKeys;
+  for (auto it : m_forwardMapping) {
+    uniqueKeys.insert(it.first);
+  }
+  for (auto key : uniqueKeys) {
+    IdentifierMultiMap::const_iterator b, e;
+    std::tie(b, e) = m_forwardMapping.equal_range(key);
+
+    out << "(";
+    std::copy(std::begin(key), std::end(key), std::ostream_iterator<int>(out, ","));
+    out << ")  ->  {";
+    for (IdentifierMultiMap::const_iterator i = b; i != e; ++i) {
+      out << "(";
+      std::copy(std::begin(i->second), std::end(i->second), std::ostream_iterator<int>(out, ","));
+      out << "), ";
+    }
+    out << "}" << std::endl;
+  }
+}
+
 std::vector<int> ClayTransformer::transformedBeta(const std::vector<int> &beta, const Transformation &transformation) {
   std::vector<int> tBeta(beta);
   switch (transformation.kind()) {

@@ -368,6 +368,7 @@ void ClintScop::remapBetas(const TransformationGroup &group) {
   mapper2->apply(nullptr, group);
   //m_betaMapper2->apply(nullptr, group);
   m_betaMapper->apply(nullptr, group);
+  mapper2->dump(std::cerr);
 
   std::map<std::vector<int>, std::vector<int>> mapping;
   for (ClintStmt *stmt : statements()) {

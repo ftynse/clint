@@ -348,6 +348,8 @@ public:
   void apply(osl_scop_p scop, const TransformationGroup &group) override;
   void apply(osl_scop_p scop, const TransformationSequence &sequence) override;
 
+  void dump(std::ostream &out) const;
+
   // TODO: Bullshit functions, to be removed.
   std::vector<int> transformedBeta(const std::vector<int> &beta, const Transformation &transformation) override { return std::vector<int>(); }
   std::vector<int> originalBeta(const std::vector<int> &beta, const Transformation &transformation) override { return std::vector<int>(); }
