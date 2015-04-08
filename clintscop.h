@@ -59,6 +59,8 @@ public:
   void transform(const TransformationGroup &tg) {
     m_transformationSeq.groups.push_back(tg);
     for (const Transformation &transformation : tg.transformations) {
+      // Remap betas when needed.  FIXME: ClintScop should not know which transformation may modify betas
+      // introduce bool Transformation::modifiesLoopStmtOrder() and use it.  Same for checking for ISS transformation.
       if (transformation.kind() == Transformation::Kind::Fuse ||
           transformation.kind() == Transformation::Kind::Split ||
           transformation.kind() == Transformation::Kind::Reorder ||
