@@ -161,6 +161,10 @@ public:
 
   int dimensionality();
 
+  /// Get the single original beta of an occurrence even if it has multiple original betas in mapper.
+  /// This function is used as default policy for finding the original occurrence for a transformed one.
+  std::vector<int> canonicalOriginalBetaVector(const std::vector<int> &beta) const;
+
 signals:
   void transformExecuted();
   void dimensionalityChanged();

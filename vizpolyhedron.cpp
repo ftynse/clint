@@ -1063,7 +1063,7 @@ void VizPolyhedron::setOccurrenceSilent(ClintStmtOccurrence *occurrence) {
   }
   m_occurrence = occurrence;
   if (occurrence) {
-    m_backgroundColor = m_coordinateSystem->projection()->vizProperties()->color(occurrence->betaVector());
+    m_backgroundColor = m_coordinateSystem->projection()->vizProperties()->color(occurrence->canonicalOriginalBetaVector());
     connect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
   }
 }

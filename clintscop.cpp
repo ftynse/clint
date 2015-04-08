@@ -137,17 +137,7 @@ void ClintScop::updateGeneratedHtml(osl_scop_p transformedScop, std::string &str
 
   std::multimap<std::vector<int>, std::pair<int, int>> positions = stmtPositionsInHtml(transformedScop);
   for (auto it : positions) {
-
-    std::set<std::vector<int>> reverseBetas = m_betaMapper2->reverseMap(it.first);
-    CLINT_ASSERT(reverseBetas.size() <= 1,
-                 "Reverse beta mapping yielded multiple betas but is not supposed to.");
-    // Probably coalescing was implemented, but there is no clear way how to "merge"
-    // colors from two statements. Maybe we just select the color of the first by default.
-    if (reverseBetas.size() == 1) {
-      betasAtPos.emplace(it.second, *reverseBetas.begin());
-    } else {
-      qDebug() << "no reverse for" << QVector<int>::fromStdVector(it.first);
-    }
+    betasAtPos.emplace(it.second, canonicalOriginalBetaVector(it.first));
   }
 
   if (m_generatedCode != nullptr)
@@ -405,4 +395,12 @@ int ClintScop::dimensionality() {
     }
   }
   return dimensions;
+}
+
+// There is no clear way how to "merge" colors from two statements.
+// Just select the color of the first by default.
+std::vector<int> ClintScop::canonicalOriginalBetaVector(const std::vector<int> &beta) const {
+  std::set<std::vector<int>> betas = m_betaMapper2->reverseMap(beta);
+  CLINT_ASSERT(betas.size() != 0, "Occurrence does not have any original betas.");
+  return *betas.begin();
 }

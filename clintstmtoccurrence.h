@@ -98,6 +98,9 @@ public:
   }
 
   std::vector<int> untiledBetaVector() const;
+  std::vector<int> canonicalOriginalBetaVector() const {
+    return scop()->canonicalOriginalBetaVector(m_betaVector);
+  }
 
   int minimumValue(int dimIdx) const;
   int maximumValue(int dimIdx) const;
