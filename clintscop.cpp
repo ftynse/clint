@@ -35,16 +35,17 @@ void ClintScop::processDependenceMap(const DependenceMap &dependenceMap,
     if (std::find(std::begin(violated), std::end(violated), dep) != std::end(violated)) {
       isViolated = true;
     }
-    ClintStmtOccurrence *source = mappedOccurrence(betas.first);
-    ClintStmtOccurrence *target = mappedOccurrence(betas.second);
 
-    ClintDependence *clintDep = new ClintDependence(dep, source, target, isViolated, this);
+    std::set<std::vector<int>> mappedSourceBetas = m_betaMapper2->forwardMap(betas.first);
+    std::set<std::vector<int>> mappedTargetBetas = m_betaMapper2->forwardMap(betas.second);
 
-    m_dependenceMap.emplace(std::make_pair(m_betaMapper->map(betas.first).first,
-                                           m_betaMapper->map(betas.second).first),
-                            clintDep);
-    if (source == target) {
-      m_internalDeps.emplace(source, clintDep);
+    for (auto sourceBeta : mappedSourceBetas) {
+      for (auto targetBeta : mappedTargetBetas) {
+        ClintStmtOccurrence *source = occurrence(sourceBeta);
+        ClintStmtOccurrence *target = occurrence(targetBeta);
+        ClintDependence *clintDep = new ClintDependence(dep, source, target, isViolated, this);
+        m_dependenceMap.emplace(std::make_pair(sourceBeta, targetBeta), clintDep);
+      }
     }
   }
 }
@@ -90,7 +91,7 @@ ClintScop::ClintScop(osl_scop_p scop, int parameterValue, char *originalCode, Cl
 
   m_transformer = new ClayTransformer;
   m_scriptGenerator = new ClayScriptGenerator(m_scriptStream);
-  m_betaMapper = new ClayBetaMapper(this);
+  m_betaMapper2 = new ClayBetaMapper2(this);
 
   createDependences(scop);
 
@@ -112,7 +113,7 @@ ClintScop::ClintScop(osl_scop_p scop, int parameterValue, char *originalCode, Cl
 ClintScop::~ClintScop() {
   delete m_transformer;
   delete m_scriptGenerator;
-  delete m_betaMapper;
+  delete m_betaMapper2;
 
   free(m_generatedCode);
   free(m_currentScript);
@@ -136,13 +137,16 @@ void ClintScop::updateGeneratedHtml(osl_scop_p transformedScop, std::string &str
 
   std::multimap<std::vector<int>, std::pair<int, int>> positions = stmtPositionsInHtml(transformedScop);
   for (auto it : positions) {
-    int result;
-    std::vector<int> reverseBeta;
-    std::tie(reverseBeta, result) = m_betaMapper->reverseMap(it.first);
-    if (result == ClayBetaMapper::SUCCESS) {
-      betasAtPos.emplace(it.second, reverseBeta);
+
+    std::set<std::vector<int>> reverseBetas = m_betaMapper2->reverseMap(it.first);
+    CLINT_ASSERT(reverseBetas.size() <= 1,
+                 "Reverse beta mapping yielded multiple betas but is not supposed to.");
+    // Probably coalescing was implemented, but there is no clear way how to "merge"
+    // colors from two statements. Maybe we just select the color of the first by default.
+    if (reverseBetas.size() == 1) {
+      betasAtPos.emplace(it.second, *reverseBetas.begin());
     } else {
-      qDebug() << "no reverse for" << QVector<int>::fromStdVector(it.first) << result;
+      qDebug() << "no reverse for" << QVector<int>::fromStdVector(it.first);
     }
   }
 
@@ -253,15 +257,6 @@ ClintStmtOccurrence *ClintScop::occurrence(const std::vector<int> &beta) const {
   return stmt->occurrence(beta);
 }
 
-ClintStmtOccurrence *ClintScop::mappedOccurrence(const std::vector<int> &beta) const {
-  std::vector<int> mappedBeta;
-  int result;
-  std::tie(mappedBeta, result) = m_betaMapper->map(beta);
-  if (result != ClayBetaMapper::SUCCESS)
-    return nullptr;
-  return occurrence(mappedBeta);
-}
-
 std::vector<int> ClintScop::untiledBetaVector(const std::vector<int> &beta) const {
   ClintStmtOccurrence *o = occurrence(beta);
   if (o == nullptr)
@@ -285,8 +280,7 @@ void ClintScop::remapBetas(const TransformationGroup &group) {
   // m_betaMapper to keep dependency maps consistent.
   ClayBetaMapper2 *mapper2 = new ClayBetaMapper2(this);
   mapper2->apply(nullptr, group);
-  //m_betaMapper2->apply(nullptr, group);
-  m_betaMapper->apply(nullptr, group);
+  m_betaMapper2->apply(nullptr, group);
   mapper2->dump(std::cerr);
 
   std::map<std::vector<int>, std::vector<int>> mapping;
@@ -359,15 +353,11 @@ void ClintScop::updateBetas(std::map<std::vector<int>, std::vector<int>> &mappin
 
 std::unordered_set<ClintDependence *>
 ClintScop::internalDependences(ClintStmtOccurrence *occurrence) const {
-  auto range = m_internalDeps.equal_range(occurrence);
   std::unordered_set<ClintDependence *> result;
-  for (auto element = range.first; element != range.second; element++) {
-    result.emplace(element->second);
-  }
+  forwardDependencesBetween(occurrence, occurrence, result);
   return std::move(result);
 }
 
-// TODO: use this function to implement internalDependences; remove m_internalDeps.
 void ClintScop::forwardDependencesBetween(ClintStmtOccurrence *occ1,
                                           ClintStmtOccurrence *occ2,
                                           std::unordered_set<ClintDependence *> &result) const {
