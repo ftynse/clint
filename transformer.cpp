@@ -314,14 +314,6 @@ void ClayBetaMapper2::removeMappings(Identifier original, Identifier modified) {
   removeMultimapPair(m_reverseMapping, modified, original);
 }
 
-int ClayBetaMapper2::countMatches(Identifier target) {
-  return std::count_if(std::begin(m_forwardMapping),
-                             std::end(m_forwardMapping),
-                [this,target] (typename IdentifierMultiMap::value_type &v) {
-    return isPrefix(target, v.first);
-  });
-}
-
 void ClayBetaMapper2::apply(osl_scop_p scop, const Transformation &transformation) {
   (void) scop;
 
@@ -417,8 +409,7 @@ void ClayBetaMapper2::apply(osl_scop_p scop, const Transformation &transformatio
   case Transformation::Kind::IndexSetSplitting:
   {
     Identifier target = transformation.target();
-    int stmtNb = countMatches(target);
-    // TOOD: assert statement number are consecutive (or beta structure is normalized)
+    int stmtNb = maximumAt(target);
 
     IdentifierMultiMap updatedForwardMapping;
     for (auto m : m_forwardMapping) {
@@ -426,7 +417,7 @@ void ClayBetaMapper2::apply(osl_scop_p scop, const Transformation &transformatio
       // Insert the original statement.
       updatedForwardMapping.emplace(m.first, identifer);
       if (isPrefix(target, identifer)) {
-        appendStmt(identifer, stmtNb++);
+        appendStmt(identifer, ++stmtNb);
         // Insert the iss-ed statement if needed.
         updatedForwardMapping.emplace(m.first, identifer);
         m_createdMappings.insert(identifer);

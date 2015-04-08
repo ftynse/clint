@@ -337,9 +337,6 @@ private:
     return maximum;
   }
 
-  // Move to ClintScop
-  int countMatches(Identifier target);
-
 public:
   explicit ClayBetaMapper2(ClintScop *scop);
   virtual ~ClayBetaMapper2();
