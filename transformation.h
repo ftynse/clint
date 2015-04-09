@@ -79,6 +79,8 @@ public:
                                           const std::vector<int> &issConstraint,
                                           size_t nbInputDims) {
     CLINT_ASSERT(beta.size() >= 1, "Beta too short");
+    CLINT_ASSERT(issConstraint.size() - 1 - nbInputDims > 0,
+                 "Input dimension number is wrong");
     Transformation t;
     t.m_kind           = Kind::IndexSetSplitting;
     t.m_targetBeta     = beta;

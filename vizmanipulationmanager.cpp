@@ -671,7 +671,8 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
           m_pointDetachValue);
     CLINT_ASSERT(issVector.size() >= 2, "malformed ISS vector");
 
-    group.transformations.push_back(Transformation::issFromConstraint(betaLoop, issVector, betaLoop.size()));
+    int nbInputDims = oldPolyhedron->occurrence()->untiledBetaVector().size() - 1;
+    group.transformations.push_back(Transformation::issFromConstraint(betaLoop, issVector, nbInputDims));
 
     oldPolyhedron->scop()->transform(group);
     oldPolyhedron->scop()->executeTransformationSequence();
