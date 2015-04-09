@@ -115,10 +115,6 @@ void VizPolyhedron::occurrenceChanged() {
   int verticalDim   = coordinateSystem()->verticalDimensionIdx();
   std::vector<std::vector<int>> points =
       occurrence()->projectOn(horizontalDim, verticalDim);
-  m_localHorizontalMin = occurrence()->minimumValue(horizontalDim);
-  m_localHorizontalMax = occurrence()->maximumValue(horizontalDim);
-  m_localVerticalMin   = occurrence()->minimumValue(verticalDim);
-  m_localVerticalMax   = occurrence()->maximumValue(verticalDim);
 //  if (horizontalDim != VizProperties::NO_DIMENSION)
 //    horizontalDim = occurrence()->depth(coordinateSystem()->horizontalDimensionIdx()) - 1;
 //  if (verticalDim != VizProperties::NO_DIMENSION)
@@ -127,29 +123,7 @@ void VizPolyhedron::occurrenceChanged() {
   // Cannot rely on caches in case of tiling,
   // dimensionality() is not working until beta-vector for occurrence is updated.
   // XXX: Is not it fixed with beta mapper running before the emitting pointsChanged()?
-  int horizontalMin = INT_MAX, horizontalMax = INT_MIN, verticalMin = INT_MAX, verticalMax = INT_MIN;
-  for (const std::vector<int> &point : points) {
-    if (point.size() == 0) {
-      // TODO:
-    } else if (point.size() == 2) {
-      horizontalMin = std::min(horizontalMin, point[0]);
-      horizontalMax = std::max(horizontalMax, point[0]);
-    } else if (point.size() >= 3) {
-      horizontalMin = std::min(horizontalMin, point[0]);
-      horizontalMax = std::max(horizontalMax, point[0]);
-      verticalMin = std::min(verticalMin, point[1]);
-      verticalMax = std::max(verticalMax, point[1]);
-    }
-  }
-  m_localHorizontalMin = horizontalMin == INT_MAX ? 0 : horizontalMin;
-  m_localHorizontalMax = horizontalMax == INT_MIN ? 0 : horizontalMax;
-  m_localVerticalMin = verticalMin == INT_MAX ? 0 : verticalMin;
-  m_localVerticalMax = verticalMax == INT_MIN ? 0 : verticalMax;
-
-//  m_localHorizontalMin = occurrence()->minimumValue(horizontalDim);
-//  m_localHorizontalMax = occurrence()->maximumValue(horizontalDim);
-//  m_localVerticalMin   = occurrence()->minimumValue(verticalDim);
-//  m_localVerticalMax   = occurrence()->maximumValue(verticalDim);
+  recomputeMinMax();
 
   double pointDistance = coordinateSystem()->projection()->vizProperties()->pointDistance();
 
