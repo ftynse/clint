@@ -1229,7 +1229,7 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
                                       beta,
                                       verticalDepth,
                                       verticalTileSize));
-    beta.insert(std::begin(beta) + verticalDepth - 1, 0);
+    beta.insert(std::begin(beta) + verticalDepth, 0);
     occurrence->tile(point->coordinateSystem()->verticalDimensionIdx(),
                      verticalTileSize);
   }
@@ -1239,7 +1239,7 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
                                       beta,
                                       horizontalDepth,
                                       horizontalTileSize));
-    beta.insert(std::begin(beta) + horizontalDepth - 1, 0);
+    beta.insert(std::begin(beta) + horizontalDepth, 0);
     occurrence->tile(point->coordinateSystem()->horizontalDimensionIdx(),
                      horizontalTileSize);
   }
