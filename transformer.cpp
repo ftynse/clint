@@ -93,7 +93,7 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
   clay_beta_normalize(scop);
 }
 
-ClayBetaMapper2::ClayBetaMapper2(ClintScop *scop) {
+ClayBetaMapper::ClayBetaMapper(ClintScop *scop) {
   for (ClintStmt *stmt : scop->statements()) {
     for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
       std::vector<int> beta = occurrence->betaVector();
@@ -103,16 +103,16 @@ ClayBetaMapper2::ClayBetaMapper2(ClintScop *scop) {
   }
 }
 
-ClayBetaMapper2::~ClayBetaMapper2() {
+ClayBetaMapper::~ClayBetaMapper() {
 
 }
 
-void ClayBetaMapper2::replaceMappings(Identifier original, Identifier oldModified, Identifier newModified) {
+void ClayBetaMapper::replaceMappings(Identifier original, Identifier oldModified, Identifier newModified) {
   removeMappings(original, oldModified);
   addMappings(original, newModified);
 }
 
-void ClayBetaMapper2::addMappings(Identifier original, Identifier modified) {
+void ClayBetaMapper::addMappings(Identifier original, Identifier modified) {
   m_forwardMapping.insert(std::make_pair(original, modified));
   m_reverseMapping.insert(std::make_pair(modified, original));
 }
@@ -129,12 +129,12 @@ static void removeMultimapPair(std::multimap<K, M> &map, const K &key, const M &
   map.erase(foundIt);
 }
 
-void ClayBetaMapper2::removeMappings(Identifier original, Identifier modified) {
+void ClayBetaMapper::removeMappings(Identifier original, Identifier modified) {
   removeMultimapPair(m_forwardMapping, original, modified);
   removeMultimapPair(m_reverseMapping, modified, original);
 }
 
-void ClayBetaMapper2::apply(osl_scop_p scop, const Transformation &transformation) {
+void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation) {
   (void) scop;
 
   switch (transformation.kind()) {
@@ -284,15 +284,15 @@ void ClayBetaMapper2::apply(osl_scop_p scop, const Transformation &transformatio
   }
 }
 
-void ClayBetaMapper2::apply(osl_scop_p scop, const TransformationGroup &group) {
+void ClayBetaMapper::apply(osl_scop_p scop, const TransformationGroup &group) {
   iterativeApply(group.transformations);
 }
 
-void ClayBetaMapper2::apply(osl_scop_p scop, const TransformationSequence &sequence) {
+void ClayBetaMapper::apply(osl_scop_p scop, const TransformationSequence &sequence) {
   iterativeApply(sequence.groups);
 }
 
-void ClayBetaMapper2::dump(std::ostream &out) const {
+void ClayBetaMapper::dump(std::ostream &out) const {
   std::set<Identifier> uniqueKeys;
   for (auto it : m_forwardMapping) {
     uniqueKeys.insert(it.first);

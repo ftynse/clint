@@ -77,7 +77,7 @@ public:
       // As far as VizManipulationManager deals with association of VizPolyhedron to ClintStmtOccurrrence after it was created,
       // that part works find.
       if (transformation.kind() == Transformation::Kind::IndexSetSplitting) {
-        m_betaMapper2->apply(nullptr, tg);
+        m_betaMapper->apply(nullptr, tg);
         break;
       }
     }
@@ -95,7 +95,7 @@ public:
 
   osl_scop_p appliedScop();
   void swapBetaMapper(ClintScop *scop) {
-    std::swap(m_betaMapper2, scop->m_betaMapper2);
+    std::swap(m_betaMapper, scop->m_betaMapper);
   }
 
   void setScopSilent(osl_scop_p scop) {
@@ -201,7 +201,7 @@ private:
   TransformationSequence m_undoneTransformationSeq;
   Transformer *m_transformer;
   Transformer *m_scriptGenerator;
-  ClayBetaMapper2 *m_betaMapper2;
+  ClayBetaMapper *m_betaMapper;
   size_t m_groupsExecuted = 0;
 
   char *m_originalCode  = nullptr;

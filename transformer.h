@@ -110,7 +110,7 @@ private:
   std::vector<int> m_betaVector;
 };
 
-class ClayBetaMapper2 : public Transformer {
+class ClayBetaMapper : public Transformer {
 private:
   typedef std::vector<int> Identifier;
   typedef std::multimap<Identifier, Identifier> IdentifierMultiMap;
@@ -258,8 +258,8 @@ private:
   }
 
 public:
-  explicit ClayBetaMapper2(ClintScop *scop);
-  virtual ~ClayBetaMapper2();
+  explicit ClayBetaMapper(ClintScop *scop);
+  virtual ~ClayBetaMapper();
 
   void apply(osl_scop_p scop, const Transformation &transformation) override;
   void apply(osl_scop_p scop, const TransformationGroup &group) override;

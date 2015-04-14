@@ -91,7 +91,7 @@ ClintScop::ClintScop(osl_scop_p scop, int parameterValue, char *originalCode, Cl
 
   m_transformer = new ClayTransformer;
   m_scriptGenerator = new ClayScriptGenerator(m_scriptStream);
-  m_betaMapper2 = new ClayBetaMapper2(this);
+  m_betaMapper = new ClayBetaMapper(this);
 
   createDependences(scop);
 
@@ -113,7 +113,7 @@ ClintScop::ClintScop(osl_scop_p scop, int parameterValue, char *originalCode, Cl
 ClintScop::~ClintScop() {
   delete m_transformer;
   delete m_scriptGenerator;
-  delete m_betaMapper2;
+  delete m_betaMapper;
 
   free(m_generatedCode);
   free(m_currentScript);
@@ -268,16 +268,16 @@ void ClintScop::remapBetas(const TransformationGroup &group) {
   // one original beta-vector correspond to multiple statements.  Thus we create another
   // temporary mapper to map from current beta-vectors to the new ones as well as we update the
   // m_betaMapper to keep dependency maps consistent.
-  ClayBetaMapper2 *mapper2 = new ClayBetaMapper2(this);
-  mapper2->apply(nullptr, group);
-  m_betaMapper2->apply(nullptr, group);
-  mapper2->dump(std::cerr);
+  ClayBetaMapper *mapper = new ClayBetaMapper(this);
+  mapper->apply(nullptr, group);
+  m_betaMapper->apply(nullptr, group);
+  mapper->dump(std::cerr);
 
   std::map<std::vector<int>, std::vector<int>> mapping;
   for (ClintStmt *stmt : statements()) {
     for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
       std::set<std::vector<int>> mappedBetas =
-          mapper2->forwardMap(occurrence->betaVector());
+          mapper->forwardMap(occurrence->betaVector());
       CLINT_ASSERT(mappedBetas.size() == 1,
                    "Beta remapping is only possible for one-to-one mapping."); // Did you forget to add/remove occurrences before calling it?
       mapping[occurrence->betaVector()] = *mappedBetas.begin();
@@ -285,7 +285,7 @@ void ClintScop::remapBetas(const TransformationGroup &group) {
     }
   }
 
-  delete mapper2;
+  delete mapper;
   updateBetas(mapping);
 }
 
@@ -400,7 +400,7 @@ int ClintScop::dimensionality() {
 // There is no clear way how to "merge" colors from two statements.
 // Just select the color of the first by default.
 std::vector<int> ClintScop::canonicalOriginalBetaVector(const std::vector<int> &beta) const {
-  std::set<std::vector<int>> betas = m_betaMapper2->reverseMap(beta);
+  std::set<std::vector<int>> betas = m_betaMapper->reverseMap(beta);
   CLINT_ASSERT(betas.size() != 0, "Occurrence does not have any original betas.");
   return *betas.begin();
 }
