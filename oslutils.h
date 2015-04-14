@@ -7,8 +7,6 @@
 
 #include <clan/clan.h>
 
-#include <candl/candl.h>
-
 #define CLOOG_INT_GMP
 #include <cloog/cloog.h>
 
@@ -174,7 +172,7 @@ osl_relation_p oslRelationWithContext(osl_relation_p relation, osl_relation_p co
 osl_relation_p oslRelationFixParameters(osl_relation_p relation, const std::vector<std::pair<bool, int>> &values);
 osl_relation_p oslRelationFixAllParameters(osl_relation_p relation, int value);
 
-osl_scop_p prepareEnumeration(osl_scop_p scop);
+osl_scop_p oslReifyScop(osl_scop_p scop);
 
 inline osl_relation_p oslRelationsFixParameters(osl_relation_p relation, const std::vector<std::pair<bool, int>> &values) {
   return oslListTransform(relation, &oslRelationFixParameters, values);
@@ -196,15 +194,7 @@ typedef std::map<std::vector<int>,
                  std::tuple<osl_scop_p, osl_statement_p, osl_relation_p>
                 > BetaMap;
 
-typedef std::multimap<
-                 std::pair<std::vector<int>, std::vector<int>>,
-                 osl_dependence_p> DependenceMap;
-
 BetaMap oslBetaMap(osl_scop_p scop);
-DependenceMap oslDependenceMap(osl_scop_p scop);
-DependenceMap oslDependenceMapViolations(osl_scop_p scop,
-                                         osl_scop_p transformed = nullptr,
-                                         std::vector<osl_dependence_p> *violated = nullptr);
 
 // FIXME(osl): we use Clay to access betas; when this functionality is moved to OSL, switch!
 std::vector<int> betaFromClay(clay_array_p beta);
@@ -225,8 +215,6 @@ char *fileContents(FILE *file);
 char *escapeHtml(char *);
 std::multimap<std::vector<int>, std::pair<int, int>> stmtPositionsInCode(osl_scop_p scop);
 std::multimap<std::vector<int>, std::pair<int, int>> stmtPositionsInHtml(osl_scop_p scop);
-
-osl_dependence_p oslScopDependence(osl_scop_p scop);
 
 osl_scop_p parseCode(char *code);
 int parseClay(osl_scop_p scop, char *script);

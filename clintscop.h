@@ -12,6 +12,7 @@
 #include "clintprogram.h"
 #include "transformation.h"
 #include "transformer.h"
+#include "dependenceanalyzer.h"
 
 class ClintDependence;
 class ClintStmt;
@@ -179,8 +180,7 @@ private:
   void forwardDependencesBetween(ClintStmtOccurrence *occ1, ClintStmtOccurrence *occ2,
                                  std::unordered_set<ClintDependence *> &result) const;
   void clearDependences();
-  void processDependenceMap(const DependenceMap &dependenceMap,
-                            const std::vector<osl_dependence_p> &violated);
+  void processDependenceMap(const DependenceAnalyzer::DependenceMap &dependenceMap);
   void createDependences(osl_scop_p scop);
   void updateDependences(osl_scop_p transformed);
   void resetOccurrences(osl_scop_p transformed);
@@ -203,6 +203,7 @@ private:
   Transformer *m_scriptGenerator;
   ClayBetaMapper *m_betaMapper;
   size_t m_groupsExecuted = 0;
+  DependenceAnalyzer *m_analyzer;
 
   char *m_originalCode  = nullptr;
   char *m_generatedCode = nullptr;

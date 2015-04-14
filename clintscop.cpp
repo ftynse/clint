@@ -15,6 +15,7 @@
 #include <QColor>
 #include <QString>
 #include "vizproperties.h"
+#include "dependenceanalyzer.h"
 
 void ClintScop::clearDependences() {
   for (auto it : m_dependenceMap) {
@@ -25,25 +26,20 @@ void ClintScop::clearDependences() {
   m_internalDeps.clear();
 }
 
-void ClintScop::processDependenceMap(const DependenceMap &dependenceMap,
-                                     const std::vector<osl_dependence_p> &violated) {
+void ClintScop::processDependenceMap(const DependenceAnalyzer::DependenceMap &dependenceMap) {
   for (auto element : dependenceMap) {
-    std::pair<std::vector<int>, std::vector<int>> betas;
-    betas = element.first;
-    osl_dependence_p dep = element.second;
-    bool isViolated = false;
-    if (std::find(std::begin(violated), std::end(violated), dep) != std::end(violated)) {
-      isViolated = true;
-    }
+    std::pair<std::vector<int>, std::vector<int>> betas = element.first;
+    osl_dependence_p dependence = element.second.first;
+    bool isViolated = element.second.second;
 
-    std::set<std::vector<int>> mappedSourceBetas = m_betaMapper2->forwardMap(betas.first);
-    std::set<std::vector<int>> mappedTargetBetas = m_betaMapper2->forwardMap(betas.second);
+    std::set<std::vector<int>> mappedSourceBetas = m_betaMapper->forwardMap(betas.first);
+    std::set<std::vector<int>> mappedTargetBetas = m_betaMapper->forwardMap(betas.second);
 
     for (auto sourceBeta : mappedSourceBetas) {
       for (auto targetBeta : mappedTargetBetas) {
         ClintStmtOccurrence *source = occurrence(sourceBeta);
         ClintStmtOccurrence *target = occurrence(targetBeta);
-        ClintDependence *clintDep = new ClintDependence(dep, source, target, isViolated, this);
+        ClintDependence *clintDep = new ClintDependence(dependence, source, target, isViolated, this);
         m_dependenceMap.emplace(std::make_pair(sourceBeta, targetBeta), clintDep);
       }
     }
@@ -52,19 +48,12 @@ void ClintScop::processDependenceMap(const DependenceMap &dependenceMap,
 
 void ClintScop::createDependences(osl_scop_p scop) {
   clearDependences();
-
-  DependenceMap dependenceMap = oslDependenceMap(scop);
-  std::vector<osl_dependence_p> emptyVector;
-  processDependenceMap(dependenceMap, emptyVector);
+  processDependenceMap(m_analyzer->analyze(scop));
 }
 
 void ClintScop::updateDependences(osl_scop_p transformed) {
   clearDependences();
-
-  std::vector<osl_dependence_p> violated;
-  DependenceMap dependenceMap = oslDependenceMapViolations(m_scopPart, transformed, &violated);
-
-  processDependenceMap(dependenceMap, violated);
+  processDependenceMap(m_analyzer->analyze(m_scopPart, transformed));
 }
 
 static inline void replaceNewlinesHtml(std::string &str) {
@@ -92,6 +81,7 @@ ClintScop::ClintScop(osl_scop_p scop, int parameterValue, char *originalCode, Cl
   m_transformer = new ClayTransformer;
   m_scriptGenerator = new ClayScriptGenerator(m_scriptStream);
   m_betaMapper = new ClayBetaMapper(this);
+  m_analyzer = new CandlAnalyzer;
 
   createDependences(scop);
 
@@ -114,6 +104,7 @@ ClintScop::~ClintScop() {
   delete m_transformer;
   delete m_scriptGenerator;
   delete m_betaMapper;
+  delete m_analyzer;
 
   free(m_generatedCode);
   free(m_currentScript);
