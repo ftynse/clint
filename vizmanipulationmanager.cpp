@@ -784,39 +784,48 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
     grainAmount = -grainAmount;
   }
 
+  int horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
+  int verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
+  int horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(horizontalDimIdx) :
+        VizProperties::NO_DIMENSION;
+  int verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(verticalDimIdx) :
+        VizProperties::NO_DIMENSION;
+
   if (grainAmount > 1) {
     if (m_direction == Dir::LEFT || m_direction == Dir::RIGHT) {
       group.transformations.push_back(Transformation::grain(
                                         polyhedron->occurrence()->betaVector(),
-                                        polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        horizontalDepth,
                                         grainAmount));
 
       if (m_polyhedron->localHorizontalMin() != 0 && m_direction == Dir::RIGHT) {
         group.transformations.push_back(Transformation::constantShift(
                                           polyhedron->occurrence()->betaVector(),
-                                          polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                          horizontalDepth,
                                           m_polyhedron->localHorizontalMin() * (grainAmount - 1)));
       } else if (m_polyhedron->localHorizontalMax() != 0 && m_direction == Dir::LEFT) {
         group.transformations.push_back(Transformation::constantShift(
                                           polyhedron->occurrence()->betaVector(),
-                                          polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                          horizontalDepth,
                                           m_polyhedron->localHorizontalMax() * (grainAmount - 1)));
       }
     } else if (m_direction == Dir::DOWN || m_direction == Dir::UP) {
       group.transformations.push_back(Transformation::grain(
                                         polyhedron->occurrence()->betaVector(),
-                                        polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        verticalDepth,
                                         grainAmount));
 
       if (m_polyhedron->localVerticalMin() != 0 && m_direction == Dir::UP) {
         group.transformations.push_back(Transformation::constantShift(
                                           polyhedron->occurrence()->betaVector(),
-                                          polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                          verticalDepth,
                                           m_polyhedron->localVerticalMin() * (grainAmount - 1)));
       } else if (m_polyhedron->localVerticalMax() != 0 && m_direction == Dir::DOWN) {
         group.transformations.push_back(Transformation::constantShift(
                                           polyhedron->occurrence()->betaVector(),
-                                          polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                          verticalDepth,
                                           m_polyhedron->localVerticalMax() * (grainAmount - 1)));
       }
     }
@@ -947,18 +956,27 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
   if (!(m_corner & C_RIGHT)) verticalSkewFactor = -verticalSkewFactor;
   if (m_corner & C_BOTTOM) horizontalSkewFactor = -horizontalSkewFactor;
 
+  int horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
+  int verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
+  int horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(horizontalDimIdx) :
+        VizProperties::NO_DIMENSION;
+  int verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(verticalDimIdx) :
+        VizProperties::NO_DIMENSION;
+
   TransformationGroup group;
   if (verticalSkewFactor != 0 || horizontalSkewFactor != 0) {
     if (horizontalPreShiftAmount != 0) {
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        horizontalDepth,
                                         horizontalPreShiftAmount));
     }
     if (verticalPreShiftAmount != 0) {
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        verticalDepth,
                                         verticalPreShiftAmount));
     }
 
@@ -966,29 +984,29 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
     if (verticalSkewFactor != 0) {
       group.transformations.push_back(Transformation::skew(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        horizontalDepth,
+                                        verticalDepth,
                                         verticalSkewFactor));
     }
     // horizontal
     if (horizontalSkewFactor != 0) {
       group.transformations.push_back(Transformation::skew(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        verticalDepth,
+                                        horizontalDepth,
                                         horizontalSkewFactor));
     }
 
     if (horizontalPreShiftAmount != 0) {
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        horizontalDepth,
                                         -horizontalPreShiftAmount));
     }
     if (verticalPreShiftAmount != 0) {
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        verticalDepth,
                                         -verticalPreShiftAmount));
     }
   }
@@ -1070,51 +1088,60 @@ void VizManipulationManager::polyhedronHasRotated(VizPolyhedron *polyhedron) {
 
   TransformationGroup group;
 
+  int horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
+  int verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
+  int horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(horizontalDimIdx) :
+        VizProperties::NO_DIMENSION;
+  int verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(verticalDimIdx) :
+        VizProperties::NO_DIMENSION;
+
   int rotateCase = rotationCase();
   m_polyhedron->prepareRotateAngle(rotateCase * -90.0);
   if (rotateCase == 1) {
     group.transformations.push_back(Transformation::reverse(
                                       m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1));
+                                      verticalDepth));
     if (m_polyhedron->localVerticalMin() + m_polyhedron->localVerticalMax() != 0)
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        verticalDepth,
                                         -m_polyhedron->localVerticalMin() - m_polyhedron->localVerticalMax()));
     group.transformations.push_back(Transformation::interchange(
                                       m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1));
+                                      horizontalDepth,
+                                      verticalDepth));
   } else if (rotateCase == 2) {
     group.transformations.push_back(Transformation::reverse(
                                       m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1));
+                                      horizontalDepth));
     if (m_polyhedron->localHorizontalMin() + m_polyhedron->localHorizontalMax() != 0)
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        horizontalDepth,
                                         -m_polyhedron->localHorizontalMin() - m_polyhedron->localHorizontalMax()));
     group.transformations.push_back(Transformation::reverse(
                                       m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1));
+                                      verticalDepth));
     if (m_polyhedron->localVerticalMin() + m_polyhedron->localVerticalMax() != 0)
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        verticalDepth,
                                         -m_polyhedron->localVerticalMin() - m_polyhedron->localVerticalMax()));
   } else if (rotateCase == 3) {
     group.transformations.push_back(Transformation::reverse(
                                       m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1));
+                                      horizontalDepth));
     if (m_polyhedron->localHorizontalMin() + m_polyhedron->localHorizontalMax() != 0)
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        horizontalDepth,
                                         -m_polyhedron->localHorizontalMin() - m_polyhedron->localHorizontalMax()));
     group.transformations.push_back(Transformation::interchange(
                                       m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1));
+                                      horizontalDepth,
+                                      verticalDepth));
   } else if (rotateCase == 0) {
     // Do nothing
   } else {
