@@ -55,9 +55,6 @@ void ClintStmtOccurrence::resetOccurrence(osl_statement_p stmt, const std::vecto
   CLINT_ASSERT(m_oslScatterings.size() != 0,
                "Trying to create an occurrence for the inexistent beta-vector");
 
-  m_betaVector.reserve(betaVector.size());
-  std::copy(std::begin(betaVector), std::end(betaVector), std::back_inserter(m_betaVector));
-
   if (differentPoints) {
     emit pointsChanged();
   }
