@@ -115,10 +115,15 @@ void VizPolyhedron::occurrenceChanged() {
   int verticalDim   = coordinateSystem()->verticalDimensionIdx();
   std::vector<std::vector<int>> points =
       occurrence()->projectOn(horizontalDim, verticalDim);
-  m_localHorizontalMin = occurrence()->minimumValue(horizontalDim);
-  m_localHorizontalMax = occurrence()->maximumValue(horizontalDim);
-  m_localVerticalMin   = occurrence()->minimumValue(verticalDim);
-  m_localVerticalMax   = occurrence()->maximumValue(verticalDim);
+//  if (horizontalDim != VizProperties::NO_DIMENSION)
+//    horizontalDim = occurrence()->depth(coordinateSystem()->horizontalDimensionIdx()) - 1;
+//  if (verticalDim != VizProperties::NO_DIMENSION)
+//    verticalDim   = occurrence()->depth(coordinateSystem()->verticalDimensionIdx()) - 1;
+
+  // Cannot rely on caches in case of tiling,
+  // dimensionality() is not working until beta-vector for occurrence is updated.
+  // XXX: Is not it fixed with beta mapper running before the emitting pointsChanged()?
+  recomputeMinMax();
 
   double pointDistance = coordinateSystem()->projection()->vizProperties()->pointDistance();
 
@@ -157,10 +162,6 @@ void VizPolyhedron::occurrenceChanged() {
       realScatteredCoords.second -= m_localVerticalMin;
       QPointF position = vp->pos();
       position /= pointDistance;
-      std::pair<int, int> visibleScatteredCoords {position.x(), -position.y()}; // inverted vertical axis
-      // XXX: this was demoted to warning as it does not hold for grain (initially held for shift)
-      CLINT_WARNING(realScatteredCoords == visibleScatteredCoords,
-                   "Point projected to a different position than it is visible");
       matchedPoints.insert(vp);
     }
   }
@@ -1032,7 +1033,7 @@ void VizPolyhedron::setOccurrenceSilent(ClintStmtOccurrence *occurrence) {
   }
   m_occurrence = occurrence;
   if (occurrence) {
-    m_backgroundColor = m_coordinateSystem->projection()->vizProperties()->color(occurrence->betaVector());
+    m_backgroundColor = m_coordinateSystem->projection()->vizProperties()->color(occurrence->canonicalOriginalBetaVector());
     connect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
   }
 }

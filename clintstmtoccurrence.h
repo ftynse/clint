@@ -20,6 +20,8 @@ public:
                     const std::vector<int> &betaVector,
                     ClintStmt *parent = 0);
 
+  ClintStmtOccurrence *split(osl_statement_p stmt, const std::vector<int> &betaVector);
+
   friend bool operator < (const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs);
   friend bool operator ==(const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs);
 
@@ -72,7 +74,33 @@ public:
     return m_tileSizes.at(dim);
   }
 
+  /**
+   * Get the 1-based depth that may be used for transformation.
+   * Takes tiling dimensions into account.
+   * \param[in]  dimension 0-based visible dimension index.
+   * \returns    1-based depth for Clay transformations.
+   */
+  int depth(int dimension) const {
+    CLINT_ASSERT(dimension >= 0,
+                 "Visible dimension must be positive");
+    int scatDimension = 2 * dimension + 1;
+    int scatDimensionNb = (m_betaVector.size() - 1) * 2 + 1;
+    CLINT_ASSERT(scatDimension < scatDimensionNb,
+                 "Dimension overflow");
+    int result = dimension + 1;
+    for (int i = 1; i <= scatDimension; i += 2) {
+      if (m_tilingDimensions.count(i)) {
+        scatDimension += 2;
+        result++;
+      }
+    }
+    return result;
+  }
+
   std::vector<int> untiledBetaVector() const;
+  std::vector<int> canonicalOriginalBetaVector() const {
+    return scop()->canonicalOriginalBetaVector(m_betaVector);
+  }
 
   int minimumValue(int dimIdx) const;
   int maximumValue(int dimIdx) const;
@@ -86,6 +114,19 @@ public:
   };
 
   std::vector<int> findBoundlikeForm(Bound bound, int dimIdx, int constValue);
+
+
+  void debugDumpMinMaxCache(std::ostream &out) {
+    out << "Minima: " << std::endl;
+    for (auto v : m_cachedDimMins) {
+      out << v.first << " : " << v.second << std::endl;
+    }
+    out << "Maxima: " << std::endl;
+    for (auto v : m_cachedDimMaxs) {
+      out << v.first << " : " << v.second << std::endl;
+    }
+    out << std::endl;
+  }
 
 signals:
   void pointsChanged();

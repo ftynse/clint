@@ -53,17 +53,39 @@ public:
   void transform(const Transformation &t) {
     TransformationGroup tg;
     tg.transformations.push_back(t);
-    m_transformationSeq.groups.push_back(std::move(tg));
+    transform(tg);
   }
 
   void transform(const TransformationGroup &tg) {
     m_transformationSeq.groups.push_back(tg);
+    for (const Transformation &transformation : tg.transformations) {
+      // Remap betas when needed.  FIXME: ClintScop should not know which transformation may modify betas
+      // introduce bool Transformation::modifiesLoopStmtOrder() and use it.  Same for checking for ISS transformation.
+      if (transformation.kind() == Transformation::Kind::Fuse ||
+          transformation.kind() == Transformation::Kind::Split ||
+          transformation.kind() == Transformation::Kind::Reorder ||
+          transformation.kind() == Transformation::Kind::Tile) {
+        remapBetas(tg);
+        break;
+      }
+      // XXX: needs rethinking
+      // This weird move allows to workaround the 1-to-1 mapping condition imposed by the current implementation of remapBetas.
+      // The problem is primarily caused by the fact of ClintStmtOccurrence creation in executeTransformationSequence (thus
+      // apart from beta remapping) that happens in the undefined future; it is also not clear how to deal with multiple statements
+      // being created by a transformation (which beta to assign to the remapped statement and which to the one being created;
+      // is it important at all? occurrences will filter the scatterings they need, but not sure about dependence maps).
+      // As far as VizManipulationManager deals with association of VizPolyhedron to ClintStmtOccurrrence after it was created,
+      // that part works find.
+      if (transformation.kind() == Transformation::Kind::IndexSetSplitting) {
+        m_betaMapper->apply(nullptr, tg);
+        break;
+      }
+    }
   }
 
   void executeTransformationSequence();
 
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
-  ClintStmtOccurrence *mappedOccurrence(const std::vector<int> &beta) const;
   std::unordered_set<ClintDependence *> internalDependences(ClintStmtOccurrence *occurrence) const;
   std::unordered_set<ClintDependence *> dependencesBetween(ClintStmtOccurrence *occ1, ClintStmtOccurrence *occ2) const;
   std::vector<int> untiledBetaVector(const std::vector<int> &beta) const;
@@ -139,6 +161,10 @@ public:
 
   int dimensionality();
 
+  /// Get the single original beta of an occurrence even if it has multiple original betas in mapper.
+  /// This function is used as default policy for finding the original occurrence for a transformed one.
+  std::vector<int> canonicalOriginalBetaVector(const std::vector<int> &beta) const;
+
 signals:
   void transformExecuted();
   void dimensionalityChanged();
@@ -157,6 +183,9 @@ private:
                             const std::vector<osl_dependence_p> &violated);
   void createDependences(osl_scop_p scop);
   void updateDependences(osl_scop_p transformed);
+  void resetOccurrences(osl_scop_p transformed);
+
+  void remapBetas(const TransformationGroup &tg);
 
   osl_scop_p m_scopPart;
   ClintProgram *m_program;
@@ -173,6 +202,7 @@ private:
   Transformer *m_transformer;
   Transformer *m_scriptGenerator;
   ClayBetaMapper *m_betaMapper;
+  size_t m_groupsExecuted = 0;
 
   char *m_originalCode  = nullptr;
   char *m_generatedCode = nullptr;

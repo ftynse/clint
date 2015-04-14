@@ -106,9 +106,13 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
 
     for (VizPolyhedron *vp : selectedPolyhedra) {
       const std::vector<int> beta = vp->occurrence()->betaVector();
-      int horzDepth = vp->coordinateSystem()->horizontalDimensionIdx() + 1;
+      int horzDepth = vp->coordinateSystem()->horizontalDimensionIdx() == VizProperties::NO_DIMENSION ?
+            VizProperties::NO_DIMENSION :
+            vp->occurrence()->depth(vp->coordinateSystem()->horizontalDimensionIdx());
       int horzAmount = m_horzOffset;
-      int vertDepth = vp->coordinateSystem()->verticalDimensionIdx() + 1;
+      int vertDepth = vp->coordinateSystem()->verticalDimensionIdx() == VizProperties::NO_DIMENSION ?
+            VizProperties::NO_DIMENSION :
+            vp->occurrence()->depth(vp->coordinateSystem()->verticalDimensionIdx());
       int vertAmount = m_vertOffset;
       bool oneDimensional = vp->occurrence()->dimensionality() < vp->coordinateSystem()->verticalDimensionIdx();
       bool zeroDimensional = vp->occurrence()->dimensionality() < vp->coordinateSystem()->horizontalDimensionIdx();
@@ -160,6 +164,9 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
     polyhedron->scop()->transform(group);
     polyhedron->scop()->executeTransformationSequence();
     polyhedron->coordinateSystem()->projection()->updateInnerDependences();
+    for (VizPolyhedron *vp : selectedPolyhedra) {
+      vp->occurrenceChanged();
+    }
   }
 }
 
@@ -231,34 +238,6 @@ void VizManipulationManager::rearrangeCSs2D(int coordinateSystemIdx, bool csDele
       group.transformations.push_back(Transformation::putBefore(csBeta, coordinateSystemIdx, pileSize));
     }
   }
-}
-
-// TODO: move this function to the ClintScop
-void VizManipulationManager::remapBetas(TransformationGroup group, ClintScop *scop) {
-  ClayBetaMapper *mapper = new ClayBetaMapper(scop);
-  mapper->apply(nullptr, group);
-  bool happy = true;
-  std::map<std::vector<int>, std::vector<int>> mapping;
-  for (ClintStmt *stmt : scop->statements()) {
-    for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
-      int result;
-      std::vector<int> beta = occurrence->betaVector();
-      std::vector<int> updatedBeta;
-      std::tie(updatedBeta, result) = mapper->map(occurrence->betaVector());
-
-      qDebug() << result << QVector<int>::fromStdVector(beta) << "->" << QVector<int>::fromStdVector(updatedBeta);
-      if (result == ClayBetaMapper::SUCCESS &&
-          beta != updatedBeta) {
-        occurrence->resetBetaVector(updatedBeta);
-        mapping[beta] = updatedBeta;
-      }
-      happy = happy && result == ClayBetaMapper::SUCCESS;
-    }
-  }
-  delete mapper;
-  CLINT_ASSERT(happy, "Beta mapping failed");
-
-  scop->updateBetas(mapping);
 }
 
 void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
@@ -516,7 +495,10 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
 
       // Update betas after each polyhedron moved as we use them to determine beta-prefixes
       // of the coordinate systems.
-      remapBetas(iterGroup, polyhedron->scop());
+      if (!iterGroup.transformations.empty()) {
+        polyhedron->scop()->transform(iterGroup);
+      }
+//      polyhedron->scop()->remapBetas(iterGroup);
 
       std::copy(std::begin(iterGroup.transformations), std::end(iterGroup.transformations), std::back_inserter(group.transformations));
       iterGroup.transformations.clear();
@@ -532,7 +514,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
   }
 
   if (!group.transformations.empty()) {
-    polyhedron->scop()->transform(group);
+//    polyhedron->scop()->transform(group);
     polyhedron->scop()->executeTransformationSequence();
     polyhedron->coordinateSystem()->projection()->updateOuterDependences();
     polyhedron->coordinateSystem()->projection()->updateInnerDependences();
@@ -672,6 +654,7 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     } else {
       dimensionIdx = oldPolyhedron->coordinateSystem()->horizontalDimensionIdx();
     }
+    int depth = oldPolyhedron->occurrence()->depth(dimensionIdx);
 
     for (VizPoint *vp : selectedPoints) {
       polyhedron->reparentPoint(vp);
@@ -687,11 +670,12 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     std::vector<int> issVector = oldPolyhedron->occurrence()->findBoundlikeForm(
           m_pointDetachLast ? ClintStmtOccurrence::Bound::UPPER :
                               ClintStmtOccurrence::Bound::LOWER,
-          dimensionIdx,
+          depth - 1,
           m_pointDetachValue);
     CLINT_ASSERT(issVector.size() >= 2, "malformed ISS vector");
 
-    group.transformations.push_back(Transformation::issFromConstraint(betaLoop, issVector, betaLoop.size()));
+    int nbInputDims = oldPolyhedron->occurrence()->untiledBetaVector().size() - 1;
+    group.transformations.push_back(Transformation::issFromConstraint(betaLoop, issVector, nbInputDims));
 
     oldPolyhedron->scop()->transform(group);
     oldPolyhedron->scop()->executeTransformationSequence();
@@ -700,6 +684,7 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
                            // have to first split the statement out of the loop
     ClintStmtOccurrence *occurrence = oldPolyhedron->scop()->occurrence(betaLoop);
     polyhedron->setOccurrenceSilent(occurrence);
+    polyhedron->occurrenceChanged(); // FIXME: check why tile lines do not appear after ClintScop::resetOccurrences without this call (drawing functionality is now implemented in VizPolyhedron::occurrenceChanged())
     oldPolyhedron->updateInternalDependences();
     polyhedron->updateInternalDependences();
     polyhedron->coordinateSystem()->projection()->updateInnerDependences();
@@ -802,39 +787,48 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
     grainAmount = -grainAmount;
   }
 
+  int horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
+  int verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
+  int horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(horizontalDimIdx) :
+        VizProperties::NO_DIMENSION;
+  int verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(verticalDimIdx) :
+        VizProperties::NO_DIMENSION;
+
   if (grainAmount > 1) {
     if (m_direction == Dir::LEFT || m_direction == Dir::RIGHT) {
       group.transformations.push_back(Transformation::grain(
                                         polyhedron->occurrence()->betaVector(),
-                                        polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        horizontalDepth,
                                         grainAmount));
 
       if (m_polyhedron->localHorizontalMin() != 0 && m_direction == Dir::RIGHT) {
         group.transformations.push_back(Transformation::constantShift(
                                           polyhedron->occurrence()->betaVector(),
-                                          polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                          horizontalDepth,
                                           m_polyhedron->localHorizontalMin() * (grainAmount - 1)));
       } else if (m_polyhedron->localHorizontalMax() != 0 && m_direction == Dir::LEFT) {
         group.transformations.push_back(Transformation::constantShift(
                                           polyhedron->occurrence()->betaVector(),
-                                          polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                          horizontalDepth,
                                           m_polyhedron->localHorizontalMax() * (grainAmount - 1)));
       }
     } else if (m_direction == Dir::DOWN || m_direction == Dir::UP) {
       group.transformations.push_back(Transformation::grain(
                                         polyhedron->occurrence()->betaVector(),
-                                        polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        verticalDepth,
                                         grainAmount));
 
       if (m_polyhedron->localVerticalMin() != 0 && m_direction == Dir::UP) {
         group.transformations.push_back(Transformation::constantShift(
                                           polyhedron->occurrence()->betaVector(),
-                                          polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                          verticalDepth,
                                           m_polyhedron->localVerticalMin() * (grainAmount - 1)));
       } else if (m_polyhedron->localVerticalMax() != 0 && m_direction == Dir::DOWN) {
         group.transformations.push_back(Transformation::constantShift(
                                           polyhedron->occurrence()->betaVector(),
-                                          polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                          verticalDepth,
                                           m_polyhedron->localVerticalMax() * (grainAmount - 1)));
       }
     }
@@ -965,18 +959,27 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
   if (!(m_corner & C_RIGHT)) verticalSkewFactor = -verticalSkewFactor;
   if (m_corner & C_BOTTOM) horizontalSkewFactor = -horizontalSkewFactor;
 
+  int horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
+  int verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
+  int horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(horizontalDimIdx) :
+        VizProperties::NO_DIMENSION;
+  int verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(verticalDimIdx) :
+        VizProperties::NO_DIMENSION;
+
   TransformationGroup group;
   if (verticalSkewFactor != 0 || horizontalSkewFactor != 0) {
     if (horizontalPreShiftAmount != 0) {
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        horizontalDepth,
                                         horizontalPreShiftAmount));
     }
     if (verticalPreShiftAmount != 0) {
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        verticalDepth,
                                         verticalPreShiftAmount));
     }
 
@@ -984,29 +987,29 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
     if (verticalSkewFactor != 0) {
       group.transformations.push_back(Transformation::skew(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        horizontalDepth,
+                                        verticalDepth,
                                         verticalSkewFactor));
     }
     // horizontal
     if (horizontalSkewFactor != 0) {
       group.transformations.push_back(Transformation::skew(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        verticalDepth,
+                                        horizontalDepth,
                                         horizontalSkewFactor));
     }
 
     if (horizontalPreShiftAmount != 0) {
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        horizontalDepth,
                                         -horizontalPreShiftAmount));
     }
     if (verticalPreShiftAmount != 0) {
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        verticalDepth,
                                         -verticalPreShiftAmount));
     }
   }
@@ -1088,51 +1091,60 @@ void VizManipulationManager::polyhedronHasRotated(VizPolyhedron *polyhedron) {
 
   TransformationGroup group;
 
+  int horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
+  int verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
+  int horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(horizontalDimIdx) :
+        VizProperties::NO_DIMENSION;
+  int verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(verticalDimIdx) :
+        VizProperties::NO_DIMENSION;
+
   int rotateCase = rotationCase();
   m_polyhedron->prepareRotateAngle(rotateCase * -90.0);
   if (rotateCase == 1) {
     group.transformations.push_back(Transformation::reverse(
                                       m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1));
+                                      verticalDepth));
     if (m_polyhedron->localVerticalMin() + m_polyhedron->localVerticalMax() != 0)
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        verticalDepth,
                                         -m_polyhedron->localVerticalMin() - m_polyhedron->localVerticalMax()));
     group.transformations.push_back(Transformation::interchange(
                                       m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1));
+                                      horizontalDepth,
+                                      verticalDepth));
   } else if (rotateCase == 2) {
     group.transformations.push_back(Transformation::reverse(
                                       m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1));
+                                      horizontalDepth));
     if (m_polyhedron->localHorizontalMin() + m_polyhedron->localHorizontalMax() != 0)
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        horizontalDepth,
                                         -m_polyhedron->localHorizontalMin() - m_polyhedron->localHorizontalMax()));
     group.transformations.push_back(Transformation::reverse(
                                       m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1));
+                                      verticalDepth));
     if (m_polyhedron->localVerticalMin() + m_polyhedron->localVerticalMax() != 0)
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1,
+                                        verticalDepth,
                                         -m_polyhedron->localVerticalMin() - m_polyhedron->localVerticalMax()));
   } else if (rotateCase == 3) {
     group.transformations.push_back(Transformation::reverse(
                                       m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1));
+                                      horizontalDepth));
     if (m_polyhedron->localHorizontalMin() + m_polyhedron->localHorizontalMax() != 0)
       group.transformations.push_back(Transformation::constantShift(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
+                                        horizontalDepth,
                                         -m_polyhedron->localHorizontalMin() - m_polyhedron->localHorizontalMax()));
     group.transformations.push_back(Transformation::interchange(
                                       m_polyhedron->occurrence()->betaVector(),
-                                      m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                      m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1));
+                                      horizontalDepth,
+                                      verticalDepth));
   } else if (rotateCase == 0) {
     // Do nothing
   } else {
@@ -1208,40 +1220,39 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
   int verticalOccurrenceSpan = occurrence->maximumValue(point->coordinateSystem()->verticalDimensionIdx())
       - occurrence->minimumValue(point->coordinateSystem()->verticalDimensionIdx()) + 1;
 
-  std::cerr << horizontalOccurrenceSpan << " x " << verticalOccurrenceSpan << std::endl;
-
   bool horizontalTiling = point->coordinateSystem()->isHorizontalAxisVisible() &&
                           horizontalTileSize != horizontalOccurrenceSpan;
   bool verticalTiling   = point->coordinateSystem()->isVerticalAxisVisible() &&
                           verticalTileSize != verticalOccurrenceSpan;
 
   TransformationGroup group;
+  std::vector<int> beta = occurrence->betaVector();
   if (verticalTiling) {
+    int verticalDepth = occurrence->depth(point->coordinateSystem()->verticalDimensionIdx());
     group.transformations.push_back(Transformation::tile(
-                                      occurrence->betaVector(),
-                                      point->coordinateSystem()->verticalDimensionIdx() + 1,
+                                      beta,
+                                      verticalDepth,
                                       verticalTileSize));
-  }
-  if (horizontalTiling) {
-    group.transformations.push_back(Transformation::tile(
-                                      occurrence->betaVector(),
-                                      point->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                      horizontalTileSize));
-  }
-
-  remapBetas(group, point->scop());
-
-  if (verticalTiling) {
+    beta.insert(std::begin(beta) + verticalDepth, 0);
     occurrence->tile(point->coordinateSystem()->verticalDimensionIdx(),
                      verticalTileSize);
   }
   if (horizontalTiling) {
+    int horizontalDepth = occurrence->depth(point->coordinateSystem()->horizontalDimensionIdx());
+    group.transformations.push_back(Transformation::tile(
+                                      beta,
+                                      horizontalDepth,
+                                      horizontalTileSize));
+    beta.insert(std::begin(beta) + horizontalDepth, 0);
     occurrence->tile(point->coordinateSystem()->horizontalDimensionIdx(),
                      horizontalTileSize);
   }
 
+//  point->scop()->remapBetas(group);
+
   if (!group.transformations.empty()) {
     occurrence->scop()->transform(group);
     occurrence->scop()->executeTransformationSequence();
+    //point->polyhedron()->occurrenceChanged();
   }
 }

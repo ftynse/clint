@@ -10,15 +10,36 @@ ClintStmtOccurrence::ClintStmtOccurrence(osl_statement_p stmt, const std::vector
   resetOccurrence(stmt, betaVector);
 }
 
+ClintStmtOccurrence *ClintStmtOccurrence::split(osl_statement_p stmt, const std::vector<int> &betaVector) {
+  ClintStmtOccurrence *occurrence = new ClintStmtOccurrence(stmt, betaVector, m_statement);
+  occurrence->m_tilingDimensions = m_tilingDimensions;
+  occurrence->m_tileSizes = m_tileSizes;
+  return occurrence;
+}
+
 void ClintStmtOccurrence::resetOccurrence(osl_statement_p stmt, const std::vector<int> &betaVector) {
   bool differentBeta = (m_betaVector == betaVector);
   bool differentPoints = false;
   std::vector<osl_relation_p> oslScatterings;
-  m_betaVector.clear();
+  m_betaVector = betaVector;
+  m_oslStatement = stmt; // XXX: check if it's okay everywhere
+                         // I am not sure that adding the transformed statement is a good idea, but otherwise we cannot call occurrenceChanged/projectOn for this occurrence
+                         // Furthermore, storing the statement in ClintStmtOccurrence rather than in ClintStmt is questionable
+                         // There is a comment somewhere saying m_oslStatement may go out of sync with transformed scop, this should fix it...
+
+  if (stmt == nullptr) {
+    if (m_oslScatterings.size() != 0)
+      emit pointsChanged();
+    if (differentBeta)
+      emit betaChanged();
+    return;
+  }
 
   oslListForeach(stmt->scattering, [this,&betaVector,&oslScatterings,&differentPoints](osl_relation_p scattering) {
     if (betaExtract(scattering) == betaVector) {
       oslScatterings.push_back(scattering);
+      if (m_oslScatterings.size() == 0)
+        differentPoints = true;
       // Check if the scattering relation is equal to any other old scattering relation in this occurrence.
       // If it is not, than this occurrence was indeed affected by the transformation and should send corresponding updates.
       if (!differentPoints) {
@@ -33,9 +54,6 @@ void ClintStmtOccurrence::resetOccurrence(osl_statement_p stmt, const std::vecto
   m_oslScatterings = oslScatterings;
   CLINT_ASSERT(m_oslScatterings.size() != 0,
                "Trying to create an occurrence for the inexistent beta-vector");
-
-  m_betaVector.reserve(betaVector.size());
-  std::copy(std::begin(betaVector), std::end(betaVector), std::back_inserter(m_betaVector));
 
   if (differentPoints) {
     emit pointsChanged();
@@ -164,7 +182,9 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
 
   std::vector<std::vector<int>> points =
       program()->enumerator()->enumerate(ready, std::move(visibleDimensions));
-  computeMinMax(points, horizontalDimIdx, verticalDimIdx);
+  computeMinMax(points,
+                horizontalDimIdx != -2 ? depth(horizontalDimIdx) - 1 : horizontalDimIdx,
+                verticalDimIdx != -2 ? depth(verticalDimIdx) - 1 : verticalDimIdx);
 
   return std::move(points);
 }
@@ -396,9 +416,24 @@ std::vector<int> ClintStmtOccurrence::untiledBetaVector() const {
   return std::move(beta);
 }
 
+static void updateMinMaxCache(std::unordered_map<int, int> &cache, int dimensionIdx) {
+  std::unordered_map<int, int> updated;
+  for (auto v : cache) {
+    if (v.first >= dimensionIdx) {
+      updated[v.first + 1] = v.second;
+    } else {
+      updated[v.first] = v.second;
+    }
+  }
+  cache = updated;
+}
+
 void ClintStmtOccurrence::tile(int dimensionIdx, unsigned tileSize) {
   CLINT_ASSERT(tileSize != 0,
                "Cannot tile by 0 elements");
+
+  // Ignore previously tiled dimensions.
+  dimensionIdx = depth(dimensionIdx) - 1;
 
   std::set<int> tilingDimensions;
   std::unordered_map<int, unsigned> tileSizes;
@@ -418,4 +453,8 @@ void ClintStmtOccurrence::tile(int dimensionIdx, unsigned tileSize) {
   tileSizes[2 * dimensionIdx + 1] = tileSize;
   m_tilingDimensions = tilingDimensions;
   m_tileSizes = tileSizes;
+
+  // Update min/max caches wrt to new dimensionality.
+  updateMinMaxCache(m_cachedDimMaxs, dimensionIdx);
+  updateMinMaxCache(m_cachedDimMins, dimensionIdx);
 }
