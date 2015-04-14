@@ -154,15 +154,19 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
       emit movedHorizontally(m_horzOffset);
     if (m_vertOffset != 0)
       emit movedVertically(m_vertOffset);
+  } else {
+    for (VizPolyhedron *vp : selectedPolyhedra) {
+      vp->coordinateSystem()->polyhedronUpdated(vp);
+    }
   }
 
   if (!group.transformations.empty()) {
     polyhedron->scop()->transform(group);
     polyhedron->scop()->executeTransformationSequence();
     polyhedron->coordinateSystem()->projection()->updateInnerDependences();
-  }
-  for (VizPolyhedron *vp : selectedPolyhedra) {
-    vp->coordinateSystem()->polyhedronUpdated(vp);
+    for (VizPolyhedron *vp : selectedPolyhedra) {
+      vp->occurrenceChanged();
+    }
   }
 }
 
