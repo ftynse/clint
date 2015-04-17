@@ -7,6 +7,7 @@
 
 #include <vector>
 
+#include "projectionview.h"
 #include "vizcoordinatesystem.h"
 #include "vizmanipulationmanager.h"
 #include "vizproperties.h"
@@ -101,12 +102,14 @@ public:
   void updateOuterDependences();
   void updateInnerDependences();
 signals:
+  void selected(int horizontal, int vertical);
 
 public slots:
   void updateProjection();
+  void selectProjection();
 
 private:
-  QGraphicsView *m_view;
+  ProjectionView *m_view;
   QGraphicsScene *m_scene;
   VizProperties *m_vizProperties;
 

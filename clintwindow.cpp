@@ -188,6 +188,7 @@ void ClintWindow::fileClose() {
 
   for (VizProjection *vp : m_allProjections) {
     vp->setParent(nullptr);
+    disconnect(vp, &VizProjection::selected, this, &ClintWindow::projectionSelectedInMatrix);
     delete vp;
   }
   m_allProjections.clear();
@@ -243,6 +244,7 @@ void ClintWindow::resetProjectionMatrix(ClintScop *vscop) {
 void ClintWindow::createProjections(ClintScop *vscop) {
   for (VizProjection *vp : m_allProjections) {
     vp->setParent(nullptr);
+    disconnect(vp, &VizProjection::selected, this, &ClintWindow::projectionSelectedInMatrix);
     delete vp;
   }
   m_allProjections.clear();
@@ -251,6 +253,7 @@ void ClintWindow::createProjections(ClintScop *vscop) {
     for (int j = i + 1; j < e; j++) {
       VizProjection *vp = new VizProjection(i, j, this);
       vp->projectScop(vscop);
+      connect(vp, &VizProjection::selected, this, &ClintWindow::projectionSelectedInMatrix);
       m_allProjections.push_back(vp);
     }
   }
@@ -394,7 +397,12 @@ void ClintWindow::viewProjectionMatrixToggled(bool value) {
   if (!m_actionViewProjectionMatrix->isEnabled())
     return;
   if (value) {
-    resetCentralWidget(m_projectionMatrixWidget);
+    resetCentralWidget(m_projectionMatrixWidget, false); // Do not kill m_projection's view...
+    if (m_projection) {
+      m_projection->setParent(nullptr);
+      delete m_projection;
+      m_projection = nullptr;
+    }
   } else {
     m_projection = new VizProjection(0, 1, this);
     m_projection->projectScop((* m_program)[0]);
@@ -488,4 +496,19 @@ void ClintWindow::scopTransformed() {
   for (VizProjection *vp : m_allProjections) {
     vp->updateProjection();
   }
+}
+
+void ClintWindow::projectionSelectedInMatrix(int horizontal, int vertical) {
+  if (m_projection) {
+    m_projection->setParent(nullptr);
+    delete m_projection;
+  }
+  m_projection = new VizProjection(horizontal, vertical, this);
+  m_projection->projectScop((* m_program)[0]);
+  resetCentralWidget(m_projection->widget(), false);
+
+  // FIXME: using action's state as model value, baaad!
+  m_actionViewProjectionMatrix->setEnabled(false);
+  m_actionViewProjectionMatrix->setChecked(false);
+  m_actionViewProjectionMatrix->setEnabled(true);
 }

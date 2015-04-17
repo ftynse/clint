@@ -1,7 +1,8 @@
-#include "vizprojection.h"
-#include "oslutils.h"
-#include "vizcoordinatesystem.h"
 #include "clintstmtoccurrence.h"
+#include "oslutils.h"
+#include "projectionview.h"
+#include "vizcoordinatesystem.h"
+#include "vizprojection.h"
 
 #include <QtWidgets>
 #include <QtCore>
@@ -14,7 +15,8 @@ VizProjection::VizProjection(int horizontalDimensionIdx, int verticalDimensionId
   QObject(parent), m_horizontalDimensionIdx(horizontalDimensionIdx), m_verticalDimensionIdx(verticalDimensionIdx) {
 
   m_scene = new QGraphicsScene;
-  m_view = new QGraphicsView(m_scene);
+  m_view = new ProjectionView(m_scene);
+  connect(m_view, &ProjectionView::doubleclicked, this, &VizProjection::selectProjection);
 
   m_view->setDragMode(QGraphicsView::RubberBandDrag);
   m_view->setRubberBandSelectionMode(Qt::ContainsItemShape);
@@ -516,4 +518,8 @@ void VizProjection::updateSceneLayout() {
     }
     horizontalOffset += maximumWidth + m_vizProperties->coordinateSystemMargin();
   }
+}
+
+void VizProjection::selectProjection() {
+  emit selected(m_horizontalDimensionIdx, m_verticalDimensionIdx);
 }

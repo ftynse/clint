@@ -41,6 +41,7 @@ public slots:
   void reparseScript();
 
   void changeParameter(int value);
+  void projectionSelectedInMatrix(int horizontal, int vertical);
 
 private:
   QAction *m_actionFileOpen;
