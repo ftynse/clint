@@ -8,9 +8,12 @@
 #include "oslutils.h"
 #include "propertiesdialog.h"
 
-void ClintWindow::resetCentralWidget(QWidget *interface) {
+void ClintWindow::resetCentralWidget(QWidget *interface, bool deleteGraphicalInterface) {
   if (centralWidget() != nullptr) {
     QWidget *oldWidget = centralWidget();
+    if (!deleteGraphicalInterface && m_graphicalInterface) {
+      m_graphicalInterface->setParent(nullptr);
+    }
     m_scriptEditor->setParent(nullptr);
     m_codeEditor->setParent(nullptr);
     m_reparseScriptButton->setParent(nullptr);
@@ -18,33 +21,27 @@ void ClintWindow::resetCentralWidget(QWidget *interface) {
     delete oldWidget;
   }
 
+  if (m_graphicalInterface == m_projectionMatrixWidget && deleteGraphicalInterface)
+    m_projectionMatrixWidget = nullptr;
+  m_graphicalInterface = interface;
+
   if (interface == nullptr) {
     setCentralWidget(nullptr);
     return;
   }
 
-//  QLabel *TODOupdater = new QLabel("<\n>");
-
   QGridLayout *topLayout = new QGridLayout;
   topLayout->addWidget(interface, 0, 0, 2, 1 /*,Qt::AlignCenter | Qt::AlignVCenter*/);
-//  topLayout->addWidget(TODOupdater, 0, 1, 2, 1 /*,Qt::AlignVCenter*/);
   topLayout->addWidget(m_reparseScriptButton, 0, 1, 1, 1);
   topLayout->addWidget(m_reparseCodeButton, 1, 1, 1, 1);
   topLayout->addWidget(m_scriptEditor, 0, 2, 1, 1 /*,Qt::AlignCenter | Qt::AlignTop*/);
   topLayout->addWidget(m_codeEditor, 1, 2, 1, 1  /*,Qt::AlignCenter| Qt::AlignBottom*/);
+  topLayout->setHorizontalSpacing(0);
 
   topLayout->setColumnStretch(0, 3);
   topLayout->setColumnStretch(2, 1);
   topLayout->setRowStretch(0, 1);
   topLayout->setRowStretch(1, 3);
-
-//  QBoxLayout *topLayout = new QBoxLayout(QBoxLayout::LeftToRight);
-//  topLayout->addWidget(interface, 3);
-//  topLayout->addWidget(TODOupdater, 0);
-//  QBoxLayout *innerLayout = new QBoxLayout(QBoxLayout::TopToBottom);
-//  innerLayout->addWidget(scriptEditor, 1);
-//  innerLayout->addWidget(codeEditor, 3);
-//  topLayout->addLayout(innerLayout, 1);
 
   QWidget *topWidget = new QWidget;
   topWidget->setLayout(topLayout);
@@ -85,6 +82,11 @@ ClintWindow::ClintWindow(QWidget *parent) :
   }
 }
 
+ClintWindow::~ClintWindow() {
+  if (m_projection)
+    delete m_projection;
+}
+
 void ClintWindow::setupActions() {
   m_actionFileOpen = new QAction(QIcon::fromTheme("document-open"), "Open...", this);
   m_actionFileClose = new QAction("Close", this);
@@ -108,6 +110,10 @@ void ClintWindow::setupActions() {
   m_actionEditRedo->setEnabled(false);
 
   m_actionViewFreeze = new QAction("Keep original code", this);
+  m_actionViewProjectionMatrix = new QAction("Projection matrix", this);
+  m_actionViewProjectionMatrix->setCheckable(true);
+  m_actionViewProjectionMatrix->setChecked(true);
+  m_actionViewProjectionMatrix->setEnabled(false);
   m_actionViewFreeze->setCheckable(true);
 
   connect(m_actionFileOpen, &QAction::triggered, this, &ClintWindow::fileOpen);
@@ -120,6 +126,7 @@ void ClintWindow::setupActions() {
   connect(m_actionEditVizProperties, &QAction::triggered, this, &ClintWindow::editVizProperties);
 
   connect(m_actionViewFreeze, &QAction::toggled, this, &ClintWindow::viewFreezeToggled);
+  connect(m_actionViewProjectionMatrix, &QAction::toggled, this, &ClintWindow::viewProjectionMatrixToggled);
 }
 
 void ClintWindow::setupMenus() {
@@ -139,6 +146,7 @@ void ClintWindow::setupMenus() {
 
   QMenu *viewMenu = new QMenu("View");
   viewMenu->addAction(m_actionViewFreeze);
+  viewMenu->addAction(m_actionViewProjectionMatrix);
 
   m_menuBar->addAction(fileMenu->menuAction());
   m_menuBar->addAction(editMenu->menuAction());
@@ -177,9 +185,6 @@ void ClintWindow::fileClose() {
   m_program->setParent(nullptr);
   delete m_program;
   m_program = nullptr;
-//  m_projection->setParent(nullptr);
-//  delete m_projection;
-//  m_projection = nullptr;
 
   for (VizProjection *vp : m_allProjections) {
     vp->setParent(nullptr);
@@ -189,6 +194,7 @@ void ClintWindow::fileClose() {
 
   m_fileOpen = false;
   m_actionFileClose->setEnabled(false);
+  m_actionViewProjectionMatrix->setEnabled(false);
 }
 
 void ClintWindow::fileSaveSvg() {
@@ -201,9 +207,9 @@ void ClintWindow::fileSaveSvg() {
 
   QSvgGenerator *generator = new QSvgGenerator;
   generator->setFileName(fileName);
-  generator->setSize(m_projection->projectionSize());
+  generator->setSize(m_allProjections[0]->projectionSize());
   QPainter *painter = new QPainter(generator);
-  m_projection->paintProjection(painter);
+  m_allProjections[0]->paintProjection(painter);
 
   delete painter;
   delete generator;
@@ -214,6 +220,24 @@ void ClintWindow::changeParameter(int value) {
     m_parameterValue = value;
     regenerateScop((*m_program)[0], value);
   }
+}
+
+void ClintWindow::resetProjectionMatrix(ClintScop *vscop) {
+  if (m_projectionMatrixWidget) {
+    m_projectionMatrixWidget->setParent(nullptr);
+    delete m_projectionMatrixWidget;
+  }
+
+  m_projectionMatrixWidget = new QWidget(this);
+  QGridLayout *projectionsLayout = new QGridLayout;
+  int counter = 0;
+  for (int i = 0, e = vscop->dimensionality(); i < e - 1; i++) {
+    for (int j = i + 1; j < e; j++) {
+      projectionsLayout->addWidget(m_allProjections[counter++]->widget(), j-1, i);
+    }
+  }
+  projectionsLayout->setContentsMargins(0, 0, 0, 0);
+  m_projectionMatrixWidget->setLayout(projectionsLayout);
 }
 
 void ClintWindow::createProjections(ClintScop *vscop) {
@@ -231,17 +255,8 @@ void ClintWindow::createProjections(ClintScop *vscop) {
     }
   }
 
-  QGridLayout *projectionsLayout = new QGridLayout;
-  int counter = 0;
-  for (int i = 0, e = vscop->dimensionality(); i < e - 1; i++) {
-    for (int j = i + 1; j < e; j++) {
-      projectionsLayout->addWidget(m_allProjections[counter++]->widget(), j-1, i);
-    }
-  }
-  QWidget *widget = new QWidget;
-  widget->setLayout(projectionsLayout);
-  resetCentralWidget(widget);
-
+  resetProjectionMatrix(vscop);
+  resetCentralWidget(m_projectionMatrixWidget);
 }
 
 void ClintWindow::openFileByName(QString fileName) {
@@ -278,18 +293,15 @@ void ClintWindow::openFileByName(QString fileName) {
   ClintScop *vscop = (*m_program)[0];
   connect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
 
-//  m_projection = new VizProjection(1, 2, this);
-//  m_projection->projectScop(vscop);
-
   createProjections(vscop);
 
   m_codeEditor->setHtml(vscop->originalHtml());
   m_scriptEditor->setHtml(QString());
 
-//  resetCentralWidget(m_projection->widget());
-
   m_fileOpen = true;
   m_actionFileClose->setEnabled(true);
+  m_actionViewProjectionMatrix->setChecked(true);
+  m_actionViewProjectionMatrix->setEnabled(true);
 
   if (originalCode)
     free(originalCode);
@@ -300,7 +312,6 @@ ClintScop *ClintWindow::regenerateScopOsl(ClintScop *vscop, osl_scop_p scop, int
     parameterValue = m_parameterValue;
 
   ClintScop *newscop = new ClintScop(scop, parameterValue, nullptr, m_program);
-//  m_projection->projectScop(newscop);
   createProjections(newscop);
   for (TransformationGroup g : vscop->transformationSequence().groups) {
     newscop->transform(g);
@@ -377,6 +388,18 @@ void ClintWindow::editVizProperties() {
 void ClintWindow::viewFreezeToggled(bool value) {
   m_showOriginalCode = value;
   scopTransformed();
+}
+
+void ClintWindow::viewProjectionMatrixToggled(bool value) {
+  if (!m_actionViewProjectionMatrix->isEnabled())
+    return;
+  if (value) {
+    resetCentralWidget(m_projectionMatrixWidget);
+  } else {
+    m_projection = new VizProjection(0, 1, this);
+    m_projection->projectScop((* m_program)[0]);
+    resetCentralWidget(m_projection->widget(), false);
+  }
 }
 
 void ClintWindow::updateCodeEditor() {

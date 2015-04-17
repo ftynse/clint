@@ -14,10 +14,11 @@ class ClintWindow : public QMainWindow {
   Q_OBJECT
 public:
   explicit ClintWindow(QWidget *parent = 0);
+  ~ClintWindow();
 
-    ClintScop *regenerateScop(ClintScop *vscop, int parameterValue);
-    ClintScop *regenerateScopOsl(ClintScop *vscop, osl_scop_p scop, int parameterValue, bool swapMapper);
-    void createProjections(ClintScop *vscop);
+  ClintScop *regenerateScop(ClintScop *vscop, int parameterValue);
+  ClintScop *regenerateScopOsl(ClintScop *vscop, osl_scop_p scop, int parameterValue, bool swapMapper);
+  void createProjections(ClintScop *vscop);
 signals:
 
 public slots:
@@ -31,6 +32,7 @@ public slots:
   void editVizProperties();
 
   void viewFreezeToggled(bool value);
+  void viewProjectionMatrixToggled(bool value);
 
   void scopTransformed();
 
@@ -51,6 +53,7 @@ private:
   QAction *m_actionEditVizProperties;
 
   QAction *m_actionViewFreeze;
+  QAction *m_actionViewProjectionMatrix;
 
   QMenuBar *m_menuBar;
 
@@ -59,6 +62,8 @@ private:
   ClintProgram *m_program = nullptr;
   VizProjection *m_projection = nullptr;
   std::vector<VizProjection *> m_allProjections;
+  QWidget *m_projectionMatrixWidget = nullptr;
+  QWidget *m_graphicalInterface = nullptr;
   QTextEdit *m_codeEditor = nullptr;
   QTextEdit *m_scriptEditor = nullptr;
   QPushButton *m_reparseCodeButton = nullptr,
@@ -70,7 +75,8 @@ private:
   void setupActions();
   void setupMenus();
 
-  void resetCentralWidget(QWidget *interface = nullptr);
+  void resetCentralWidget(QWidget *interface = nullptr, bool deleteGraphicalInterface = true);
+  void resetProjectionMatrix(ClintScop *vscop);
 };
 
 #endif // CLINTWINDOW_H
