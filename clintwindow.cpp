@@ -207,12 +207,30 @@ void ClintWindow::fileSaveSvg() {
     return;
 
   QSvgGenerator *generator = new QSvgGenerator;
+  QPainter *painter = nullptr;
   generator->setFileName(fileName);
-  generator->setSize(m_allProjections[0]->projectionSize());
-  QPainter *painter = new QPainter(generator);
-  m_allProjections[0]->paintProjection(painter);
 
-  delete painter;
+  if (m_projection && m_graphicalInterface == m_projection->widget()) {
+    generator->setSize(m_projection->projectionSize());
+    if (!painter) painter = new QPainter(generator);
+    m_projection->paintProjection(painter);
+  } else if (m_projectionMatrixWidget && m_graphicalInterface == m_projectionMatrixWidget) {
+    QSize totalSize;
+    for (VizProjection *projection : m_allProjections) {
+      QSize size = projection->projectionSize();
+      totalSize.rwidth() += size.width();
+      totalSize.rheight() = qMax(totalSize.height(), size.height());
+    }
+    generator->setSize(totalSize);
+    if (!painter) painter = new QPainter(generator);
+    for (VizProjection *projection : m_allProjections) {
+      QSize size = projection->projectionSize();
+      projection->paintProjection(painter);
+      painter->setTransform(QTransform::fromTranslate(size.width(), 0), true);
+    }
+  }
+
+  if (painter) delete painter;
   delete generator;
 }
 
