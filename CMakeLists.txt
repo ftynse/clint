@@ -93,6 +93,18 @@ add_executable(${PROJECT_NAME} ${SRC_LIST} macros.h)
 
 qt5_use_modules(${PROJECT_NAME} Widgets Gui Core Xml Svg)
 
+# Boost libraries
+set(Boost_USE_STATIC_LIBS OFF)
+set(Boost_USE_STATIC_RUNTIME OFF)
+find_package(Boost 1.56.0 COMPONENTS spirit algorithm variant fusion)
+
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+  target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})
+else()
+  message(FATAL_ERROR "boost library not found")
+endif()
+
 target_link_libraries(${PROJECT_NAME} ${OSL_LIBRARY})
 target_link_libraries(${PROJECT_NAME} ${ISL_LIBRARY})
 target_link_libraries(${PROJECT_NAME} ${CLOOG_ISL_LIBRARY})
