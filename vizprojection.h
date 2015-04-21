@@ -101,6 +101,16 @@ public:
   VizCoordinateSystem *insertCs(IsCsResult csAt, int dimensionality);
   void updateOuterDependences();
   void updateInnerDependences();
+
+  void setViewActive(bool active) {
+    if (m_view)
+      m_view->setActive(active);
+  }
+
+  bool isViewActive() const {
+    return m_view && m_view->isActive();
+  }
+
 signals:
   void selected(int horizontal, int vertical);
 

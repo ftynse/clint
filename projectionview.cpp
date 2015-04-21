@@ -12,18 +12,22 @@ ProjectionView::ProjectionView(QGraphicsScene *scene, QWidget *parent) :
 }
 
 void ProjectionView::mousePressEvent(QMouseEvent *event) {
-  event->accept();
+  if (m_active)
+    QGraphicsView::mousePressEvent(event);
 }
 
 void ProjectionView::mouseReleaseEvent(QMouseEvent *event) {
-  event->accept();
+  if (m_active)
+    QGraphicsView::mouseReleaseEvent(event);
 }
 
 void ProjectionView::mouseMoveEvent(QMouseEvent *event) {
-  event->accept();
+  if (m_active)
+    QGraphicsView::mouseMoveEvent(event);
 }
 
 void ProjectionView::mouseDoubleClickEvent(QMouseEvent *event) {
   emit doubleclicked();
-  event->accept();
+  if (m_active)
+    QGraphicsView::mouseDoubleClickEvent(event);
 }

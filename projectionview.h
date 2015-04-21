@@ -9,6 +9,14 @@ public:
   explicit ProjectionView(QWidget *parent = 0);
   explicit ProjectionView(QGraphicsScene *scene, QWidget *parent = 0);
 
+  void setActive(bool active) {
+    m_active = active;
+  }
+
+  bool isActive() const {
+    return m_active;
+  }
+
 protected:
   void mousePressEvent(QMouseEvent *event);
   void mouseReleaseEvent(QMouseEvent *event);
@@ -17,6 +25,9 @@ protected:
 
 signals:
   void doubleclicked();
+
+private:
+  bool m_active = true;
 };
 
 #endif // PROJECTIONVIEW_H

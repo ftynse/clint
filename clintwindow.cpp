@@ -270,6 +270,7 @@ void ClintWindow::createProjections(ClintScop *vscop) {
   for (int i = 0, e = vscop->dimensionality(); i < e - 1; i++) {
     for (int j = i + 1; j < e; j++) {
       VizProjection *vp = new VizProjection(i, j, this);
+      vp->setViewActive(false);
       vp->projectScop(vscop);
       connect(vp, &VizProjection::selected, this, &ClintWindow::projectionSelectedInMatrix);
       m_allProjections.push_back(vp);
