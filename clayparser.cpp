@@ -248,22 +248,38 @@ Transformation create_transformation(const clay_parser::clay_parser_command &cmd
   return descriptor(cmd);
 }
 
+static std::vector<std::vector<int>> wrapClayParserList(const clay_parser::clay_parser_list &&list) {
+  std::vector<std::vector<int>> wrapped(3);
+  wrapped[0] = list.first;
+  wrapped[1] = list.second;
+  wrapped[2] = list.third;
+  return std::move(wrapped);
+}
+
+Transformation wrappedShift(const std::vector<int> &beta, int depth, const clay_parser::clay_parser_list &&list) {
+  return Transformation::rawShift(beta, depth, wrapClayParserList(std::forward<const clay_parser::clay_parser_list>(list)));
+}
+
+Transformation wrappedIss(const std::vector<int> &beta, const clay_parser::clay_parser_list &&list) {
+  return Transformation::rawIss(beta, wrapClayParserList(std::forward<const clay_parser::clay_parser_list>(list)));
+}
+
 TransformationGroup create_group(const std::vector<clay_parser::clay_parser_command> &commands) {
   TransformationGroup group;
 
   std::unordered_map<std::string, std::function<Transformation (const clay_parser::clay_parser_command &)>> mapping;
-//  mapping["split"]       = unwrap<std::vector<int>, int>                               (Transformation::rawSplit);
-//  mapping["fission"]     = mapping["split"];
-//  mapping["distribute"]  = mapping["split"];
+  mapping["split"]       = unwrap<std::vector<int>, int>                               (Transformation::rawSplit);
+  mapping["fission"]     = mapping["split"];
+  mapping["distribute"]  = mapping["split"];
   mapping["fuse"]        = unwrap<std::vector<int>>                                    (Transformation::fuseNext);
-//  mapping["reorder"]     = unwrap<std::vector<int>, std::vector<int>>                  (Transformation::rawReorder);
-//  mapping["shift"]       = unwrap<std::vector<int>, int, clay_parser::clay_parser_list>(Transformation::rawShift); // fix lists...
-//  mapping["skew"]        = unwrap<std::vector<int>, int, int, int>                     (Transformation::skew); // redefined skew...
+  mapping["reorder"]     = unwrap<std::vector<int>, std::vector<int>>                  (Transformation::rawReorder);
+  mapping["shift"]       = unwrap<std::vector<int>, int, clay_parser::clay_parser_list>(wrappedShift);
+  mapping["skew"]        = unwrap<std::vector<int>, int, int, int>                     (Transformation::skew);
   mapping["grain"]       = unwrap<std::vector<int>, int, int>                          (Transformation::grain);
   mapping["interchange"] = unwrap<std::vector<int>, int, int>                          (Transformation::interchange);
   mapping["reverse"]     = unwrap<std::vector<int>, int>                               (Transformation::reverse);
-//  mapping["tile"]        = unwrap<std::vector<int>, int, int, int, int>                (Transformation::tile); // too much parameters
-//  mapping["iss"]         = unwrap<std::vector<int>, int> clay_parser::clay_parser_list>(Transformation::rawIss); // fix lists...
+  mapping["tile"]        = unwrap<std::vector<int>, int, int, int, int>                (Transformation::rawTile);
+  mapping["iss"]         = unwrap<std::vector<int>, clay_parser::clay_parser_list>     (wrappedIss);
 
 
   for (const clay_parser::clay_parser_command &cmd : commands) {
