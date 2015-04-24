@@ -17,8 +17,13 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
     break;
   case Transformation::Kind::Shift:
   {
-    // FIXME: only constant shifting is supported
     clay_list_p list = clay_list_malloc();
+    if (transformation.iterators().size() != 0) {
+      clay_list_add(list, ClayBeta(transformation.iterators()));
+    }
+    if (transformation.parameters().size() != 0) {
+      clay_list_add(list, ClayBeta(transformation.parameters()));
+    }
     clay_array_p array = clay_array_malloc();
     clay_array_add(array, transformation.constantAmount());
     clay_list_add(list, array);
