@@ -222,6 +222,54 @@ public:
     return t;
   }
 
+  /*+*********** raw transformations from parser  *************/
+  static Transformation rawSplit(const std::vector<int> &beta, int dimension) {
+    CLINT_ASSERT(beta.size() > 0, "Split transformation beta too short");
+    CLINT_ASSERT(dimension <= beta.size(), "Split transformation dimension overflow");
+    CLINT_ASSERT(dimension > 0, "Split transformation dimension underflow");
+    Transformation t;
+    t.m_kind       = Kind::Split;
+    t.m_targetBeta = beta;
+    t.m_depthOuter = dimension;
+    return t;
+  }
+
+  static Transformation rawReorder(const std::vector<int> &beta, const std::vector<int> &order) {
+    Transformation t;
+    t.m_kind       = Kind::Reorder;
+    t.m_targetBeta = beta;
+    t.m_order      = order;
+    return t;
+  }
+
+  static Transformation rawShift(const std::vector<int> &beta, int depth, const std::vector<std::vector<int>> &list) {
+    CLINT_ASSERT(list.size() <= 3 && list.size() >= 1, "Shift transformation list malformed.");
+    CLINT_ASSERT(beta.size() > 0, "Shift transformation beta too short");
+    CLINT_ASSERT(depth <= beta.size(), "Shift transformation depth overflow");
+    CLINT_ASSERT(depth > 0, "Shift transformation depth underflow");
+    Transformation t;
+    t.m_kind       = Kind::Shift;
+    t.m_depthOuter = depth;
+    unwrapClayList(list, t);
+    return t;
+  }
+
+  static Transformation rawTile(const std::vector<int> &beta, int innerDepth, int outerDepth, int size, int pretty) {
+    CLINT_ASSERT(beta.size() > 0, "Tile transformation beta too short");
+    (void) pretty;
+    (void) outerDepth;
+    return Transformation::tile(beta, innerDepth, size);
+  }
+
+  static Transformation rawIss(const std::vector<int> &beta, const std::vector<std::vector<int>> &list) {
+    CLINT_ASSERT(beta.size() > 0, "Iss transformation beta too short");
+    Transformation t;
+    t.m_kind       = Kind::IndexSetSplitting;
+    t.m_targetBeta = beta;
+    unwrapClayList(list, t);
+    return t;
+  }
+
 private:
   std::vector<int> m_targetBeta;
   int m_depthInner, m_depthOuter;
@@ -232,6 +280,16 @@ private:
   std::vector<int> m_iterators;
 
   Kind m_kind;
+
+  static void unwrapClayList(const std::vector<std::vector<int>> &list, Transformation &t) {
+    CLINT_ASSERT(list.size() != 3, "List malformed");
+    CLINT_ASSERT(list[2].size() <= 1, "More than one value for constant part of the list");
+    CLINT_ASSERT(list[0].size() != 0 || list[1].size() != 0 || list[2].size() != 0,
+                "Empty list in transformation");
+    t.m_iterators      = list[0];
+    t.m_parameters     = list[1];
+    t.m_constantAmount = list[2].size() == 1 ? list[2][0] : 0;
+  }
 };
 
 struct TransformationGroup {
