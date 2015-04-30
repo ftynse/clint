@@ -1,5 +1,4 @@
 #include "clayparser.h"
-
 #include "transformation.h"
 
 #include <QtGui>
@@ -24,6 +23,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+
+namespace {
 
 class string_builder {
 public:
@@ -67,7 +68,9 @@ struct clay_parser_command {
   std::vector<clay_parser_arg> arguments;
 };
 
-}
+} // end namespace clay_parser
+
+} // end anonymous namespace
 
 BOOST_FUSION_ADAPT_STRUCT(
     clay_parser::clay_parser_list,
@@ -81,6 +84,8 @@ BOOST_FUSION_ADAPT_STRUCT(
     (std::string, name)
     (std::vector<clay_parser::clay_parser_arg>, arguments)
 )
+
+namespace {
 
 namespace clay_parser {
 
@@ -288,7 +293,39 @@ TransformationGroup create_group(const std::vector<clay_parser::clay_parser_comm
   return std::move(group);
 }
 
-TransformationSequence parse(const std::string &text) {
+void print_parser_command(std::vector<clay_parser::clay_parser_command> parser_command_list) {
+  for (const clay_parser::clay_parser_command &cmd : parser_command_list) {
+    std::cout << cmd.name << " ";
+    for (const clay_parser::clay_parser_arg &arg : cmd.arguments) {
+      if (const int *constant = boost::get<int>(&arg)) {
+        std::cout << *constant << " ";
+      } else if (const std::vector<int> *beta = boost::get<std::vector<int>>(&arg)) {
+        std::cout << "[";
+        std::copy(beta->cbegin(), beta->cend(), std::ostream_iterator<int>(std::cout, ","));
+        std::cout << "] ";
+      } else if (const clay_parser::clay_parser_list *list = boost::get<clay_parser::clay_parser_list>(&arg)) {
+        std::cout << "{";
+        std::copy(list->first.cbegin(), list->first.cend(), std::ostream_iterator<int>(std::cout, ","));
+        std::cout << "|";
+        std::copy(list->second.cbegin(), list->second.cend(), std::ostream_iterator<int>(std::cout, ","));
+        std::cout << "|";
+        std::copy(list->third.cbegin(), list->third.cend(), std::ostream_iterator<int>(std::cout, ","));
+        std::cout << "} ";
+      } else {
+        std::cout << "wtf";
+      }
+    }
+    std::cout << std::endl;
+  }
+}
+
+
+} // end anonymous namespace
+
+ClayParser::ClayParser() {
+}
+
+TransformationSequence ClayParser::parse(const std::string &text) {
   clay_parser::clay_grammar<std::string::const_iterator> grammar;
 
   std::list<boost::iterator_range<std::string::const_iterator>> groups;
@@ -321,60 +358,5 @@ TransformationSequence parse(const std::string &text) {
   }
 
   return std::move(sequence);
-}
-
-void parse() {
-  std::string commands =
-      "fission([0,0], 1);"
-      "tile([1,0], 2, 1, 32, 0);"
-      "tile([1,0], 2, 1, 32, 0);"
-  "shift([0, 0, 0, 0], 1, {-1});"
-  "shift([0, 0, 0, 0], 2, {-5});"
-  "shift([0, 0, 0, 0], 1, {1});"
-  "shift([0, 0, 0, 0], 2, {5});"
-  "shift([0, 0, 0, 0], 1, {1,-1||});"
-  "shift([0, 0, 0, 0], 1, {-1});"
-  "shift([0, 0, 0, 0], 2, {-5});";
-
-  clay_parser::clay_grammar<std::string::const_iterator> grammar;
-  std::vector<clay_parser::clay_parser_command> parsed;
-  std::string::const_iterator iter = commands.cbegin();
-  std::string::const_iterator end  = commands.cend();
-  bool result = boost::spirit::qi::phrase_parse(
-        iter,
-        end,
-        grammar,
-        boost::spirit::ascii::space,
-        parsed);
-  if (result && iter == end) {
-    for (const clay_parser::clay_parser_command &cmd : parsed) {
-      std::cout << cmd.name << " ";
-      for (const clay_parser::clay_parser_arg &arg : cmd.arguments) {
-        if (const int *constant = boost::get<int>(&arg)) {
-          std::cout << *constant << " ";
-        } else if (const std::vector<int> *beta = boost::get<std::vector<int>>(&arg)) {
-          std::cout << "[";
-          std::copy(beta->cbegin(), beta->cend(), std::ostream_iterator<int>(std::cout, ","));
-          std::cout << "] ";
-        } else if (const clay_parser::clay_parser_list *list = boost::get<clay_parser::clay_parser_list>(&arg)) {
-          std::cout << "{";
-          std::copy(list->first.cbegin(), list->first.cend(), std::ostream_iterator<int>(std::cout, ","));
-          std::cout << "|";
-          std::copy(list->second.cbegin(), list->second.cend(), std::ostream_iterator<int>(std::cout, ","));
-          std::cout << "|";
-          std::copy(list->third.cbegin(), list->third.cend(), std::ostream_iterator<int>(std::cout, ","));
-          std::cout << "} ";
-        } else {
-          std::cout << "wtf";
-        }
-      }
-      std::cout << std::endl;
-    }
-  } else {
-    std::cout << "Parsing FAILED" << std::endl;
-  }
-}
-
-ClayParser::ClayParser() {
 }
 

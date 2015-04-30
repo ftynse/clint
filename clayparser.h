@@ -1,16 +1,13 @@
 #ifndef CLAYPARSER_H
 #define CLAYPARSER_H
 
-class ClayParser
-{
-public:
-  ClayParser();
-};
-
 #include "transformation.h"
 #include <string>
 
-TransformationSequence parse(const std::string &);
-void parse();
+class ClayParser {
+public:
+  ClayParser();
+  TransformationSequence parse(const std::string &);
+};
 
 #endif // CLAYPARSER_H
