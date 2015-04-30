@@ -5,7 +5,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "-std=c++1y -Wall -pedantic -O0 -g")
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   message(STATUS "Using clang compiler")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wdocumentation")
+  #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wdocumentation") # Boost doxygen generates too many errors.
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   message(STATUS "Using GNU compiler")
   set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wextra")
@@ -96,7 +96,7 @@ qt5_use_modules(${PROJECT_NAME} Widgets Gui Core Xml Svg)
 # Boost libraries
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost 1.56.0 COMPONENTS spirit algorithm variant fusion)
+find_package(Boost 1.56.0 REQUIRED)
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
