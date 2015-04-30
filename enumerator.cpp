@@ -9,8 +9,8 @@ int addISLPointToVector(isl_point *point, void *vect) {
   CLINT_ASSERT(vect != nullptr, "Vector is nullptr");
 
   std::vector<std::vector<int> > &vector = *static_cast<std::vector<std::vector<int> > *>(vect);
-  isl_space *space = isl_point_get_dim(point);
-  const unsigned nbDims = isl_dim_size(space, isl_dim_all);
+  isl_space *space = isl_point_get_space(point);
+  const unsigned nbDims = isl_space_dim(space, isl_dim_all);
   std::vector<int> pointVector;
   pointVector.reserve(nbDims);
   for (unsigned i = 0; i < nbDims; i++) {
