@@ -28,10 +28,9 @@ osl_dependence_p CandlAnalyzer::scopDependences(osl_scop_p scop) {
 
 std::pair<candl_violation_p, osl_dependence_p> CandlAnalyzer::scopViolations(osl_scop_p original, osl_scop_p transformed) {
   candl_scop_usr_init(original);
-  osl_dependence_p dependences = candl_dependence(original, m_candlOptions);
-  if (dependences)
-    candl_dependence_init_fields(original, dependences);
-  candl_violation_p violations = candl_violation(original, dependences, transformed, m_candlOptions);
+  osl_dependence_p dependences;
+  candl_violation_p violations = candl_violation(original, transformed, &dependences, m_candlOptions);
+  candl_dependence_init_fields(original, dependences);
   candl_scop_usr_cleanup(original);
   return std::make_pair(violations, dependences);
 }
