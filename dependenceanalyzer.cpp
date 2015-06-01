@@ -27,11 +27,8 @@ osl_dependence_p CandlAnalyzer::scopDependences(osl_scop_p scop) {
 }
 
 std::pair<candl_violation_p, osl_dependence_p> CandlAnalyzer::scopViolations(osl_scop_p original, osl_scop_p transformed) {
-  candl_scop_usr_init(original);
   osl_dependence_p dependences;
   candl_violation_p violations = candl_violation(original, transformed, &dependences, m_candlOptions);
-  candl_dependence_init_fields(original, dependences);
-  candl_scop_usr_cleanup(original);
   return std::make_pair(violations, dependences);
 }
 
@@ -54,19 +51,16 @@ DependenceAnalyzer::DependenceMap CandlAnalyzer::constructDependenceMap(osl_depe
 }
 
 DependenceAnalyzer::DependenceMap CandlAnalyzer::analyze(osl_scop_p original, osl_scop_p transformed) {
-  osl_scop_p noUnionScop = oslReifyScop(original);
-  osl_scop_p noUnionTransformed = oslReifyScop(transformed);
-
   osl_dependence_p dependences;
   std::unordered_set<osl_dependence_p> violatedDependences;
   if (transformed != nullptr) {
     candl_violation_p violations;
-    std::tie(violations, dependences) = scopViolations(noUnionScop, noUnionTransformed);
+    std::tie(violations, dependences) = scopViolations(original, transformed);
     oslListForeach(violations, [&violatedDependences](candl_violation_p violation){
       violatedDependences.insert(violation->dependence);
     });
   } else {
-    dependences = scopDependences(noUnionScop);
+    dependences = scopDependences(original);
   }
 
   DependenceMap dependenceMap = constructDependenceMap(dependences);
@@ -75,9 +69,6 @@ DependenceAnalyzer::DependenceMap CandlAnalyzer::analyze(osl_scop_p original, os
       el.second.second = true;
     }
   }
-
-  osl_scop_free(noUnionScop);
-  osl_scop_free(noUnionTransformed);
 
   return dependenceMap;
 }
