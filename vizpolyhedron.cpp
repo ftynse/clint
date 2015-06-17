@@ -165,8 +165,8 @@ void VizPolyhedron::occurrenceChanged() {
       matchedPoints.insert(vp);
     }
   }
-  CLINT_ASSERT(unmatchedNewPoints == 0, "All new points should match old points by original coordinates");
-  CLINT_ASSERT(matchedPoints.size() == m_points.size(), "Not all old points were matched");
+//  CLINT_ASSERT(unmatchedNewPoints == 0, "All new points should match old points by original coordinates");
+//  CLINT_ASSERT(matchedPoints.size() == m_points.size(), "Not all old points were matched");
 
   // Create lines that symbolize tiles.
   VizProperties *props = coordinateSystem()->projection()->vizProperties();
