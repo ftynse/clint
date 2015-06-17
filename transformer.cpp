@@ -317,31 +317,3 @@ void ClayBetaMapper::dump(std::ostream &out) const {
     out << "}" << std::endl;
   }
 }
-
-std::vector<int> ClayTransformer::transformedBeta(const std::vector<int> &beta, const Transformation &transformation) {
-  std::vector<int> tBeta(beta);
-  switch (transformation.kind()) {
-  case Transformation::Kind::Fuse:
-    if (beta > transformation.target()) {
-      tBeta[transformation.depth()] -= 1;
-    }
-    break;
-  default:
-    break;
-  }
-  return std::move(tBeta);
-}
-
-std::vector<int> ClayTransformer::originalBeta(const std::vector<int> &beta, const Transformation &transformation) {
-  std::vector<int> tBeta(beta);
-  switch (transformation.kind()) {
-  case Transformation::Kind::Fuse:
-    if (beta > transformation.target()) {
-      tBeta[transformation.depth()] += 1;
-    }
-    break;
-  default:
-    break;
-  }
-  return std::move(tBeta);
-}

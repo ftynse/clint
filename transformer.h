@@ -33,8 +33,6 @@ public:
   }
 
   virtual void apply(osl_scop_p scop, const Transformation &transformation) = 0;
-  virtual std::vector<int> transformedBeta(const std::vector<int> &beta, const Transformation &transformation) = 0;
-  virtual std::vector<int> originalBeta(const std::vector<int> &beta, const Transformation &transformation) = 0;
   virtual ~Transformer() {}
 };
 
@@ -65,8 +63,6 @@ public:
   }
 
   void apply(osl_scop_p scop, const Transformation &transformation) override;
-  std::vector<int> transformedBeta(const std::vector<int> &beta, const Transformation &transformation) override;
-  std::vector<int> originalBeta(const std::vector<int> &beta, const Transformation &transformation) override;
 
   ~ClayTransformer() {
     clay_options_free(m_options);
@@ -273,10 +269,6 @@ public:
 
   void dump(std::ostream &out) const;
 
-  // TODO: Bullshit functions, to be removed.
-  std::vector<int> transformedBeta(const std::vector<int> &beta, const Transformation &transformation) override { return std::vector<int>(); }
-  std::vector<int> originalBeta(const std::vector<int> &beta, const Transformation &transformation) override { return std::vector<int>(); }
-
   std::set<Identifier> forwardMap(const Identifier &identifier) const {
     return std::move(map(identifier, m_forwardMapping));
   }
@@ -403,9 +395,6 @@ public:
       m_stream << "###unkonwn transformation###\n";
     }
   }
-
-  std::vector<int> transformedBeta(const std::vector<int> &beta, const Transformation &transformation) override { return std::vector<int>(); }
-  std::vector<int> originalBeta(const std::vector<int> &beta, const Transformation &transformation) override { return std::vector<int>(); }
 
 private:
   std::ostream &m_stream;
