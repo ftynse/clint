@@ -55,7 +55,8 @@ ClintStmt::ClintStmt(osl_statement_p stmt, ClintScop *parent) :
       nbIterators = std::max(nbIterators, domain->nb_output_dims);
     });
     // Create at least 1 name of each type to avoid weird memory allocations.
-    osl_names_p names = osl_names_generate("p", 1, "i", nbIterators, "y", 1, "z", 1, "l", 1);
+    static char letters[] = "piyzl"; // Have modifiable chars so that C++11 compiler does not complain on old osl C function.
+    osl_names_p names = osl_names_generate(&letters[0], 1, &letters[1], nbIterators, &letters[2], 1, &letters[3], 1, &letters[4], 1);
     fillDimensionNames(names->iterators->string, m_dimensionNames);
     osl_names_free(names);
   }
