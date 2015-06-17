@@ -16,15 +16,13 @@ inline void fillDimensionNames(char **strings, std::vector<std::string> &dimensi
 }
 
 ClintStmt::ClintStmt(osl_statement_p stmt, ClintScop *parent) :
-  QObject(parent), m_scop(parent), m_statement(stmt) {
+  QObject(parent), m_scop(parent) {
 
   // FIXME: redoing iteration over scattering union parts
-  oslListForeach(stmt->scattering, [this](osl_relation_p scattering) {
+  oslListForeach(stmt->scattering, [this,stmt](osl_relation_p scattering) {
     std::vector<int> betaVector = betaExtract(scattering);
     if (m_occurrences.count(betaVector) == 0) {
-//      ClintStmtOccurrence *vso = new ClintStmtOccurrence(m_statement, betaVector, this);
-//      m_occurrences[betaVector] = vso;
-      makeOccurrence(m_statement, betaVector);
+      makeOccurrence(stmt, betaVector);
     }
   });
 
@@ -90,15 +88,13 @@ std::vector<ClintStmtOccurrence *> ClintStmt::occurrences() const {
 }
 
 ClintStmtOccurrence *ClintStmt::makeOccurrence(osl_statement_p stmt, const std::vector<int> &beta) {
-  // TODO: if stmt != m_statement, do something!  During transformations, the state we hold for scop becomes no longer consistent
-  // with osl_* structures.  Do we actually need them everywhere but in ClintScop?
   ClintStmtOccurrence *occurrence = new ClintStmtOccurrence(stmt, beta, this);
   m_occurrences[beta] = occurrence;
   return occurrence;
 }
 
-ClintStmtOccurrence *ClintStmt::splitOccurrence(ClintStmtOccurrence *occurrence, osl_statement_p stmt, const std::vector<int> &beta) {
-  ClintStmtOccurrence *otherOccurrence = occurrence->split(stmt, beta);
+ClintStmtOccurrence *ClintStmt::splitOccurrence(ClintStmtOccurrence *occurrence, const std::vector<int> &beta) {
+  ClintStmtOccurrence *otherOccurrence = occurrence->split(beta);
   m_occurrences[beta] = otherOccurrence;
   return otherOccurrence;
 }

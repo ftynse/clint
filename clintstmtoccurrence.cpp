@@ -10,8 +10,9 @@ ClintStmtOccurrence::ClintStmtOccurrence(osl_statement_p stmt, const std::vector
   resetOccurrence(stmt, betaVector);
 }
 
-ClintStmtOccurrence *ClintStmtOccurrence::split(osl_statement_p stmt, const std::vector<int> &betaVector) {
-  ClintStmtOccurrence *occurrence = new ClintStmtOccurrence(stmt, betaVector, m_statement);
+/// The split occurrence will hot have osl_statement set up by default.  Use resetOccurrence to initialize it.
+ClintStmtOccurrence *ClintStmtOccurrence::split(const std::vector<int> &betaVector) {
+  ClintStmtOccurrence *occurrence = new ClintStmtOccurrence(nullptr, betaVector, m_statement);
   occurrence->m_tilingDimensions = m_tilingDimensions;
   occurrence->m_tileSizes = m_tileSizes;
   return occurrence;
@@ -22,9 +23,7 @@ void ClintStmtOccurrence::resetOccurrence(osl_statement_p stmt, const std::vecto
   bool differentPoints = false;
   std::vector<osl_relation_p> oslScatterings;
   m_betaVector = betaVector;
-  m_oslStatement = stmt; // I am not sure that adding the transformed statement is a good idea, but otherwise we cannot call occurrenceChanged/projectOn for this occurrence
-                         // Furthermore, storing the statement in ClintStmtOccurrence rather than in ClintStmt is questionable
-                         // XXX:There is a comment somewhere saying m_oslStatement may go out of sync with transformed scop, this should fix it...
+  m_oslStatement = stmt;
 
   if (stmt == nullptr) {
     if (m_oslScatterings.size() != 0)

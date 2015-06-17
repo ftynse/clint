@@ -199,7 +199,7 @@ void ClintScop::executeTransformationSequence() {
           loopBeta.push_back(0);
           ClintStmtOccurrence *occ = occurrence(loopBeta);
           loopBeta.back() = 1;
-          occ->statement()->splitOccurrence(occ, nullptr, loopBeta); // XXX: nullptr statement was not checked and will fail.  fix ClintStmtOccurrence::resetOccurrence and ::projectOn (if called)
+          occ->statement()->splitOccurrence(occ, loopBeta);
           m_vizBetaMap[loopBeta] = occ->statement();                 // The subsequent call to resetOccurrences will replace the statement anyway
         }
       }

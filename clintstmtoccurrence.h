@@ -20,7 +20,7 @@ public:
                     const std::vector<int> &betaVector,
                     ClintStmt *parent = 0);
 
-  ClintStmtOccurrence *split(osl_statement_p stmt, const std::vector<int> &betaVector);
+  ClintStmtOccurrence *split(const std::vector<int> &betaVector);
 
   friend bool operator < (const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs);
   friend bool operator ==(const ClintStmtOccurrence &lhs, const ClintStmtOccurrence &rhs);
@@ -136,7 +136,7 @@ public slots:
 
 private:
   std::vector<osl_relation_p> m_oslScatterings;
-  osl_statement_p m_oslStatement;
+  osl_statement_p m_oslStatement; /// Pointer to the transformed osl statement of this occurrence.  This actually belongs to ClintStmt.
   std::vector<int> m_betaVector;
   std::set<int> m_tilingDimensions;
   ClintStmt *m_statement;

@@ -34,7 +34,7 @@ public:
   }
 
   ClintStmtOccurrence *makeOccurrence(osl_statement_p stmt, const std::vector<int> &beta);
-  ClintStmtOccurrence *splitOccurrence(ClintStmtOccurrence *occurrence, osl_statement_p stmt, const std::vector<int> &beta);
+  ClintStmtOccurrence *splitOccurrence(ClintStmtOccurrence *occurrence, const std::vector<int> &beta);
 
   std::string dimensionName(int dimension) const {
     CLINT_ASSERT(dimension >= 0, "Dimension index should be positive");
@@ -52,7 +52,6 @@ public slots:
 
 private:
   ClintScop *m_scop;
-  osl_statement_p m_statement;
   std::map<std::vector<int>, ClintStmtOccurrence *> m_occurrences;
   std::vector<std::string> m_dimensionNames;
 };
