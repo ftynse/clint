@@ -106,11 +106,11 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
 
     for (VizPolyhedron *vp : selectedPolyhedra) {
       const std::vector<int> beta = vp->occurrence()->betaVector();
-      int horzDepth = vp->coordinateSystem()->horizontalDimensionIdx() == VizProperties::NO_DIMENSION ?
+      size_t horzDepth = vp->coordinateSystem()->horizontalDimensionIdx() == VizProperties::NO_DIMENSION ?
             VizProperties::NO_DIMENSION :
             vp->occurrence()->depth(vp->coordinateSystem()->horizontalDimensionIdx());
       int horzAmount = m_horzOffset;
-      int vertDepth = vp->coordinateSystem()->verticalDimensionIdx() == VizProperties::NO_DIMENSION ?
+      size_t vertDepth = vp->coordinateSystem()->verticalDimensionIdx() == VizProperties::NO_DIMENSION ?
             VizProperties::NO_DIMENSION :
             vp->occurrence()->depth(vp->coordinateSystem()->verticalDimensionIdx());
       int vertAmount = m_vertOffset;
@@ -832,12 +832,12 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
     grainAmount = -grainAmount;
   }
 
-  int horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
-  int verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
-  int horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
+  size_t horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
+  size_t verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
+  size_t horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
         polyhedron->occurrence()->depth(horizontalDimIdx) :
         VizProperties::NO_DIMENSION;
-  int verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
+  size_t verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
         polyhedron->occurrence()->depth(verticalDimIdx) :
         VizProperties::NO_DIMENSION;
 
@@ -1006,10 +1006,10 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
 
   int horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
   int verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
-  int horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
+  size_t horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
         polyhedron->occurrence()->depth(horizontalDimIdx) :
         VizProperties::NO_DIMENSION;
-  int verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
+  size_t verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
         polyhedron->occurrence()->depth(verticalDimIdx) :
         VizProperties::NO_DIMENSION;
 
@@ -1136,12 +1136,12 @@ void VizManipulationManager::polyhedronHasRotated(VizPolyhedron *polyhedron) {
 
   TransformationGroup group;
 
-  int horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
-  int verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
-  int horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
+  size_t horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
+  size_t verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
+  size_t horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
         polyhedron->occurrence()->depth(horizontalDimIdx) :
         VizProperties::NO_DIMENSION;
-  int verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
+  size_t verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
         polyhedron->occurrence()->depth(verticalDimIdx) :
         VizProperties::NO_DIMENSION;
 

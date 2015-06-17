@@ -80,15 +80,13 @@ public:
    * \param[in]  dimension 0-based visible dimension index.
    * \returns    1-based depth for Clay transformations.
    */
-  int depth(int dimension) const {
-    CLINT_ASSERT(dimension >= 0,
-                 "Visible dimension must be positive");
-    int scatDimension = 2 * dimension + 1;
-    int scatDimensionNb = (m_betaVector.size() - 1) * 2 + 1;
+  size_t depth(size_t dimension) const {
+    size_t scatDimension = 2 * dimension + 1;
+    size_t scatDimensionNb = (m_betaVector.size() - 1) * 2 + 1;
     CLINT_ASSERT(scatDimension < scatDimensionNb,
                  "Dimension overflow");
-    int result = dimension + 1;
-    for (int i = 1; i <= scatDimension; i += 2) {
+    size_t result = dimension + 1;
+    for (size_t i = 1; i <= scatDimension; i += 2) {
       if (m_tilingDimensions.count(i)) {
         scatDimension += 2;
         result++;
