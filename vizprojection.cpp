@@ -174,15 +174,7 @@ VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult &csAt, int
   switch (csAt.action()) {
   case IsCsAction::Found:
     vcs = csAt.coordinateSystem();
-    if (dimensionality <= m_horizontalDimensionIdx) {
-      csAt.m_action = IsCsAction::InsertPile;
-      return insertPile(csAt, dimensionality);
-    } else if (dimensionality <= m_verticalDimensionIdx) {
-      // Target projection does have a dimension that the polyhedron does not.
-      // -> create new cs
-      csAt.m_action = IsCsAction::InsertCS;
-      return insertCs(csAt, dimensionality);
-    } else if (vcs->horizontalDimensionIdx() == VizProperties::NO_DIMENSION) {
+    if (vcs->horizontalDimensionIdx() == VizProperties::NO_DIMENSION) {
       if (dimensionality >= m_horizontalDimensionIdx) {
         // Target projection does not have horizontal dimension, but the polyhedron has and the projection covers it.
         // -> create new pile
@@ -201,6 +193,14 @@ VizCoordinateSystem *VizProjection::ensureCoordinateSystem(IsCsResult &csAt, int
         // Do nothing (invisible in this projection)
         CLINT_UNREACHABLE;
       }
+    } else if (dimensionality <= m_horizontalDimensionIdx) {
+      csAt.m_action = IsCsAction::InsertPile;
+      return insertPile(csAt, dimensionality);
+    } else if (dimensionality <= m_verticalDimensionIdx) {
+      // Target projection does have a dimension that the polyhedron does not.
+      // -> create new cs
+      csAt.m_action = IsCsAction::InsertCS;
+      return insertCs(csAt, dimensionality);
     }
     return vcs;
     break;
