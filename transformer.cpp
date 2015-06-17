@@ -147,18 +147,18 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
   {
     Identifier target = transformation.target();
     int insertOrder = maximumAt(target);
-    nextInLoop(target);
+    BetaUtility::nextInLoop(target);
 
     IdentifierMultiMap updatedForwardMapping;
     std::set<Identifier> updatedCreatedMappings;
     for (auto m : m_forwardMapping) {
       Identifier identifier = m.second;
-      int matchingLength = partialMatch(target, identifier);
+      int matchingLength = BetaUtility::partialMatch(target, identifier);
       if (matchingLength == target.size()) {
-        prevInLoop(identifier, transformation.depth() - 1);
-        changeOrderAt(identifier, insertOrder + orderAt(identifier, transformation.depth()) + 1, transformation.depth());
-      } else if (matchingLength == target.size() - 1 && follows(target, identifier)) {
-        prevInLoop(identifier, transformation.depth() - 1);
+        BetaUtility::prevInLoop(identifier, transformation.depth() - 1);
+        BetaUtility::changeOrderAt(identifier, insertOrder + BetaUtility::orderAt(identifier, transformation.depth()) + 1, transformation.depth());
+      } else if (matchingLength == target.size() - 1 && BetaUtility::follows(target, identifier)) {
+        BetaUtility::prevInLoop(identifier, transformation.depth() - 1);
       }
 
       if (m_createdMappings.find(m.second) != std::end(m_createdMappings)) {
@@ -180,14 +180,14 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
     for (auto m : m_forwardMapping) {
       Identifier identifier = m.second;
 
-      int matchingLength = partialMatch(target, identifier);
+      int matchingLength = BetaUtility::partialMatch(target, identifier);
       if (matchingLength == transformation.depth() &&
-          followsAt(target, identifier, transformation.depth())) {
-        nextInLoop(identifier, transformation.depth() - 1);
-        changeOrderAt(identifier, orderAt(identifier, transformation.depth()) - orderAt(target, transformation.depth()) - 1 /*-(orderAt(identifier) + 1)*/, transformation.depth());
+          BetaUtility::followsAt(target, identifier, transformation.depth())) {
+        BetaUtility::nextInLoop(identifier, transformation.depth() - 1);
+        BetaUtility::changeOrderAt(identifier, BetaUtility::orderAt(identifier, transformation.depth()) - BetaUtility::orderAt(target, transformation.depth()) - 1 /*-(orderAt(identifier) + 1)*/, transformation.depth());
       } else if (matchingLength == transformation.depth() - 1 &&
-                 followsAt(target, identifier, transformation.depth() - 1)) {
-        nextInLoop(identifier, transformation.depth() - 1);
+                 BetaUtility::followsAt(target, identifier, transformation.depth() - 1)) {
+        BetaUtility::nextInLoop(identifier, transformation.depth() - 1);
       }
 
       if (m_createdMappings.find(m.second) != std::end(m_createdMappings)) {
@@ -213,11 +213,11 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
     std::vector<int> ordering = transformation.order();
     for (auto m : m_forwardMapping) {
       Identifier identifier = m.second;
-      if (isPrefix(target, identifier)) {
-        int oldOrder = orderAt(identifier, target.size());
+      if (BetaUtility::isPrefix(target, identifier)) {
+        int oldOrder = BetaUtility::orderAt(identifier, target.size());
         CLINT_ASSERT(oldOrder < ordering.size(),
                      "Reorder transformation vector too short");
-        changeOrderAt(identifier, ordering.at(oldOrder), target.size());
+        BetaUtility::changeOrderAt(identifier, ordering.at(oldOrder), target.size());
       }
 
       if (m_createdMappings.find(m.second) != std::end(m_createdMappings)) {
@@ -241,8 +241,8 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
       Identifier identifer  = m.second;
       // Insert the original statement.
       updatedForwardMapping.emplace(m.first, identifer);
-      if (isPrefix(target, identifer)) {
-        appendStmt(identifer, ++stmtNb);
+      if (BetaUtility::isPrefix(target, identifer)) {
+        BetaUtility::appendStmt(identifer, ++stmtNb);
         // Insert the iss-ed statement if needed.
         updatedForwardMapping.emplace(m.first, identifer);
         m_createdMappings.insert(identifer);
@@ -261,8 +261,8 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
 
     for (auto m : m_forwardMapping) {
       Identifier identifier = m.second;
-      if (isPrefixOrEqual(target, identifier)) {
-        createLoop(identifier, transformation.depth());
+      if (BetaUtility::isPrefixOrEqual(target, identifier)) {
+        BetaUtility::createLoop(identifier, transformation.depth());
       }
 
       if (m_createdMappings.find(m.second) != std::end(m_createdMappings)) {

@@ -110,13 +110,29 @@ private:
   std::vector<int> m_betaVector;
 };
 
-class ClayBetaMapper : public Transformer {
-private:
+class BetaUtility {
+public:
   typedef std::vector<int> Identifier;
   typedef std::multimap<Identifier, Identifier> IdentifierMultiMap;
 
-  // TODO: extract these to beta-related classes afterwards
-  int partialMatch(const Identifier &first, const Identifier &second) {
+  static bool isPrefix(const Identifier &prefix, const Identifier &identifier) {
+    if (prefix.size() >= identifier.size())
+      return false;
+    return partialMatch(prefix, identifier) == prefix.size();
+  }
+
+  static bool isPrefixOrEqual(const Identifier &prefix, const Identifier &identifier) {
+    if (prefix.size() > identifier.size())
+      return false;
+    return partialMatch(prefix, identifier) == prefix.size();
+  }
+
+  static bool isEqual(const Identifier &first, const Identifier &second) {
+    return first.size() == second.size() &&
+           partialMatch(first, second) == first.size();
+  }
+
+  static int partialMatch(const Identifier &first, const Identifier &second) {
     int pos = 0;
     for (size_t i = 0, e = std::min(first.size(), second.size()); i < e; i++) {
       if (first[i] == second[i]) {
@@ -128,25 +144,8 @@ private:
     return pos;
   }
 
-  bool isPrefix(const Identifier &prefix, const Identifier &identifier) {
-    if (prefix.size() >= identifier.size())
-      return false;
-    return partialMatch(prefix, identifier) == prefix.size();
-  }
-
-  bool isPrefixOrEqual(const Identifier &prefix, const Identifier &identifier) {
-    if (prefix.size() > identifier.size())
-      return false;
-    return partialMatch(prefix, identifier) == prefix.size();
-  }
-
-  bool isEqual(const Identifier &first, const Identifier &second) {
-    return first.size() == second.size() &&
-           partialMatch(first, second) == first.size();
-  }
-
   /// Second follows first
-  bool follows(const Identifier &first, const Identifier &second) {
+  static bool follows(const Identifier &first, const Identifier &second) {
     int matchPosition = partialMatch(first, second);
     // If one is a prefix of another, then second is not following first.
     if (matchPosition == first.size() || matchPosition == second.size())
@@ -157,7 +156,7 @@ private:
   }
 
   /// Identical before depth; follows after
-  bool followsAt(const Identifier &first, const Identifier &second, size_t depth) {
+  static bool followsAt(const Identifier &first, const Identifier &second, size_t depth) {
     if (depth >= first.size())
       throw std::overflow_error("Depth overflow for first identifier");
     if (depth >= second.size())
@@ -184,7 +183,7 @@ private:
     SecondFollows
   };
 
-  IdentifierRelation relation(const Identifier &first, const Identifier &second) {
+  static IdentifierRelation relation(const Identifier &first, const Identifier &second) {
     int matchPosition = partialMatch(first, second);
     if (matchPosition == first.size() && matchPosition == second.size())
       return IdentifierRelation::Equals;
@@ -208,16 +207,16 @@ private:
     CLINT_UNREACHABLE;
   }
 
-  void createLoop(Identifier &identifier, size_t depth) {
+  static void createLoop(Identifier &identifier, size_t depth) {
     if (depth <= identifier.size())
       identifier.insert(std::begin(identifier) + depth, 0);
   }
 
-  void appendStmt(Identifier &identifier, size_t value) {
+  static void appendStmt(Identifier &identifier, size_t value) {
     identifier.back() = value;
   }
 
-  void changeOrderAt(Identifier &identifier, int order, size_t depth = static_cast<size_t>(-1)) {
+  static void changeOrderAt(Identifier &identifier, int order, size_t depth = static_cast<size_t>(-1)) {
     if (depth == static_cast<size_t>(-1)) {
       identifier.back() = order;
       return;
@@ -228,7 +227,7 @@ private:
     *(std::begin(identifier) + depth) = order;
   }
 
-  int orderAt(Identifier &identifier, size_t depth = static_cast<size_t>(-1)) {
+  static int orderAt(Identifier &identifier, size_t depth = static_cast<size_t>(-1)) {
     if (depth == static_cast<size_t>(-1))
       return identifier.back();
     if (depth >= identifier.size()) {
@@ -237,19 +236,26 @@ private:
     return identifier.at(depth);
   }
 
-  void nextInLoop(Identifier &identifier, size_t depth = static_cast<size_t>(-1)) {
+  static void nextInLoop(Identifier &identifier, size_t depth = static_cast<size_t>(-1)) {
     changeOrderAt(identifier, orderAt(identifier, depth) + 1, depth);
   }
 
-  void prevInLoop(Identifier &identifier, size_t depth = static_cast<size_t>(-1)) {
+  static void prevInLoop(Identifier &identifier, size_t depth = static_cast<size_t>(-1)) {
     changeOrderAt(identifier, orderAt(identifier, depth) - 1, depth);
   }
+
+};
+
+class ClayBetaMapper : public Transformer {
+private:
+  typedef std::vector<int> Identifier;
+  typedef std::multimap<Identifier, Identifier> IdentifierMultiMap;
 
   // Look in mappend betas
   int maximumAt(const Identifier &prefix) {
     int maximum = INT_MIN;
     for (auto p : m_forwardMapping) {
-      int matchingLength = partialMatch(prefix, p.second);
+      int matchingLength = BetaUtility::partialMatch(prefix, p.second);
       if (matchingLength == prefix.size() && p.second.size() >= prefix.size()) {
         maximum = std::max(maximum, p.second.at(prefix.size()));
       }
