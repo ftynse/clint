@@ -22,10 +22,9 @@ void ClintStmtOccurrence::resetOccurrence(osl_statement_p stmt, const std::vecto
   bool differentPoints = false;
   std::vector<osl_relation_p> oslScatterings;
   m_betaVector = betaVector;
-  m_oslStatement = stmt; // XXX: check if it's okay everywhere
-                         // I am not sure that adding the transformed statement is a good idea, but otherwise we cannot call occurrenceChanged/projectOn for this occurrence
+  m_oslStatement = stmt; // I am not sure that adding the transformed statement is a good idea, but otherwise we cannot call occurrenceChanged/projectOn for this occurrence
                          // Furthermore, storing the statement in ClintStmtOccurrence rather than in ClintStmt is questionable
-                         // There is a comment somewhere saying m_oslStatement may go out of sync with transformed scop, this should fix it...
+                         // XXX:There is a comment somewhere saying m_oslStatement may go out of sync with transformed scop, this should fix it...
 
   if (stmt == nullptr) {
     if (m_oslScatterings.size() != 0)
@@ -93,6 +92,8 @@ int ClintStmtOccurrence::ignoreTilingDim(int dim) const {
 std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimIdx, int verticalDimIdx) const {
   CLINT_ASSERT(m_oslScatterings.size() == 1,
                "Multiple scatterings for one occurrence are not supported yet");
+  CLINT_ASSERT(m_oslStatement != nullptr,
+               "Trying to project a non-initialized statement");
   osl_relation_p scattering = m_oslScatterings[0];
 
   // Transform iterator (alpha only) indices to enumerator (beta-alpha-beta) indices

@@ -87,6 +87,8 @@ public:
   void executeTransformationSequence();
 
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
+  std::unordered_set<ClintStmtOccurrence *> occurrences(const std::vector<int> &betaPrefix) const;
+  int lastValueInLoop(const std::vector<int> &loopBeta) const;
   std::unordered_set<ClintDependence *> internalDependences(ClintStmtOccurrence *occurrence) const;
   std::unordered_set<ClintDependence *> dependencesBetween(ClintStmtOccurrence *occ1, ClintStmtOccurrence *occ2) const;
   std::vector<int> untiledBetaVector(const std::vector<int> &beta) const;

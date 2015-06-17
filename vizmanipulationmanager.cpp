@@ -675,16 +675,61 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     CLINT_ASSERT(issVector.size() >= 2, "malformed ISS vector");
 
     int nbInputDims = oldPolyhedron->occurrence()->untiledBetaVector().size() - 1;
+
+    // Exclude the statement from its position, iss works only with loops.
+    int lastValue = oldPolyhedron->scop()->lastValueInLoop(betaLoop);
+    int nbStatements = oldPolyhedron->scop()->occurrences(betaLoop).size();
+    CLINT_ASSERT(nbStatements - 1 == lastValue, "Beta map is not normalized");
+    std::vector<int> beta = oldPolyhedron->occurrence()->betaVector();
+    int originalPosition = beta.back();
+    TransformationGroup preGroup, postGroup;
+    if (nbStatements != 1) {
+      if (originalPosition != nbStatements - 1) { // if it is not already the last statement
+        preGroup.transformations.push_back(Transformation::putAfterLast(beta, nbStatements));
+      }
+      std::vector<int> splitBeta(betaLoop);
+      splitBeta.push_back(lastValue - 1);
+      preGroup.transformations.push_back(Transformation::splitAfter(splitBeta));
+      betaLoop.back() += 1; // splitted
+    }
+
     group.transformations.push_back(Transformation::issFromConstraint(betaLoop, issVector, nbInputDims));
 
+    // Put statement back to its original position along with the created statement.
+    if (nbStatements != 1) {
+      betaLoop.back() -= 1; // previous loop before splitted
+      postGroup.transformations.push_back(Transformation::fuseNext(betaLoop));
+      std::vector<int> betaStmt(betaLoop);
+      if (originalPosition != nbStatements - 1) {
+        betaStmt.push_back(nbStatements - 1);
+        postGroup.transformations.push_back(Transformation::putBefore(betaStmt, originalPosition, nbStatements + 1));
+        postGroup.transformations.push_back(Transformation::putAfter(betaStmt, originalPosition, nbStatements + 1));
+      }
+    }
+
+    Transformer *gen = new ClayScriptGenerator(std::cerr);
+    gen->apply(nullptr, preGroup);
+
+    // Execute statement split and index-set-split.
+    // Beta-remap needed after split, and executeTransformSequence will create the new statement.
+    if (preGroup.transformations.size() != 0) {
+      oldPolyhedron->scop()->transform(preGroup);
+    }
     oldPolyhedron->scop()->transform(group);
     oldPolyhedron->scop()->executeTransformationSequence();
 
-    betaLoop.push_back(1); // FIXME: works only if one polygon in CS (not the problem of 1, but of clay doing iss only on loops)
-                           // have to first split the statement out of the loop
+    // Execute statement fuse.  The new statement already exists, so we can safely remap it after fuse.
+    if (postGroup.transformations.size() != 0) {
+      oldPolyhedron->scop()->transform(postGroup);
+    }
+    oldPolyhedron->scop()->executeTransformationSequence();
+
+    originalPosition += 1;
+
+    betaLoop.push_back(originalPosition);
     ClintStmtOccurrence *occurrence = oldPolyhedron->scop()->occurrence(betaLoop);
     polyhedron->setOccurrenceSilent(occurrence);
-    polyhedron->occurrenceChanged(); // FIXME: check why tile lines do not appear after ClintScop::resetOccurrences without this call (drawing functionality is now implemented in VizPolyhedron::occurrenceChanged())
+    polyhedron->occurrenceChanged(); // Occurrence is not set when the transformation is executed so we have to notify changes manually.
     oldPolyhedron->updateInternalDependences();
     polyhedron->updateInternalDependences();
     polyhedron->coordinateSystem()->projection()->updateInnerDependences();

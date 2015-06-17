@@ -194,7 +194,9 @@ void ClintScop::executeTransformationSequence() {
         // Create the occurrence to reflect the ISS result.
         if (transformation.kind() == Transformation::Kind::IndexSetSplitting) {
           std::vector<int> loopBeta = transformation.target();
-          loopBeta.push_back(0); // FIXME: this assumes the loop being issed has only one statement (and makes assumptions on beta structure and transformation)
+          // XXX: this assumes loop contains only one statement, and makes assumptions on beta-structure.
+          // It is true for the transformation sequences created by VizManipulationManager.
+          loopBeta.push_back(0);
           ClintStmtOccurrence *occ = occurrence(loopBeta);
           loopBeta.back() = 1;
           occ->statement()->splitOccurrence(occ, nullptr, loopBeta); // XXX: nullptr statement was not checked and will fail.  fix ClintStmtOccurrence::resetOccurrence and ::projectOn (if called)
@@ -236,6 +238,30 @@ ClintStmtOccurrence *ClintScop::occurrence(const std::vector<int> &beta) const {
   if (stmt == nullptr)
     return nullptr;
   return stmt->occurrence(beta);
+}
+
+std::unordered_set<ClintStmtOccurrence *> ClintScop::occurrences(const std::vector<int> &betaPrefix) const {
+  std::unordered_set<ClintStmtOccurrence *> found;
+  for (ClintStmt *stmt : statements()) {
+    for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
+      if (BetaUtility::isPrefixOrEqual(betaPrefix, occurrence->betaVector())) {
+        found.insert(occurrence);
+      }
+    }
+  }
+  return std::move(found);
+}
+
+int ClintScop::lastValueInLoop(const std::vector<int> &loopBeta) const {
+  // Assuming m_vizBetaMap has all relevant beta (transformed).
+  int value = -1;
+  for (auto pair : m_vizBetaMap) {
+    const std::vector<int> &beta = pair.first;
+    if (BetaUtility::isPrefix(loopBeta, beta)) {
+      value = std::max(value, beta[loopBeta.size()]);
+    }
+  }
+  return value;
 }
 
 std::vector<int> ClintScop::untiledBetaVector(const std::vector<int> &beta) const {
