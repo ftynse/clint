@@ -86,6 +86,7 @@ private:
   int m_corner;
   double m_rotationAngle;
   bool m_skewing = false;
+  bool m_resizing = false;
 
   enum {
     PT_NODETACH,

@@ -707,9 +707,6 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
       }
     }
 
-    Transformer *gen = new ClayScriptGenerator(std::cerr);
-    gen->apply(nullptr, preGroup);
-
     // Execute statement split and index-set-split.
     // Beta-remap needed after split, and executeTransformSequence will create the new statement.
     if (preGroup.transformations.size() != 0) {
@@ -771,10 +768,25 @@ void VizManipulationManager::polyhedronAboutToResize(VizPolyhedron *polyhedron, 
   std::unordered_set<VizPolyhedron *> selectedPolyhedra =
       polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
   CLINT_ASSERT(selectedPolyhedra.size() == 0, "No selection allowed when resizing");
+
+  // Do not allow grain on the invisible dimension.
+  bool oneDimensional = polyhedron->occurrence()->dimensionality() < polyhedron->coordinateSystem()->verticalDimensionIdx();
+  bool zeroDimensional = polyhedron->occurrence()->dimensionality() < polyhedron->coordinateSystem()->horizontalDimensionIdx();
+  if (zeroDimensional ||
+      (oneDimensional && (direction == Dir::UP || direction == Dir::DOWN))) {
+    polyhedron->resetPointPositions();
+    return;
+  }
+  m_resizing = true;
 }
 
 void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
   CLINT_ASSERT(m_polyhedron == polyhedron, "Wrong polyhedron finished resizing");
+
+  if (!m_resizing) {
+    return;
+  }
+  m_resizing = false;
 
   bool isHorizontal;
   if (m_direction == Dir::LEFT || m_direction == Dir::RIGHT) {
@@ -908,6 +920,7 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
 
     m_polyhedron->occurrence()->scop()->transform(group);
     m_polyhedron->occurrence()->scop()->executeTransformationSequence();
+    m_polyhedron->updateShape();
   } else {
     // Fix to the original position
     m_polyhedron->coordinateSystem()->resetPolyhedronPos(polyhedron);
@@ -918,6 +931,10 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
 }
 
 void VizManipulationManager::polyhedronResizing(QPointF displacement) {
+  if (!m_resizing) {
+    return;
+  }
+
   VizProperties *properties = m_polyhedron->coordinateSystem()->projection()->vizProperties();
   const double pointDistance = properties->pointDistance();
   m_horzOffset = round(displacement.x() / pointDistance);
