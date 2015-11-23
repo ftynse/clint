@@ -7,6 +7,9 @@
 #include "clintwindow.h"
 #include "oslutils.h"
 #include "propertiesdialog.h"
+#include "clayparser.h"
+
+#include <exception>
 
 void ClintWindow::resetCentralWidget(QWidget *interface, bool deleteGraphicalInterface) {
   if (centralWidget() != nullptr) {
@@ -237,7 +240,7 @@ void ClintWindow::fileSaveSvg() {
 void ClintWindow::changeParameter(int value) {
   if (value > 0) {
     m_parameterValue = value;
-    regenerateScop((*m_program)[0], value);
+    regenerateScop();
   }
 }
 
@@ -329,39 +332,54 @@ void ClintWindow::openFileByName(QString fileName) {
     free(originalCode);
 }
 
-ClintScop *ClintWindow::regenerateScopOsl(ClintScop *vscop, osl_scop_p scop, int parameterValue = -1, bool swapMapper = true) {
-  if (parameterValue == -1)
-    parameterValue = m_parameterValue;
+ClintScop *ClintWindow::regenerateScopWithSequence(osl_scop_p originalScop, const TransformationSequence &sequence) {
+  ClintScop *oldscop = (*m_program)[0];
 
-  ClintScop *newscop = new ClintScop(scop, parameterValue, nullptr, m_program);
-  createProjections(newscop);
-  for (TransformationGroup g : vscop->transformationSequence().groups) {
-    newscop->transform(g);
-  }
-  if (swapMapper) {
-    newscop->resetRedoSequence(vscop->redoSequence());
-    newscop->swapBetaMapper(vscop);
-    newscop->setScopSilent(vscop->scopPart());
-  } else {
-    newscop->updateCode();
-  }
+  ClintScop *newscop = new ClintScop(originalScop, m_parameterValue, nullptr, m_program); // FIXME: provide original code when coloring is done for it...
   (*m_program)[0] = newscop;
-  disconnect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
+
+  createProjections(newscop);
+  disconnect(oldscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
   connect(newscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
 
-  updateCodeEditor();
-  if (swapMapper)
-    m_scriptEditor->setText(newscop->currentScript());
-
+  // Copy transformations.
+  for (TransformationGroup g : sequence.groups) {
+    newscop->transform(g);
+  }
+  newscop->executeTransformationSequence();
   return newscop;
 }
 
-ClintScop *ClintWindow::regenerateScop(ClintScop *vscop, int parameterValue = -1) {
-  if (parameterValue == -1)
-    parameterValue = m_parameterValue;
+void ClintWindow::regenerateScop(osl_scop_p originalScop) {
+  if (!m_program)
+    return;
+  ClintScop *oldscop = (*m_program)[0];
 
-  osl_scop_p scop = vscop->appliedScop();
-  return regenerateScopOsl(vscop, scop, parameterValue);
+  if (originalScop == nullptr) {
+    CLINT_ASSERT(oldscop != nullptr, "regenerating scop with no original provided or existing");
+    originalScop = oldscop->scopPart();
+  }
+  ClintScop *newscop = regenerateScopWithSequence(originalScop, oldscop->transformationSequence());
+
+  // Copy redo list after sequence execution since it cleans it.
+  newscop->resetRedoSequence(oldscop->redoSequence());
+  m_actionEditRedo->setEnabled(newscop->hasRedo());
+  m_actionEditUndo->setEnabled(newscop->hasUndo());
+
+  delete oldscop;
+}
+
+void ClintWindow::regenerateScop(const TransformationSequence &sequence) {
+  if (!m_program)
+    return;
+  ClintScop *oldscop = (*m_program)[0];
+  CLINT_ASSERT(oldscop != nullptr, "regenerationg scop with no original provided");
+
+  regenerateScopWithSequence(oldscop->scopPart(), sequence);
+  m_actionEditRedo->setEnabled(false);
+  m_actionEditUndo->setEnabled(false);
+
+  delete oldscop;
 }
 
 void ClintWindow::editUndo() {
@@ -373,12 +391,7 @@ void ClintWindow::editUndo() {
     return;
   CLINT_ASSERT(vscop->hasUndo(), "No undo possible, but the button is enabled");
   vscop->undoTransformation();
-
-  ClintScop *newscop = regenerateScop(vscop);
-  delete vscop;
-
-  m_actionEditUndo->setEnabled(newscop->hasUndo());
-  m_actionEditRedo->setEnabled(true);
+  regenerateScop();
 }
 
 void ClintWindow::editRedo() {
@@ -390,12 +403,7 @@ void ClintWindow::editRedo() {
     return;
   CLINT_ASSERT(vscop->hasRedo(), "No redo possible, but the button is enabled");
   vscop->redoTransformation();
-
-  ClintScop *newscop = regenerateScop(vscop);
-  delete vscop;
-
-  m_actionEditRedo->setEnabled(newscop->hasRedo());
-  m_actionEditUndo->setEnabled(true);
+  regenerateScop();
 }
 
 void ClintWindow::editVizProperties() {
@@ -459,17 +467,7 @@ void ClintWindow::reparseCode() {
     QMessageBox::critical(this, "Could not parse code", "Could not extract polyhedral representation from the code",
                           QMessageBox::Ok, QMessageBox::Ok);
   } else {
-    QString plainText = m_scriptEditor->toPlainText();
-    char *script = strdup(plainText.toStdString().c_str());
-
-    int result = parseClay(scop, script);
-    if (result != 0) {
-      QMessageBox::critical(this, "Could not apply transformation", "The transformation sequence is not applicable to the modified code",
-                            QMessageBox::Ok, QMessageBox::Ok);
-    } else {
-      regenerateScopOsl(vscop, scop, -1, false);
-    }
-    free(script);
+    regenerateScop(scop);
   }
   free(code);
 }
@@ -482,18 +480,18 @@ void ClintWindow::reparseScript() {
     return;
 
   QString plainText = m_scriptEditor->toPlainText();
-  char *script = strdup(plainText.toStdString().c_str());
-  osl_scop_p scop = osl_scop_clone(vscop->scopPart());
 
-  int result = parseClay(scop, script);
-  if (result != 0) {
-    QMessageBox::critical(this, "Could not apply transformation", "Could not apply specified transformation sequence to the code",
+  ClayParser parser;
+  try {
+    TransformationSequence newSequence = parser.parse(plainText.toStdString());
+    regenerateScop(newSequence);
+  } catch (std::logic_error e) {
+    QMessageBox::critical(this, "Could not parse transformation", e.what(),
                           QMessageBox::Ok, QMessageBox::Ok);
-  } else {
-    regenerateScopOsl(vscop, scop, -1, false);
+  } catch (...) {
+    QMessageBox::critical(this, "Could not parse transformation", "Unidentified error",
+                          QMessageBox::Ok, QMessageBox::Ok);
   }
-
-  free(script);
 }
 
 void ClintWindow::scopTransformed() {

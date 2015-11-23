@@ -101,21 +101,6 @@ public:
     std::swap(m_betaMapper, scop->m_betaMapper);
   }
 
-  void setScopSilent(osl_scop_p scop) {
-    updateGeneratedHtml(m_scopPart, m_generatedHtml);
-    m_scopPart = scop;
-    m_scriptGenerator->apply(scop, m_transformationSeq);
-    if (m_currentScript)
-      free(m_currentScript);
-    m_currentScript = strdup(m_scriptStream.str().c_str());
-    m_scriptStream.str(std::string());
-    m_scriptStream.clear();
-    updateGeneratedHtml(m_scopPart, m_originalHtml);
-  }
-  void updateCode() {
-    updateGeneratedHtml(m_scopPart, m_generatedHtml);
-  }
-
   osl_scop_p scopPart() const {
     return m_scopPart;
   }

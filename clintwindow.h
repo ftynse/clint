@@ -16,8 +16,8 @@ public:
   explicit ClintWindow(QWidget *parent = 0);
   ~ClintWindow();
 
-  ClintScop *regenerateScop(ClintScop *vscop, int parameterValue);
-  ClintScop *regenerateScopOsl(ClintScop *vscop, osl_scop_p scop, int parameterValue, bool swapMapper);
+  void regenerateScop(osl_scop_p originalScop = nullptr);
+  void regenerateScop(const TransformationSequence &sequence);
   void createProjections(ClintScop *vscop);
 signals:
 
@@ -78,6 +78,7 @@ private:
 
   void resetCentralWidget(QWidget *interface = nullptr, bool deleteGraphicalInterface = true);
   void resetProjectionMatrix(ClintScop *vscop);
+  ClintScop *regenerateScopWithSequence(osl_scop_p originalScop, const TransformationSequence &sequence);
 };
 
 #endif // CLINTWINDOW_H
