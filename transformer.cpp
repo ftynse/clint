@@ -17,18 +17,21 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
     break;
   case Transformation::Kind::Shift:
   {
-    clay_list_p list = clay_list_malloc();
+    // FIXME: this is a workaround for the old definition of variable shift, absent in cgo-clay
     if (transformation.iterators().size() != 0) {
-      clay_list_add(list, ClayBeta(transformation.iterators()));
+      CLINT_WARNING(true, "Variable shift emulated through skew");
+      const std::vector<int> &iterators = transformation.iterators();
+      for (size_t i = 0; i < iterators.size(); i++) {
+        if (iterators[i] != 0) {
+          clay_skew(scop, ClayBeta(transformation.target()), transformation.depth(),
+                    i + 1, iterators[i], m_options);
+        }
+      }
     }
-    if (transformation.parameters().size() != 0) {
-      clay_list_add(list, ClayBeta(transformation.parameters()));
-    }
-    clay_array_p array = clay_array_malloc();
-    clay_array_add(array, transformation.constantAmount());
-    clay_list_add(list, array);
-    err = clay_shift(scop, ClayBeta(transformation.target()), transformation.depth(), list, m_options);
-    clay_list_free(list); // List cleans inner arrays, too.
+
+    err = clay_shift(scop, ClayBeta(transformation.target()), transformation.depth(),
+                     ClayBeta(transformation.parameters()), transformation.constantAmount(),
+                     m_options);
   }
     break;
   case Transformation::Kind::Reorder:
@@ -36,28 +39,15 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
     break;
   case Transformation::Kind::Skew:
   {
-    clay_list_p list = clay_list_malloc();
-    clay_array_p constArray = clay_array_malloc();
-    clay_array_p paramArray = clay_array_malloc();
-    clay_array_p varArray   = clay_array_malloc();
-    // Clay does not need all the variables, just those used in the transformation.
-    for (int i = 0, e = std::max(transformation.depth(), transformation.secondDepth()); i < e; ++i) {
-      int value = 0;
-      if (i + 1 == transformation.depth()) value = 1;
-      else if (i + 1 == transformation.secondDepth()) value = -transformation.constantAmount();
-      clay_array_add(varArray, value);
-    }
-    clay_list_add(list, varArray);
-    clay_list_add(list, paramArray);
-    clay_list_add(list, constArray);
-    err = clay_shift(scop, ClayBeta(transformation.target()), transformation.depth(), list, m_options);
-    clay_list_free(list);
+    err = clay_skew(scop, ClayBeta(transformation.target()), transformation.depth(),
+                    transformation.secondDepth(), -transformation.constantAmount(), m_options);
   }
     break;
   case Transformation::Kind::IndexSetSplitting:
   {
     clay_list_p list = clay_list_malloc();
     clay_list_add(list, clay_array_clone(ClayBeta(transformation.iterators())));
+    clay_list_add(list, clay_array_malloc()); // Space for input dimensions.
     clay_list_add(list, clay_array_clone(ClayBeta(transformation.parameters())));
     clay_array_p array = clay_array_malloc();
     clay_array_add(array, transformation.constantAmount());
@@ -83,13 +73,7 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
   case Transformation::Kind::Tile:
     err = clay_tile(scop, ClayBeta(transformation.target()),
                     transformation.depth(), transformation.depth(),
-                    transformation.constantAmount(), 0, m_options);
-//    err = clay_stripmine(scop, ClayBeta(transformation.target()),
-//                         transformation.depth(), transformation.constantAmount(),
-//                         0, m_options);
-//    err += clay_interchange(scop, ClayBeta(transformation.target()),
-//                            transformation.depth(), transformation.depth() + 1,
-//                            0, m_options);
+                    transformation.constantAmount(), m_options);
     break;
   default:
     break;

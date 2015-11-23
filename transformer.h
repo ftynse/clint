@@ -334,15 +334,30 @@ public:
       outputVector(m_stream, transformation.order()) << "]);\n";
       break;
     case Transformation::Kind::Shift:
+      // FIXME: workaround for old variable shift definition
+      if (transformation.iterators().size() != 0) {
+        const std::vector<int> &iterators = transformation.iterators();
+        for (size_t i = 0; i < iterators.size(); i++) {
+          if (iterators[i] != 0) {
+            m_stream << "skew([";
+            outputVector(m_stream, transformation.target()) << "], "
+                  << transformation.depth() << ", "
+                  << transformation.secondDepth() << ", "
+                  << transformation.constantAmount() << ");\n";
+          }
+        }
+      }
+
       m_stream << "shift([";
       outputVector(m_stream, transformation.target()) << "], "
-             << transformation.depth() << ", "
-             << "{" << transformation.constantAmount() << "});\n";
+             << transformation.depth() << ", [";
+      outputVector(m_stream, transformation.parameters()) << "], "
+             << transformation.constantAmount() << ");\n";
       break;
     case Transformation::Kind::IndexSetSplitting:
       m_stream << "iss([";
       outputVector(m_stream, transformation.target()) << "], {";
-      outputVector(m_stream, transformation.iterators()) << " | ";
+      outputVector(m_stream, transformation.iterators()) << " || ";
       outputNonZeroVector(m_stream, transformation.parameters()) << " | ";
       m_stream << transformation.constantAmount() << "});\n";
       break;
@@ -358,21 +373,10 @@ public:
           << transformation.depth() << ");\n";
       break;
     case Transformation::Kind::Skew:
-//      m_stream << "skew([";
-//      outputVector(m_stream, transformation.target()) << "], "
-//          << transformation.depth() << ", "
-//          << transformation.constantAmount() << ");\n";
-      m_stream << "shift([";
+      m_stream << "skew([";
       outputVector(m_stream, transformation.target()) << "], "
-          << transformation.depth() << ", {";
-      for (int i = 0, e = std::max(transformation.depth(), transformation.secondDepth()); i < e; ++i) {
-        if (i != 0) m_stream << ",";
-
-        if (i + 1 == transformation.depth())            m_stream << "1";
-        else if (i + 1 == transformation.secondDepth()) m_stream << -transformation.constantAmount();
-        else                                            m_stream << "0";
-      }
-      m_stream << "||});\n";
+          << transformation.depth() << ", " << transformation.secondDepth()
+          << ", " << -transformation.constantAmount() << ");\n";
       break;
 
     case Transformation::Kind::Interchange:

@@ -242,15 +242,16 @@ public:
     return t;
   }
 
-  static Transformation rawShift(const std::vector<int> &beta, int depth, const std::vector<std::vector<int>> &list) {
-    CLINT_ASSERT(list.size() <= 3 && list.size() >= 1, "Shift transformation list malformed.");
+  static Transformation rawShift(const std::vector<int> &beta, int depth, const std::vector<int> &parameters, int constant) {
     CLINT_ASSERT(beta.size() > 0, "Shift transformation beta too short");
     CLINT_ASSERT(depth <= beta.size(), "Shift transformation depth overflow");
     CLINT_ASSERT(depth > 0, "Shift transformation depth underflow");
     Transformation t;
-    t.m_kind       = Kind::Shift;
-    t.m_depthOuter = depth;
-    unwrapClayList(list, t);
+    t.m_kind           = Kind::Shift;
+    t.m_targetBeta     = beta;
+    t.m_depthOuter     = depth;
+    t.m_parameters     = parameters;
+    t.m_constantAmount = constant;
     return t;
   }
 

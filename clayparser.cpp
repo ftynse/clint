@@ -59,6 +59,7 @@ struct clay_parser_list {
   std::vector<int> first;
   std::vector<int> second;
   std::vector<int> third;
+  std::vector<int> fourth;
 };
 
 typedef boost::variant<std::vector<int>, int, clay_parser_list> clay_parser_arg;
@@ -77,6 +78,7 @@ BOOST_FUSION_ADAPT_STRUCT(
     (std::vector<int>, first)
     (std::vector<int>, second)
     (std::vector<int>, third)
+    (std::vector<int>, fourth)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
@@ -115,11 +117,13 @@ struct clay_grammar : qi::grammar<Iterator, std::vector<clay_parser_command>(), 
     constant = int_;
 
     list = '{'
-        >> -int_list    [at_c<2>(_val) = _1]
-        >> -lexeme["|"] [at_c<1>(_val) = at_c<2>(_val), at_c<2>(_val) = std::vector<int>()]
-        >> -int_list    [at_c<2>(_val) = _1]
-        >> -lexeme["|"] [at_c<0>(_val) = at_c<1>(_val), at_c<1>(_val) = at_c<2>(_val), at_c<2>(_val) = std::vector<int>()]
-        >> -int_list    [at_c<2>(_val) = _1]
+        >> -int_list    [at_c<3>(_val) = _1]
+        >> -lexeme["|"] [at_c<2>(_val) = at_c<3>(_val), at_c<3>(_val) = std::vector<int>()]
+        >> -int_list    [at_c<3>(_val) = _1]
+        >> -lexeme["|"] [at_c<1>(_val) = at_c<2>(_val), at_c<2>(_val) = at_c<3>(_val), at_c<3>(_val) = std::vector<int>()]
+        >> -int_list    [at_c<3>(_val) = _1]
+        >> -lexeme["|"] [at_c<0>(_val) = at_c<1>(_val), at_c<1>(_val) = at_c<2>(_val), at_c<2>(_val) = at_c<3>(_val), at_c<3>(_val) = std::vector<int>()]
+        >> -int_list    [at_c<3>(_val) = _1]
         >> '}';
 
     arg = (beta | constant | list)    [_val = _1];
@@ -254,15 +258,12 @@ Transformation create_transformation(const clay_parser::clay_parser_command &cmd
 }
 
 static std::vector<std::vector<int>> wrapClayParserList(const clay_parser::clay_parser_list &&list) {
-  std::vector<std::vector<int>> wrapped(3);
+  std::vector<std::vector<int>> wrapped(4);
   wrapped[0] = list.first;
   wrapped[1] = list.second;
   wrapped[2] = list.third;
+  wrapped[3] = list.fourth;
   return std::move(wrapped);
-}
-
-Transformation wrappedShift(const std::vector<int> &beta, int depth, const clay_parser::clay_parser_list &&list) {
-  return Transformation::rawShift(beta, depth, wrapClayParserList(std::forward<const clay_parser::clay_parser_list>(list)));
 }
 
 Transformation wrappedIss(const std::vector<int> &beta, const clay_parser::clay_parser_list &&list) {
@@ -278,7 +279,7 @@ TransformationGroup create_group(const std::vector<clay_parser::clay_parser_comm
   mapping["distribute"]  = mapping["split"];
   mapping["fuse"]        = unwrap<std::vector<int>>                                    (Transformation::fuseNext);
   mapping["reorder"]     = unwrap<std::vector<int>, std::vector<int>>                  (Transformation::rawReorder);
-  mapping["shift"]       = unwrap<std::vector<int>, int, clay_parser::clay_parser_list>(wrappedShift);
+  mapping["shift"]       = unwrap<std::vector<int>, int, std::vector<int>, int>        (Transformation::rawShift);
   mapping["skew"]        = unwrap<std::vector<int>, int, int, int>                     (Transformation::skew);
   mapping["grain"]       = unwrap<std::vector<int>, int, int>                          (Transformation::grain);
   mapping["interchange"] = unwrap<std::vector<int>, int, int>                          (Transformation::interchange);
@@ -310,6 +311,8 @@ void print_parser_command(std::vector<clay_parser::clay_parser_command> parser_c
         std::copy(list->second.cbegin(), list->second.cend(), std::ostream_iterator<int>(std::cout, ","));
         std::cout << "|";
         std::copy(list->third.cbegin(), list->third.cend(), std::ostream_iterator<int>(std::cout, ","));
+        std::cout << "|";
+        std::copy(list->fourth.cbegin(), list->fourth.cend(), std::ostream_iterator<int>(std::cout, ","));
         std::cout << "} ";
       } else {
         std::cout << "wtf";
