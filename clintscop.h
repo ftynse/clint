@@ -150,7 +150,6 @@ public:
 
   int dimensionality();
 
-  bool wasSkewed(ClintStmtOccurrence *occ);
   void tile(const std::vector<int> &betaPrefix, int dimensionIdx, int tileSize);
   void untile(const std::vector<int> &betaPrefix, int dimensionIdx);
 

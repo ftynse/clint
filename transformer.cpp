@@ -47,6 +47,12 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
                     transformation.secondDepth(), -transformation.constantAmount(), m_options);
   }
     break;
+  case Transformation::Kind::Reshape:
+  {
+    err = clay_reshape(scop, ClayBeta(transformation.target()), transformation.depth(),
+                       transformation.secondDepth(), -transformation.constantAmount(), m_options);
+    break;
+  }
   case Transformation::Kind::IndexSetSplitting:
   {
     clay_list_p list = clay_list_malloc();
@@ -298,6 +304,7 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
   case Transformation::Kind::Grain:
   case Transformation::Kind::Reverse:
   case Transformation::Kind::Interchange:
+  case Transformation::Kind::Reshape:
     // Do not affect beta
     break;
 

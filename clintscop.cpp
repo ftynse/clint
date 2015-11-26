@@ -421,20 +421,6 @@ std::vector<int> ClintScop::canonicalOriginalBetaVector(const std::vector<int> &
   return *betas.begin();
 }
 
-bool ClintScop::wasSkewed(ClintStmtOccurrence *occ) {
-  const std::vector<int> &beta = occ->betaVector();
-  std::vector<int> originalBeta = canonicalOriginalBetaVector(beta);
-  auto iterator = std::find_if(std::begin(m_transformationSeq.groups), std::end(m_transformationSeq.groups),
-                               [this,&originalBeta](const TransformationGroup &group) {
-    return std::any_of(std::begin(group.transformations), std::end(group.transformations),
-                [this,&originalBeta](const Transformation &transformation) {
-      return transformation.kind() == Transformation::Kind::Skew &&
-             canonicalOriginalBetaVector(transformation.target()) == originalBeta;
-    });
-  });
-  return iterator != std::end(m_transformationSeq.groups);
-}
-
 void ClintScop::tile(const std::vector<int> &betaPrefix, int dimensionIdx, int tileSize) {
   for (ClintStmtOccurrence *occ : occurrences(betaPrefix)) {
     occ->tile(dimensionIdx, tileSize);

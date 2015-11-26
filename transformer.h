@@ -406,6 +406,14 @@ public:
          << transformation.depth() << ");\n";
       break;
 
+    case Transformation::Kind::Reshape:
+      m_stream << "reshape([";
+      outputVector(m_stream, transformation.target()) << "], "
+         << transformation.depth() << ", "
+         << transformation.secondDepth() << ", "
+         << transformation.constantAmount() << ");\n";
+      break;
+
     default:
       m_stream << "###unkonwn transformation###\n";
     }

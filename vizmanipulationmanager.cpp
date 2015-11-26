@@ -971,12 +971,6 @@ void VizManipulationManager::polyhedronAboutToSkew(VizPolyhedron *polyhedron, in
   m_polyhedron = polyhedron;
   m_corner = corner;
 
-  // Skewings are not combinable as we think they are.
-  if (polyhedron->scop()->wasSkewed(polyhedron->occurrence())) {
-    CLINT_WARNING(false, "Trying to combine skew transformations");
-    return;
-  }
-
   // Do not allow multiple polyhedra skew yet.  This would require creating a graphicsGroup
   // and adding handles for the group to ensure UI consistency.
   std::unordered_set<VizPolyhedron *> selectedPolyhedra =
@@ -1011,9 +1005,7 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
 
   int verticalSkewFactor = round(static_cast<double>(-m_vertOffset) / verticalRange);
   int horizontalSkewFactor = round(static_cast<double>(m_horzOffset) / horizontalRange);
-  // Skew transformations are not trivially combinable with current Clay transformation set.
-  // If both skewing directions are found, do nothing.
-  if (verticalSkewFactor != 0 && horizontalSkewFactor != 0) {
+  if (verticalSkewFactor == 0 && horizontalSkewFactor == 0) {
     return;
   }
 
@@ -1046,18 +1038,18 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
 
     // vertical
     if (verticalSkewFactor != 0) {
-      group.transformations.push_back(Transformation::skew(
+      group.transformations.push_back(Transformation::reshape(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        horizontalDepth,
                                         verticalDepth,
+                                        polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
                                         verticalSkewFactor));
     }
     // horizontal
     if (horizontalSkewFactor != 0) {
-      group.transformations.push_back(Transformation::skew(
+      group.transformations.push_back(Transformation::reshape(
                                         m_polyhedron->occurrence()->betaVector(),
-                                        verticalDepth,
                                         horizontalDepth,
+                                        polyhedron->coordinateSystem()->verticalDimensionIdx() + 1, // input dim is not subject to tiling
                                         horizontalSkewFactor));
     }
 

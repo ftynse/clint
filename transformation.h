@@ -19,7 +19,8 @@ public:
     Reverse,
     Interchange,
     Tile,
-    Linearize
+    Linearize,
+    Reshape
   };
 
   Kind kind() const {
@@ -72,6 +73,20 @@ public:
     t.m_targetBeta     = beta;
     t.m_depthInner     = sourceDimension;
     t.m_depthOuter     = targetDimension;
+    t.m_constantAmount = factor;
+    return t;
+  }
+
+  static Transformation reshape(const std::vector<int> &beta, int outputDimension, int inputDimension, int factor) {
+    CLINT_ASSERT(outputDimension <= beta.size(), "Dimension overflow");
+    CLINT_ASSERT(inputDimension <= beta.size(), "Dimension overflow");
+    CLINT_ASSERT(outputDimension >= 0, "Dimension underflow");
+    CLINT_ASSERT(inputDimension >= 0, "Dimension underflow");
+    Transformation t;
+    t.m_kind           = Kind::Reshape;
+    t.m_targetBeta     = beta;
+    t.m_depthInner     = inputDimension;
+    t.m_depthOuter     = outputDimension;
     t.m_constantAmount = factor;
     return t;
   }
