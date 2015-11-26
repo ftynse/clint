@@ -5,6 +5,10 @@
 #include "clintstmt.h"
 #include "clintstmtoccurrence.h"
 
+#include <exception>
+
+#include <clay/errors.h>
+
 void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformation) {
   int err = 0;
   clay_beta_normalize(scop);
@@ -82,7 +86,9 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
   default:
     break;
   }
-  CLINT_ASSERT(err == 0, "Error during Clay transformation");
+  if (err != CLAY_SUCCESS) {
+    throw std::logic_error(std::string(clay_error_message_text(err)));
+  }
   clay_beta_normalize(scop);
 }
 

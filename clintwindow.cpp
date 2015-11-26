@@ -339,15 +339,20 @@ ClintScop *ClintWindow::regenerateScopWithSequence(osl_scop_p originalScop, cons
   (*m_program)[0] = newscop;
 
   createProjections(newscop);
-  disconnect(oldscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
-  connect(newscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
 
   // Copy transformations.
   for (TransformationGroup g : sequence.groups) {
     newscop->transform(g);
   }
-  newscop->executeTransformationSequence();
-  return newscop;
+  try {
+    newscop->executeTransformationSequence();
+    connect(newscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
+    disconnect(oldscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
+    return newscop;
+  } catch (std::logic_error e) {
+    QMessageBox::critical(this, "Could not apply sequence", e.what(), QMessageBox::Ok, QMessageBox::Ok);
+    return NULL;
+  }
 }
 
 void ClintWindow::regenerateScop(osl_scop_p originalScop) {
@@ -360,6 +365,8 @@ void ClintWindow::regenerateScop(osl_scop_p originalScop) {
     originalScop = oldscop->scopPart();
   }
   ClintScop *newscop = regenerateScopWithSequence(originalScop, oldscop->transformationSequence());
+  if (newscop == NULL)
+    return;
 
   // Copy redo list after sequence execution since it cleans it.
   newscop->resetRedoSequence(oldscop->redoSequence());
