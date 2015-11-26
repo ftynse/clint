@@ -75,6 +75,10 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
                     transformation.depth(), transformation.depth(),
                     transformation.constantAmount(), m_options);
     break;
+  case Transformation::Kind::Linearize:
+    err = clay_linearize(scop, ClayBeta(transformation.target()),
+                         transformation.depth(), m_options);
+    break;
   default:
     break;
   }
@@ -246,7 +250,30 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
     for (auto m : m_forwardMapping) {
       Identifier identifier = m.second;
       if (BetaUtility::isPrefixOrEqual(target, identifier)) {
-        BetaUtility::createLoop(identifier, transformation.depth());
+        BetaUtility::createLoop(identifier, transformation.depth() + 1);
+      }
+
+      if (m_createdMappings.find(m.second) != std::end(m_createdMappings)) {
+        updatedCreatedMappings.insert(identifier);
+      }
+      updatedForwardMapping.emplace(m.first, identifier);
+    }
+    m_forwardMapping = updatedForwardMapping;
+    m_createdMappings = updatedCreatedMappings;
+    syncReverseMapping();
+  }
+    break;
+
+  case Transformation::Kind::Linearize:
+  {
+    Identifier target = transformation.target();
+    IdentifierMultiMap updatedForwardMapping;
+    std::set<Identifier> updatedCreatedMappings;
+
+    for (auto m : m_forwardMapping) {
+      Identifier identifier = m.second;
+      if (BetaUtility::isPrefixOrEqual(target, identifier)) {
+        BetaUtility::removeLoop(identifier, transformation.depth() + 1);
       }
 
       if (m_createdMappings.find(m.second) != std::end(m_createdMappings)) {

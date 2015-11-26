@@ -288,7 +288,6 @@ void ClintScop::remapBetas(const TransformationGroup &group) {
   ClayBetaMapper *mapper = new ClayBetaMapper(this);
   mapper->apply(nullptr, group);
   m_betaMapper->apply(nullptr, group);
-  mapper->dump(std::cerr);
 
   std::map<std::vector<int>, std::vector<int>> mapping;
   for (ClintStmt *stmt : statements()) {
@@ -434,4 +433,16 @@ bool ClintScop::wasSkewed(ClintStmtOccurrence *occ) {
     });
   });
   return iterator != std::end(m_transformationSeq.groups);
+}
+
+void ClintScop::tile(const std::vector<int> &betaPrefix, int dimensionIdx, int tileSize) {
+  for (ClintStmtOccurrence *occ : occurrences(betaPrefix)) {
+    occ->tile(dimensionIdx, tileSize);
+  }
+}
+
+void ClintScop::untile(const std::vector<int> &betaPrefix, int dimensionIdx) {
+  for (ClintStmtOccurrence *occ : occurrences(betaPrefix)) {
+    occ->untile(dimensionIdx);
+  }
 }

@@ -1265,6 +1265,11 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
   if (!samePolyhedron)
     return;
 
+  // Check that this coordinate system is the only one in its pile.
+  size_t pileIndex;
+  std::tie(pileIndex, std::ignore) = point->coordinateSystem()->projection()->csIndices(point->coordinateSystem());
+  bool onlyCS = point->coordinateSystem()->projection()->pileCSNumber(pileIndex) == 1;
+
   ClintStmtOccurrence *occurrence = point->polyhedron()->occurrence();
 
   int horizontalTileSize = selectionHorizontalMax - selectionHorizontalMin + 1;
@@ -1284,39 +1289,68 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
   int verticalOccurrenceSpan = occurrence->maximumValue(point->coordinateSystem()->verticalDimensionIdx())
       - occurrence->minimumValue(point->coordinateSystem()->verticalDimensionIdx()) + 1;
 
-  bool horizontalTiling = point->coordinateSystem()->isHorizontalAxisVisible() &&
-                          horizontalTileSize != horizontalOccurrenceSpan;
-  bool verticalTiling   = point->coordinateSystem()->isVerticalAxisVisible() &&
-                          verticalTileSize != verticalOccurrenceSpan;
+  bool horizontalTilingAllowed = onlyCS && point->coordinateSystem()->isHorizontalAxisVisible();
+  bool horizontalFullSelection = horizontalTileSize == horizontalOccurrenceSpan;
+  bool horizontalTiled = occurrence->isProjectionTiled(point->coordinateSystem()->horizontalDimensionIdx());
+  int horizontalTileSizeOld = occurrence->projectionDimTileSize(point->coordinateSystem()->horizontalDimensionIdx());
+
+  bool verticalTilingAllowed   = point->coordinateSystem()->isVerticalAxisVisible();
+  bool verticalFullSelection = verticalTileSize == verticalOccurrenceSpan;
+  bool verticalTiled = occurrence->isProjectionTiled(point->coordinateSystem()->verticalDimensionIdx());
+  int verticalTileSizeOld = occurrence->projectionDimTileSize(point->coordinateSystem()->verticalDimensionIdx());
 
   TransformationGroup group;
-  std::vector<int> beta = occurrence->betaVector();
-  if (verticalTiling) {
+  if (verticalTilingAllowed && verticalTileSizeOld != verticalTileSize) {
     int verticalDepth = occurrence->depth(point->coordinateSystem()->verticalDimensionIdx());
-    group.transformations.push_back(Transformation::tile(
-                                      beta,
-                                      verticalDepth,
-                                      verticalTileSize));
-    beta.insert(std::begin(beta) + verticalDepth, 0);
-    occurrence->tile(point->coordinateSystem()->verticalDimensionIdx(),
-                     verticalTileSize);
-  }
-  if (horizontalTiling) {
-    int horizontalDepth = occurrence->depth(point->coordinateSystem()->horizontalDimensionIdx());
-    group.transformations.push_back(Transformation::tile(
-                                      beta,
-                                      horizontalDepth,
-                                      horizontalTileSize));
-    beta.insert(std::begin(beta) + horizontalDepth, 0);
-    occurrence->tile(point->coordinateSystem()->horizontalDimensionIdx(),
-                     horizontalTileSize);
+    std::vector<int> beta = occurrence->betaVector();
+    beta.resize(verticalDepth);
+    if (verticalTiled) {
+      group.transformations.push_back(Transformation::linearize(
+                                        beta,
+                                        verticalDepth - 1));
+      occurrence->scop()->untile(beta, point->coordinateSystem()->verticalDimensionIdx());
+    }
+    verticalDepth = occurrence->depth(point->coordinateSystem()->verticalDimensionIdx());
+    beta = occurrence->betaVector();
+    beta.resize(verticalDepth);
+    if (!verticalFullSelection) {
+      group.transformations.push_back(Transformation::tile(
+                                        beta,
+                                        verticalDepth,
+                                        verticalTileSize));
+      occurrence->scop()->tile(beta,
+                               point->coordinateSystem()->verticalDimensionIdx(),
+                               verticalTileSize);
+    }
   }
 
-//  point->scop()->remapBetas(group);
+  if (horizontalTilingAllowed && horizontalTileSizeOld != horizontalTileSize) {
+    int horizontalDepth = occurrence->depth(point->coordinateSystem()->horizontalDimensionIdx());
+    std::vector<int> beta = occurrence->betaVector();
+    beta.resize(horizontalDepth);
+    if (horizontalTiled) {
+      group.transformations.push_back(Transformation::linearize(
+                                        beta,
+                                        horizontalDepth - 1));
+      occurrence->scop()->untile(beta, point->coordinateSystem()->horizontalDimensionIdx());
+    }
+    horizontalDepth = occurrence->depth(point->coordinateSystem()->horizontalDimensionIdx());
+    beta = occurrence->betaVector();
+    beta.resize(horizontalDepth);
+    if (!horizontalFullSelection) {
+      group.transformations.push_back(Transformation::tile(
+                                        beta,
+                                        horizontalDepth,
+                                        horizontalTileSize));
+      occurrence->scop()->tile(beta,
+                               point->coordinateSystem()->horizontalDimensionIdx(),
+                               horizontalTileSize);
+    }
+  }
 
   if (!group.transformations.empty()) {
     occurrence->scop()->transform(group);
     occurrence->scop()->executeTransformationSequence();
-    //point->polyhedron()->occurrenceChanged();
+    point->coordinateSystem()->update();
   }
 }

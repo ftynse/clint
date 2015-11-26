@@ -65,7 +65,8 @@ public:
       if (transformation.kind() == Transformation::Kind::Fuse ||
           transformation.kind() == Transformation::Kind::Split ||
           transformation.kind() == Transformation::Kind::Reorder ||
-          transformation.kind() == Transformation::Kind::Tile) {
+          transformation.kind() == Transformation::Kind::Tile ||
+          transformation.kind() == Transformation::Kind::Linearize) {
         remapBetas(tg);
         break;
       }
@@ -150,6 +151,8 @@ public:
   int dimensionality();
 
   bool wasSkewed(ClintStmtOccurrence *occ);
+  void tile(const std::vector<int> &betaPrefix, int dimensionIdx, int tileSize);
+  void untile(const std::vector<int> &betaPrefix, int dimensionIdx);
 
   /// Get the single original beta of an occurrence even if it has multiple original betas in mapper.
   /// This function is used as default policy for finding the original occurrence for a transformed one.

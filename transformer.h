@@ -208,6 +208,11 @@ public:
       identifier.insert(std::begin(identifier) + depth, 0);
   }
 
+  static void removeLoop(Identifier &identifier, size_t depth) {
+    if (depth < identifier.size())
+      identifier.erase(std::begin(identifier) + depth);
+  }
+
   static void appendStmt(Identifier &identifier, size_t value) {
     identifier.back() = value;
   }
@@ -393,6 +398,12 @@ public:
          << transformation.depth() << ", "
          << transformation.constantAmount() << ", "
          << "0);\n";
+      break;
+
+    case Transformation::Kind::Linearize:
+      m_stream << "linearize([";
+      outputVector(m_stream, transformation.target()) << "], "
+         << transformation.depth() << ");\n";
       break;
 
     default:

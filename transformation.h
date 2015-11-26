@@ -19,6 +19,7 @@ public:
     Reverse,
     Interchange,
     Tile,
+    Linearize
   };
 
   Kind kind() const {
@@ -212,13 +213,23 @@ public:
   }
 
   static Transformation tile(const std::vector<int> &beta, int dimension, int size) {
-    CLINT_ASSERT(beta.size() > dimension,
+    CLINT_ASSERT(beta.size() >= dimension,
                  "Beta too short");
     Transformation t;
     t.m_kind           = Kind::Tile;
     t.m_targetBeta     = beta;
     t.m_depthOuter     = dimension;
     t.m_constantAmount = size;
+    return t;
+  }
+
+  static Transformation linearize(const std::vector<int> &beta, int dimension) {
+    CLINT_ASSERT(beta.size() >= dimension,
+                 "Beta too short");
+    Transformation t;
+    t.m_kind           = Kind::Linearize;
+    t.m_targetBeta     = beta;
+    t.m_depthOuter     = dimension;
     return t;
   }
 

@@ -55,6 +55,7 @@ public:
   }
 
   void tile(int dimensionIdx, unsigned tileSize);
+  void untile(int dimensionIdx);
 
   bool isTiled() const {
     return !m_tilingDimensions.empty();
@@ -63,6 +64,19 @@ public:
   bool isTiled(int dimension) const {
     dimension = ignoreTilingDim(dimension);
     return m_tilingDimensions.find(dimension - 2) != std::end(m_tilingDimensions);
+  }
+
+  // dimIdx -- projection dimension, 0-based
+  bool isProjectionTiled(int dimIdx) const {
+    return projectionDimTileSize(dimIdx) != 0;
+  }
+
+  unsigned projectionDimTileSize(int dimIdx) const {
+    int scatteringDim = 2 * (depth(dimIdx) - 1) - 1; // +1 for the alpha-dim, -2 to look for previous tiling.
+    auto it = m_tileSizes.find(scatteringDim);
+    if (it != std::end(m_tileSizes))
+      return it->second;
+    return 0;
   }
 
   unsigned tileSize(int dim) const {
