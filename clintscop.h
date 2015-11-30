@@ -87,6 +87,10 @@ public:
 
   void executeTransformationSequence();
 
+  boost::optional<Transformation> guessInverseTransformation(const Transformation &transformation) {
+    return m_transformer->guessInverseTransformation(appliedScop(), transformation);
+  }
+
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
   std::unordered_set<ClintStmtOccurrence *> occurrences(const std::vector<int> &betaPrefix) const;
   int lastValueInLoop(const std::vector<int> &loopBeta) const;
@@ -98,6 +102,8 @@ public:
   void updateBetas(std::map<std::vector<int>, std::vector<int> > &mapping);
 
   osl_scop_p appliedScop();
+  void appliedScopFlushCache();
+
   void swapBetaMapper(ClintScop *scop) {
     std::swap(m_betaMapper, scop->m_betaMapper);
   }
@@ -179,6 +185,7 @@ private:
   void remapBetas(const TransformationGroup &tg);
 
   osl_scop_p m_scopPart;
+  osl_scop_p m_appliedScopCache = nullptr;
   ClintProgram *m_program;
   int m_parameterValue;
   osl_relation_p m_fixedContext;

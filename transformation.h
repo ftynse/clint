@@ -20,7 +20,9 @@ public:
     Interchange,
     Tile,
     Linearize,
-    Reshape
+    Reshape,
+    Densify,
+    Collapse
   };
 
   Kind kind() const {
@@ -243,6 +245,15 @@ public:
                  "Beta too short");
     Transformation t;
     t.m_kind           = Kind::Linearize;
+    t.m_targetBeta     = beta;
+    t.m_depthOuter     = dimension;
+    return t;
+  }
+
+  static Transformation densify(const std::vector<int> &beta, int dimension) {
+    CLINT_ASSERT(beta.size() >= dimension, "Beta too short");
+    Transformation t;
+    t.m_kind           = Kind::Densify;
     t.m_targetBeta     = beta;
     t.m_depthOuter     = dimension;
     return t;

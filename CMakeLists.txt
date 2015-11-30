@@ -56,13 +56,18 @@ else()
   message(STATUS "Using piplib library with multiprecision from: ${PIPLIBMP_LIBRARY}")
 endif()
 
+find_package(chlore REQUIRED)
+if(NOT DEFINED CHLORE_FOUND)
+  message(FATAL_ERROR "chlore library not found")
+else()
+  message(STATUS "Using chlore library from: ${CHLORE_LIBRARY}")
+endif()
+
 find_library(GMP_LIBRARY gmp)
 find_path(GMP_INCLUDE_DIR gmp.h)
 
 find_library(ISL_LIBRARY isl)
 find_path(ISL_INCLUDE_DIR isl/ctx.h)
-
-message(STATUS "${ISL_INCLUDE_DIR}")
 
 if(ISL_INCLUDE_DIR)
   message(STATUS "Using isl library from: ${ISL_LIBRARY}")
@@ -78,6 +83,7 @@ include_directories(${CLAY_INCLUDE_DIR})
 include_directories(${GMP_INCLUDE_DIR})
 include_directories(${ISL_INCLUDE_DIR})
 include_directories(${PIPLIBMP_INCLUDE_DIR})
+include_directories(${CHLORE_INCLUDE_DIR})
 
 # Qt libraries
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -112,3 +118,4 @@ target_link_libraries(${PROJECT_NAME} ${CLAN_LIBRARY})
 target_link_libraries(${PROJECT_NAME} ${CANDL_LIBRARY})
 target_link_libraries(${PROJECT_NAME} ${CLAY_LIBRARY})
 target_link_libraries(${PROJECT_NAME} ${PIPLIBMP_LIBRARY})
+target_link_libraries(${PROJECT_NAME} ${CHLORE_LIBRARY})

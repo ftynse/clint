@@ -9,6 +9,8 @@
 
 #include <clay/errors.h>
 
+#include <chlore/chlore.h>
+
 void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformation) {
   int err = 0;
   clay_beta_normalize(scop);
@@ -89,6 +91,13 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
     err = clay_linearize(scop, ClayBeta(transformation.target()),
                          transformation.depth(), m_options);
     break;
+  case Transformation::Kind::Densify:
+    err = clay_densify(scop, ClayBeta(transformation.target()),
+                       transformation.depth(), m_options);
+    break;
+  case Transformation::Kind::Collapse:
+    err = clay_collapse(scop, ClayBeta(transformation.target()), m_options);
+    break;
   default:
     break;
   }
@@ -96,6 +105,38 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
     throw std::logic_error(std::string(clay_error_message_text(err)));
   }
   clay_beta_normalize(scop);
+}
+
+boost::optional<Transformation> ClayTransformer::guessInverseTransformation(osl_scop_p scop, const Transformation &transformation) {
+  switch (transformation.kind()) {
+  case Transformation::Kind::Densify:
+  {
+    int grain = chlore_extract_grain(scop, ClayBeta(transformation.target()), transformation.depth());
+    if (grain > 1)
+      return Transformation::grain(transformation.target(), transformation.depth(), grain);
+    else
+      return boost::none;
+    break;
+  }
+
+  case Transformation::Kind::Linearize:
+  {
+    int size = chlore_extract_stripmine_size(scop, ClayBeta(transformation.target()), transformation.depth());
+    if (size > 1)
+      return Transformation::tile(transformation.target(), transformation.depth(), size);
+    else
+      return boost::none;
+    break;
+  }
+
+  case Transformation::Kind::Collapse:
+    throw std::invalid_argument("Unimplemented guessInverseTransformation for collapse");
+    break;
+
+  default:
+    throw std::invalid_argument("Cannot guess parameters for this transformation");
+  }
+  return boost::none;
 }
 
 ClayBetaMapper::ClayBetaMapper(ClintScop *scop) {
@@ -299,12 +340,17 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
   }
     break;
 
+  case Transformation::Kind::Collapse:
+    CLINT_ASSERT(false, "unimplemented");
+    break;
+
   case Transformation::Kind::Shift:
   case Transformation::Kind::Skew:
   case Transformation::Kind::Grain:
   case Transformation::Kind::Reverse:
   case Transformation::Kind::Interchange:
   case Transformation::Kind::Reshape:
+  case Transformation::Kind::Densify:
     // Do not affect beta
     break;
 

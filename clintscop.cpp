@@ -109,12 +109,23 @@ ClintScop::~ClintScop() {
   free(m_generatedCode);
   free(m_currentScript);
   free(m_originalCode);
+
+  appliedScopFlushCache();
 }
 
 osl_scop_p ClintScop::appliedScop() {
-  osl_scop_p scop = osl_scop_clone(m_scopPart);
-  m_transformer->apply(scop, m_transformationSeq);
-  return scop;
+  if (m_appliedScopCache == nullptr) {
+    m_appliedScopCache = osl_scop_clone(m_scopPart);
+    m_transformer->apply(m_appliedScopCache, m_transformationSeq);
+  }
+  return m_appliedScopCache;
+}
+
+void ClintScop::appliedScopFlushCache() {
+  if (m_appliedScopCache != nullptr) {
+    osl_scop_free(m_appliedScopCache);
+    m_appliedScopCache = nullptr;
+  }
 }
 
 inline std::string rgbColorText(QColor clr) {
@@ -211,6 +222,7 @@ void ClintScop::executeTransformationSequence() {
 
   updateDependences(transformed);
   updateGeneratedHtml(transformed, m_generatedHtml);
+  appliedScopFlushCache();
 
   emit transformExecuted();
   bool dimensionNbChanged =

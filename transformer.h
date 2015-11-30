@@ -18,6 +18,8 @@ class ClintStmtOccurrence;
 #include <set>
 #include <unordered_map>
 
+#include <boost/optional.hpp>
+
 class Transformer {
 public:
   virtual void apply(osl_scop_p scop, const TransformationSequence &sequence) {
@@ -30,6 +32,11 @@ public:
     for (Transformation transformation : group.transformations) {
       apply(scop, transformation);
     }
+  }
+
+  virtual boost::optional<Transformation> guessInverseTransformation(osl_scop_p, const Transformation &transformation) {
+    throw std::domain_error("This class does not provide implementarion of guessInverseTransformation");
+    CLINT_UNREACHABLE;
   }
 
   virtual void apply(osl_scop_p scop, const Transformation &transformation) = 0;
@@ -62,6 +69,7 @@ public:
     // TODO: check if --nocandl can be passed here, or is it necessary at all
   }
 
+  boost::optional<Transformation> guessInverseTransformation(osl_scop_p scop, const Transformation &transformation) override;
   void apply(osl_scop_p scop, const Transformation &transformation) override;
 
   ~ClayTransformer() {
@@ -412,6 +420,17 @@ public:
          << transformation.depth() << ", "
          << transformation.secondDepth() << ", "
          << transformation.constantAmount() << ");\n";
+      break;
+
+    case Transformation::Kind::Densify:
+      m_stream << "densify([";
+      outputVector(m_stream, transformation.target()) << "], "
+         << transformation.depth() << ");\n";
+      break;
+
+    case Transformation::Kind::Collapse:
+      m_stream << "collapse([";
+      outputVector(m_stream, transformation.target()) << "]);\n";
       break;
 
     default:

@@ -797,21 +797,42 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
     CLINT_UNREACHABLE;
   }
 
+  // Examine if grain was already done and that regrain is possible.
+  size_t horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
+  size_t verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
+  size_t horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(horizontalDimIdx) :
+        VizProperties::NO_DIMENSION;
+  size_t verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
+        polyhedron->occurrence()->depth(verticalDimIdx) :
+        VizProperties::NO_DIMENSION;
+  size_t depth;
+  if (m_direction == Dir::LEFT || m_direction == Dir::RIGHT) {
+    depth = horizontalDepth;
+  } else {
+    depth = verticalDepth;
+  }
+  Transformation densify = Transformation::densify(m_polyhedron->occurrence()->betaVector(),
+                                                   depth);
+  boost::optional<Transformation> inverse = m_polyhedron->occurrence()->scop()->guessInverseTransformation(densify);
+  int preGrainAmount = inverse ? inverse.value().constantAmount() : 1;
+
   int horizontalRange = (m_polyhedron->localHorizontalMax() - m_polyhedron->localHorizontalMin());
   int verticalRange   = (m_polyhedron->localVerticalMax() - m_polyhedron->localVerticalMin());
+
   int grainAmount;
   switch (m_direction) {
   case Dir::LEFT:
-    grainAmount = -round(static_cast<double>(m_horzOffset) / horizontalRange) + 1;
+    grainAmount = -round(static_cast<double>(m_horzOffset) * preGrainAmount / horizontalRange) + preGrainAmount;
     break;
   case Dir::RIGHT:
-    grainAmount = round(static_cast<double>(m_horzOffset) / horizontalRange) + 1;
+    grainAmount = round(static_cast<double>(m_horzOffset) * preGrainAmount / horizontalRange) + preGrainAmount;
     break;
   case Dir::UP:
-    grainAmount = -round(static_cast<double>(m_vertOffset) / verticalRange) + 1;
+    grainAmount = -round(static_cast<double>(m_vertOffset) * preGrainAmount / verticalRange) + preGrainAmount;
     break;
   case Dir::DOWN:
-    grainAmount = round(static_cast<double>(m_vertOffset) / verticalRange) + 1;
+    grainAmount = round(static_cast<double>(m_vertOffset) * preGrainAmount / verticalRange) + preGrainAmount;
     break;
   }
 
@@ -844,16 +865,11 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
     grainAmount = -grainAmount;
   }
 
-  size_t horizontalDimIdx = polyhedron->coordinateSystem()->horizontalDimensionIdx();
-  size_t verticalDimIdx   = polyhedron->coordinateSystem()->verticalDimensionIdx();
-  size_t horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
-        polyhedron->occurrence()->depth(horizontalDimIdx) :
-        VizProperties::NO_DIMENSION;
-  size_t verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
-        polyhedron->occurrence()->depth(verticalDimIdx) :
-        VizProperties::NO_DIMENSION;
+  if (preGrainAmount != 1 && preGrainAmount != grainAmount) {
+    group.transformations.push_back(densify);
+  }
 
-  if (grainAmount > 1) {
+  if (grainAmount > 1 && preGrainAmount != grainAmount) {
     if (m_direction == Dir::LEFT || m_direction == Dir::RIGHT) {
       group.transformations.push_back(Transformation::grain(
                                         polyhedron->occurrence()->betaVector(),
@@ -894,28 +910,32 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
   if (!group.transformations.empty()) {
     if (reverse) grainAmount = -grainAmount;
     // Updating coordinate systems so that the scaled polyhedra fit inside.
-    if (m_direction == Dir::RIGHT) {
-      m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
-            m_polyhedron->coordinateSystem(),
-            m_polyhedron->localHorizontalMax() + horizontalRange * (grainAmount - 1),
-            m_polyhedron->localHorizontalMax() + horizontalRange * (grainAmount - 1));
-    } else if (m_direction == Dir::LEFT) {
-      m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
-            m_polyhedron->coordinateSystem(),
-            m_polyhedron->localHorizontalMin() - horizontalRange * (grainAmount - 1),
-            m_polyhedron->localHorizontalMin() - horizontalRange * (grainAmount - 1));
+    if (m_direction == Dir::RIGHT || m_direction == Dir::LEFT) {
+      if (grainAmount > 0 && grainAmount > preGrainAmount) {
+        m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
+              m_polyhedron->coordinateSystem(),
+              m_polyhedron->localHorizontalMax() + horizontalRange * (grainAmount - preGrainAmount) / preGrainAmount,
+              m_polyhedron->localHorizontalMax() + horizontalRange * (grainAmount - preGrainAmount) / preGrainAmount);
+      } else if (grainAmount < 0 && grainAmount < -preGrainAmount) {
+        m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
+              m_polyhedron->coordinateSystem(),
+              m_polyhedron->localHorizontalMin() - horizontalRange * (grainAmount - preGrainAmount) / preGrainAmount,
+              m_polyhedron->localHorizontalMin() - horizontalRange * (grainAmount - preGrainAmount) / preGrainAmount);
+      }
     }
 
-    if (m_direction == Dir::UP) {
-      m_polyhedron->coordinateSystem()->projection()->ensureFitsVertically(
-            m_polyhedron->coordinateSystem(),
-            m_polyhedron->localVerticalMax() + verticalRange * (grainAmount - 1),
-            m_polyhedron->localVerticalMax() + verticalRange * (grainAmount - 1));
-    } else if (m_direction == Dir::DOWN) {
-      m_polyhedron->coordinateSystem()->projection()->ensureFitsVertically(
-            m_polyhedron->coordinateSystem(),
-            m_polyhedron->localVerticalMin() - verticalRange * (grainAmount - 1),
-            m_polyhedron->localVerticalMin() - verticalRange * (grainAmount - 1));
+    if (m_direction == Dir::UP || m_direction == Dir::DOWN) {
+      if (grainAmount > 0 && grainAmount > preGrainAmount) {
+        m_polyhedron->coordinateSystem()->projection()->ensureFitsVertically(
+              m_polyhedron->coordinateSystem(),
+              m_polyhedron->localVerticalMax() + verticalRange * (grainAmount - preGrainAmount) / preGrainAmount,
+              m_polyhedron->localVerticalMax() + verticalRange * (grainAmount - preGrainAmount) / preGrainAmount);
+      } else if (grainAmount < 0 && grainAmount < -preGrainAmount) {
+        m_polyhedron->coordinateSystem()->projection()->ensureFitsVertically(
+              m_polyhedron->coordinateSystem(),
+              m_polyhedron->localVerticalMin() - verticalRange * (grainAmount - preGrainAmount) / preGrainAmount,
+              m_polyhedron->localVerticalMin() - verticalRange * (grainAmount - preGrainAmount) / preGrainAmount);
+      }
     }
 
     m_polyhedron->occurrence()->scop()->transform(group);
