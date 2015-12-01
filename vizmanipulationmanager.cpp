@@ -772,16 +772,59 @@ void VizManipulationManager::polyhedronAboutToResize(VizPolyhedron *polyhedron, 
   // Do not allow grain on the invisible dimension.
   bool oneDimensional = polyhedron->occurrence()->dimensionality() < polyhedron->coordinateSystem()->verticalDimensionIdx();
   bool zeroDimensional = polyhedron->occurrence()->dimensionality() < polyhedron->coordinateSystem()->horizontalDimensionIdx();
-  if (zeroDimensional ||
-      (oneDimensional && (direction == Dir::UP || direction == Dir::DOWN))) {
+  bool aloneInLoop = polyhedron->coordinateSystem()->countPolyhedra() == 1;
+  if (zeroDimensional && (direction == Dir::LEFT || direction == Dir::RIGHT) && aloneInLoop) {
+    m_creatingDimension = 1;
+    m_resizing = false;
+  } else if (!zeroDimensional && oneDimensional && (direction == Dir::UP || direction == Dir::DOWN) && aloneInLoop) {
+    m_creatingDimension = 2;
+    m_resizing = false;
+  } else if (!zeroDimensional ||
+             (oneDimensional && (direction == Dir::LEFT || direction == Dir::RIGHT))) {
+    m_creatingDimension = 0;
+    m_resizing = true;
+  } else {
+    m_creatingDimension = 0;
+    m_resizing = false;
     polyhedron->resetPointPositions();
     return;
   }
-  m_resizing = true;
+}
+
+void VizManipulationManager::polyhedronHasCreatedDimension(VizPolyhedron *polyhedron) {
+  if (!m_creatingDimension)
+    return;
+  bool horizontal = m_creatingDimension == 1;
+  m_creatingDimension = 0;
+
+  TransformationGroup group;
+  if (horizontal) { // we know it is zero-dimensional if started horizontal dimension creation
+    group.transformations.push_back(Transformation::embed(polyhedron->occurrence()->betaVector()));
+  } else {
+    group.transformations.push_back(Transformation::embed(polyhedron->occurrence()->betaVector()));
+  }
+
+  if (!group.transformations.empty()) {
+    polyhedron->scop()->transform(group);
+    polyhedron->scop()->executeTransformationSequence();
+    if (horizontal) {
+      polyhedron->coordinateSystem()->setHorizontalDimensionIdx(
+            polyhedron->coordinateSystem()->projection()->horizontalDimensionIdx());
+    } else {
+      polyhedron->coordinateSystem()->setVerticalDimensionIdx(
+            polyhedron->coordinateSystem()->projection()->verticalDimensionIdx());
+    }
+    polyhedron->coordinateSystem()->update();
+  }
+  m_polyhedron = nullptr;
 }
 
 void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
   CLINT_ASSERT(m_polyhedron == polyhedron, "Wrong polyhedron finished resizing");
+
+  if (m_creatingDimension) {
+    polyhedronHasCreatedDimension(polyhedron);
+  }
 
   if (!m_resizing) {
     return;

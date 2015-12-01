@@ -67,6 +67,9 @@ public:
     return m_verticalDimensionIdx;
   }
 
+  void setHorizontalDimensionIdx(size_t dimIdx);
+  void setVerticalDimensionIdx(size_t dimIdx);
+
   QRectF coordinateSystemRect() const;
 
   bool projectStatementOccurrence(ClintStmtOccurrence *occurrence);

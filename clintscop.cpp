@@ -230,7 +230,10 @@ void ClintScop::executeTransformationSequence() {
                    [] (const TransformationGroup &group) {
     return std::find_if(std::begin(group.transformations), std::end(group.transformations),
                         [] (const Transformation &transformation) {
-      return transformation.kind() == Transformation::Kind::Tile;
+      return transformation.kind() == Transformation::Kind::Tile ||
+             transformation.kind() == Transformation::Kind::Linearize ||
+             transformation.kind() == Transformation::Kind::Embed ||
+             transformation.kind() == Transformation::Kind::Unembed;
     }) != std::end(group.transformations);
   }) != std::end(m_transformationSeq.groups);
   if (dimensionNbChanged) {

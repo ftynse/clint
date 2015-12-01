@@ -136,6 +136,12 @@ public:
            partialMatch(first, second) == first.size();
   }
 
+  static Identifier firstPrefix(const Identifier &identifier) {
+    if (identifier.size() == 0)
+      return identifier;
+    return Identifier(std::begin(identifier), std::end(identifier) - 1);
+  }
+
   static int partialMatch(const Identifier &first, const Identifier &second) {
     int pos = 0;
     for (size_t i = 0, e = std::min(first.size(), second.size()); i < e; i++) {
@@ -430,6 +436,16 @@ public:
 
     case Transformation::Kind::Collapse:
       m_stream << "collapse([";
+      outputVector(m_stream, transformation.target()) << "]);\n";
+      break;
+
+    case Transformation::Kind::Embed:
+      m_stream << "embed([";
+      outputVector(m_stream, transformation.target()) << "]);\n";
+      break;
+
+    case Transformation::Kind::Unembed:
+      m_stream << "unembed([";
       outputVector(m_stream, transformation.target()) << "]);\n";
       break;
 

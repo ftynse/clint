@@ -189,6 +189,38 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
   return std::move(points);
 }
 
+std::pair<std::pair<int, int>, std::pair<int, int>> ClintStmtOccurrence::parseProjectedPoint(const std::vector<int> &point,
+                                                                                             int horizontalDimIdx,
+                                                                                             int verticalDimIdx) const {
+  std::pair<int, int> originalCoordinates  {INT_MAX, INT_MAX}; // FIXME: INT_MAX is VizPoint::NO_COORD
+  std::pair<int, int> scatteredCoordinates {INT_MAX, INT_MAX};
+  if (point.size() == 0) {
+    // This is okay.
+  } else if (point.size() == 1 && visibleDimensionality() <= horizontalDimIdx) {
+    scatteredCoordinates.first = point[0];
+  } else if (point.size() == 2 && visibleDimensionality() > horizontalDimIdx) {
+    // "Normal" scattered one-dimensional statement
+    scatteredCoordinates.first = point[0];
+    originalCoordinates.first = point[1];
+  } else if (point.size() == 2 && visibleDimensionality() <= horizontalDimIdx) {
+    scatteredCoordinates.first = point[0];
+    scatteredCoordinates.second = point[1];
+  } else if (point.size() == 3 && visibleDimensionality() <= verticalDimIdx) {
+    scatteredCoordinates.first = point[0];
+    scatteredCoordinates.second = point[1];
+    originalCoordinates.first = point[2];
+  } else if (point.size() == 4 && visibleDimensionality() > verticalDimIdx) {
+    scatteredCoordinates.first = point[0];
+    scatteredCoordinates.second = point[1];
+    originalCoordinates.first = point[2];
+    originalCoordinates.second = point[3];
+  } else {
+    CLINT_UNREACHABLE;
+  }
+  return std::make_pair(originalCoordinates, scatteredCoordinates);
+}
+
+
 void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &points,
                                       int horizontalDimIdx, int verticalDimIdx) const {
   // Initialize with extreme values for min and max unless already computed for previous polyhedron
@@ -203,35 +235,27 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
     m_cachedDimMaxs[verticalDimIdx] = 0;
     return;
   }
-  size_t pointSize = points.front().size();
-  switch (pointSize) {
-  case 4:
-  case 3: // FIXME: does not take into accout possible flatten
-    verticalMin   = INT_MAX;
-    verticalMax   = INT_MIN;
-    // fall through
-  case 2:
+
+  std::pair<int, int> originalCoordinates, scatteredCoordinates;
+  std::tie(originalCoordinates, scatteredCoordinates) = parseProjectedPoint(points.front(), horizontalDimIdx, verticalDimIdx);
+  bool computeHorizontal = scatteredCoordinates.first != INT_MAX && horizontalDimIdx != -2; // FIXME: INT_MAX is VizPoint::NO_COORD
+  bool computeVertical = scatteredCoordinates.second != INT_MAX && verticalDimIdx != -2;
+  if (computeHorizontal) {
     horizontalMin = INT_MAX;
     horizontalMax = INT_MIN;
-    break;
-  case 1:
-    CLINT_ASSERT(false, "Trying to project on the dimension that was flattened.");
-    break;
-  case 0:
-    return;
-    break;
-  default:
-    CLINT_UNREACHABLE;
-    break;
+  }
+  if (computeVertical) {
+    verticalMin = INT_MAX;
+    verticalMax = INT_MIN;
   }
 
   // Compute min and max values for projected iterators of the current coordinate system.
   for (const std::vector<int> &point : points) {
-    CLINT_ASSERT(point.size() == pointSize,
-                 "Enumerated points have different dimensionality");
-    horizontalMin = std::min(horizontalMin, point[0]);
-    horizontalMax = std::max(horizontalMax, point[0]);
-    if (pointSize >= 3) {
+    if (computeHorizontal) {
+      horizontalMin = std::min(horizontalMin, point[0]);
+      horizontalMax = std::max(horizontalMax, point[0]);
+    }
+    if (computeVertical) {
       verticalMin = std::min(verticalMin, point[1]);
       verticalMax = std::max(verticalMax, point[1]);
     }
@@ -241,9 +265,11 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
   CLINT_ASSERT(verticalMin != INT_MIN, "Could not compute vertical minimum");
   CLINT_ASSERT(verticalMax != INT_MAX, "Could not compute vertical maximum");
 
-  m_cachedDimMins[horizontalDimIdx] = horizontalMin;
-  m_cachedDimMaxs[horizontalDimIdx] = horizontalMax;
-  if (pointSize >= 3) {
+  if (computeHorizontal) {
+    m_cachedDimMins[horizontalDimIdx] = horizontalMin;
+    m_cachedDimMaxs[horizontalDimIdx] = horizontalMax;
+  }
+  if (computeVertical) {
     m_cachedDimMins[verticalDimIdx] = verticalMin;
     m_cachedDimMaxs[verticalDimIdx] = verticalMax;
   }

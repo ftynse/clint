@@ -72,29 +72,17 @@ void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points,
       vp->setColor(QColor::fromRgb(100, 100, 100, 127));
     }
 
-    if (point.size() == 0) {
-      vp->setScatteredCoordinates();
-      vp->setOriginalCoordinates();
-      setPointVisiblePos(vp, 0, 0);
-    } else if (point.size() == 2) {
-      vp->setOriginalCoordinates(point[1]);
-      vp->setScatteredCoordinates(point[0]);
-      setPointVisiblePos(vp, point[0] - horizontalMin, 0);
-    } else if (point.size() == 3) { // FIXME: does not take into account potential flatten, assumes stripmine only
-      vp->setOriginalCoordinates(point[2]);
-      vp->setScatteredCoordinates(point[0], point[1]);
-      setPointVisiblePos(vp, point[0] - horizontalMin, point[1] - verticalMin);
-    } else if (point.size() == 4) {
-      vp->setOriginalCoordinates(point[2], point[3]);
-      vp->setScatteredCoordinates(point[0], point[1]);
-      setPointVisiblePos(vp, point[0] - horizontalMin, point[1] - verticalMin);
-    } else {
-      CLINT_ASSERT(!"unreachable", "Point has wrong number of dimensions");
-    }
+    std::pair<int, int> scatteredCoordinates, originalCoordinates;
+    std::tie(originalCoordinates, scatteredCoordinates) =
+        m_occurrence->parseProjectedPoint(point,
+                                          coordinateSystem()->horizontalDimensionIdx(),
+                                          coordinateSystem()->verticalDimensionIdx());
+    vp->setOriginalCoordinates(originalCoordinates.first, originalCoordinates.second);
+    vp->setScatteredCoordinates(scatteredCoordinates.first, scatteredCoordinates.second);
+    setPointVisiblePos(vp,
+                       scatteredCoordinates.first  == VizPoint::NO_COORD ? 0 : scatteredCoordinates.first  - horizontalMin,
+                       scatteredCoordinates.second == VizPoint::NO_COORD ? 0 : scatteredCoordinates.second - verticalMin);
     m_points.insert(vp);
-    // TODO: setup alpha-beta vector for point
-    // alphas that are not in the current projection are wildcards for this point, can't get them
-    // Or it can be reconstructed using respective parent polyhedron and coodrinate system
   }
   recomputeShape();
   updateHandlePositions();
@@ -131,27 +119,11 @@ void VizPolyhedron::occurrenceChanged() {
   int unmatchedNewPoints = 0;
   std::unordered_set<VizPoint *> matchedPoints;
   for (const std::vector<int> &point : points) {
-    std::pair<int, int> originalCoordinates  {VizPoint::NO_COORD, VizPoint::NO_COORD};
-    std::pair<int, int> scatteredCoordinates {VizPoint::NO_COORD, VizPoint::NO_COORD};
-    if (point.size() == 0) {
-      CLINT_ASSERT(points.size() == 1, "Only one zero-dimensional point per polyhedron is allowed");
-    } else if (point.size() == 2) {
-      scatteredCoordinates.first = point[0];
-      originalCoordinates.first = point[1];
-    } else if (point.size() == 3) { // FIXME: assumes stripmine
-                                    // XXX: this code kinda duplicates setProjectedPoints, look for simplification
-                                    // it may come from using a structure with optional<int> instead of vector
-      scatteredCoordinates.first = point[0];
-      scatteredCoordinates.second = point[1];
-      originalCoordinates.first = point[2];
-    } else if (point.size() == 4) {
-      scatteredCoordinates.first = point[0];
-      scatteredCoordinates.second = point[1];
-      originalCoordinates.first = point[2];
-      originalCoordinates.second = point[3];
-    } else {
-      CLINT_UNREACHABLE;
-    }
+    std::pair<int, int> scatteredCoordinates, originalCoordinates;
+    std::tie(originalCoordinates, scatteredCoordinates) =
+        m_occurrence->parseProjectedPoint(point,
+                                          coordinateSystem()->horizontalDimensionIdx(),
+                                          coordinateSystem()->verticalDimensionIdx());
     VizPoint *vp = this->point(originalCoordinates);
     if (vp == nullptr) {
       ++unmatchedNewPoints;

@@ -40,6 +40,13 @@ public:
   void ensureFitsHorizontally(VizCoordinateSystem *coordinateSystem, int minimum, int maximum);
   void ensureFitsVertically(VizCoordinateSystem *coordinateSystem, int minimum, int maximum);
 
+  int horizontalDimensionIdx() const {
+    return m_horizontalDimensionIdx;
+  }
+
+  int verticalDimensionIdx() const {
+    return m_verticalDimensionIdx;
+  }
 
   enum class IsCsAction { Found, InsertPile, InsertCS };
 

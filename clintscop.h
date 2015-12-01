@@ -66,7 +66,9 @@ public:
           transformation.kind() == Transformation::Kind::Split ||
           transformation.kind() == Transformation::Kind::Reorder ||
           transformation.kind() == Transformation::Kind::Tile ||
-          transformation.kind() == Transformation::Kind::Linearize) {
+          transformation.kind() == Transformation::Kind::Linearize ||
+          transformation.kind() == Transformation::Kind::Embed ||
+          transformation.kind() == Transformation::Kind::Unembed) {
         remapBetas(tg);
         break;
       }

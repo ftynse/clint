@@ -22,6 +22,28 @@ VizCoordinateSystem::VizCoordinateSystem(VizProjection *projection, size_t horiz
   m_font = qApp->font();  // Setting up default font for the view.  Can be adjusted afterwards.
 }
 
+void VizCoordinateSystem::setVerticalDimensionIdx(size_t verticalDimensionIdx) {
+  m_verticalDimensionIdx = verticalDimensionIdx;
+  if (m_verticalDimensionIdx == VizProperties::NO_DIMENSION)
+    m_verticalAxisVisible = false;
+  else
+    m_verticalAxisVisible = true;
+  for (VizPolyhedron *vp : m_polyhedra) {
+    vp->occurrenceChanged();
+  }
+}
+
+void VizCoordinateSystem::setHorizontalDimensionIdx(size_t horizontalDimensionIdx) {
+  m_horizontalDimensionIdx = horizontalDimensionIdx;
+  if (m_horizontalDimensionIdx == VizProperties::NO_DIMENSION)
+    m_horizontalAxisVisible = false;
+  else
+    m_horizontalAxisVisible = true;
+  for (VizPolyhedron *vp : m_polyhedra) {
+    vp->occurrenceChanged();
+  }
+}
+
 void VizCoordinateSystem::addAxisLabels(ClintStmtOccurrence *occurrence) {
   if (m_horizontalAxisVisible) {
     const char *horizontalName = occurrence->statement()->dimensionName(m_horizontalDimensionIdx).c_str();

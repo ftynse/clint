@@ -27,6 +27,8 @@ public:
 
   int ignoreTilingDim(int dimension) const;
   std::vector<std::vector<int>> projectOn(int horizontalDimIdx, int verticalDimIdx) const;
+  std::pair<std::pair<int, int>, std::pair<int, int>> parseProjectedPoint(const std::vector<int> &point,
+                                                                          int horizontalDimIdx, int verticalDimIdx) const;
 
   int dimensionality() const {
     return static_cast<int>(m_betaVector.size())
@@ -48,6 +50,14 @@ public:
 
   const std::vector<int> &betaVector() const {
     return m_betaVector;
+  }
+
+  int visibleDimensionality() const {
+    CLINT_ASSERT(m_oslScatterings.size() == 1, "Cannot query for dimensionality without scattering relation");
+    // TODO: this should actually be a computation of explicitly-defined dimensions
+    // we make take it from chlore, but for now we assume the relation is well-defined, i.e.
+    // there are as many explicit defintions as input dimensions (global validity).
+    return m_oslScatterings.front()->nb_input_dims;
   }
 
   const std::set<int> &tilingDimensions() const {
@@ -147,6 +157,7 @@ signals:
 public slots:
 
 private:
+  // TODO: this should be unique, occurrence = single beta = single scattering
   std::vector<osl_relation_p> m_oslScatterings;
   osl_statement_p m_oslStatement; /// Pointer to the transformed osl statement of this occurrence.  This actually belongs to ClintStmt.
   std::vector<int> m_betaVector;

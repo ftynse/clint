@@ -98,6 +98,12 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
   case Transformation::Kind::Collapse:
     err = clay_collapse(scop, ClayBeta(transformation.target()), m_options);
     break;
+  case Transformation::Kind::Embed:
+    err = clay_embed(scop, ClayBeta(transformation.target()), m_options);
+    break;
+  case Transformation::Kind::Unembed:
+    err = clay_unembed(scop, ClayBeta(transformation.target()), m_options);
+    break;
   default:
     break;
   }
@@ -339,6 +345,56 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
     syncReverseMapping();
   }
     break;
+
+  case Transformation::Kind::Embed:
+  {
+    Identifier target = transformation.target();
+    IdentifierMultiMap updatedForwardMapping;
+    std::set<Identifier> updatedCreatedMappings;
+
+    for (auto m : m_forwardMapping) {
+      Identifier identifier = m.second;
+      if (BetaUtility::isEqual(identifier, target)) {
+        BetaUtility::createLoop(identifier, identifier.size());
+      }
+
+      if (m_createdMappings.find(m.second) != std::end(m_createdMappings)) {
+        updatedCreatedMappings.insert(identifier);
+      }
+      updatedForwardMapping.emplace(m.first, identifier);
+    }
+    m_forwardMapping = updatedForwardMapping;
+    m_createdMappings = updatedCreatedMappings;
+    syncReverseMapping();
+  }
+    break;
+
+  case Transformation::Kind::Unembed:
+  {
+    Identifier target = transformation.target();
+    IdentifierMultiMap updatedForwardMapping;
+    std::set<Identifier> updatedCreatedMappings;
+
+    CLINT_ASSERT(maximumAt(BetaUtility::firstPrefix(target)) != 0,
+                 "Cannot unembed statement which is not alone in the loop");
+
+    for (auto m : m_forwardMapping) {
+      Identifier identifier = m.second;
+      if (BetaUtility::isEqual(identifier, target)) {
+        BetaUtility::removeLoop(identifier, identifier.size() - 1);
+      }
+
+      if (m_createdMappings.find(m.second) != std::end(m_createdMappings)) {
+        updatedCreatedMappings.insert(identifier);
+      }
+      updatedForwardMapping.emplace(m.first, identifier);
+    }
+    m_forwardMapping = updatedForwardMapping;
+    m_createdMappings = updatedCreatedMappings;
+    syncReverseMapping();
+  }
+    break;
+
 
   case Transformation::Kind::Collapse:
     CLINT_ASSERT(false, "unimplemented");

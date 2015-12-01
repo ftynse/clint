@@ -63,6 +63,7 @@ public slots:
   void polyhedronAboutToResize(VizPolyhedron *polyhedron, Dir direction);
   void polyhedronResizing(QPointF displacement);
   void polyhedronHasResized(VizPolyhedron *polyhedron);
+  void polyhedronHasCreatedDimension(VizPolyhedron *polyhedron);
 
   void polyhedronAboutToSkew(VizPolyhedron *polyhedron, int corner);
   void polyhedronSkewing(QPointF displacement);
@@ -87,6 +88,7 @@ private:
   double m_rotationAngle;
   bool m_skewing = false;
   bool m_resizing = false;
+  int m_creatingDimension = 0;
 
   enum {
     PT_NODETACH,

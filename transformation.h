@@ -22,7 +22,9 @@ public:
     Linearize,
     Reshape,
     Densify,
-    Collapse
+    Collapse,
+    Embed,
+    Unembed
   };
 
   Kind kind() const {
@@ -256,6 +258,20 @@ public:
     t.m_kind           = Kind::Densify;
     t.m_targetBeta     = beta;
     t.m_depthOuter     = dimension;
+    return t;
+  }
+
+  static Transformation embed(const std::vector<int> &beta) {
+    Transformation t;
+    t.m_kind           = Kind::Embed;
+    t.m_targetBeta     = beta;
+    return t;
+  }
+
+  static Transformation unembed(const std::vector<int> &beta) {
+    Transformation t;
+    t.m_kind           = Kind::Unembed;
+    t.m_targetBeta     = beta;
     return t;
   }
 
