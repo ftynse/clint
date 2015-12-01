@@ -18,6 +18,13 @@ class VizDepArrow;
 class VizCoordinateSystem : public QGraphicsObject {
   Q_OBJECT
 public:
+  enum class AxisState {
+    Invisible,
+    Visible,
+    WillAppear,
+    WillDisappear
+  };
+
   explicit VizCoordinateSystem(VizProjection *projection,
                                size_t horizontalDimensionIdx = VizProperties::NO_DIMENSION,
                                size_t verticalDimensionIdx = VizProperties::NO_DIMENSION,
@@ -44,19 +51,27 @@ public:
   QRectF boundingRect() const;
 
   bool isHorizontalAxisVisible() const {
-    return m_horizontalAxisVisible;
-  }
-
-  void setHorizontalAxisVisible(bool visible = true) {
-    m_horizontalAxisVisible = visible;
+    return m_horizontalAxisState == AxisState::Visible;
   }
 
   bool isVerticalAxisVisible() const {
-    return m_verticalAxisVisible;
+    return m_verticalAxisState == AxisState::Visible;
   }
 
-  void setVerticalAxisVisible(bool visible = true) {
-    m_verticalAxisVisible = visible;
+  void setHorizontalAxisState(VizCoordinateSystem::AxisState state) {
+    bool scheduleRepaint = (state != m_horizontalAxisState);
+    m_horizontalAxisState = state;
+    if (scheduleRepaint) {
+      update();
+    }
+  }
+
+  void setVerticalAxisState(VizCoordinateSystem::AxisState state) {
+    bool scheduleRepaint = (state != m_verticalAxisState);
+    m_verticalAxisState = state;
+    if (scheduleRepaint) {
+      update();
+    }
   }
 
   size_t horizontalDimensionIdx() const {
@@ -132,6 +147,7 @@ public:
   void insertPolyhedronAfter(VizPolyhedron *inserted, VizPolyhedron *after);
   void updateAllPositions();
   void deleteInnerDependences();
+
 signals:
 
 public slots:
@@ -145,8 +161,8 @@ private:
   size_t m_horizontalDimensionIdx = VizProperties::UNDEFINED_DIMENSION;
   size_t m_verticalDimensionIdx   = VizProperties::UNDEFINED_DIMENSION;
 
-  bool m_horizontalAxisVisible = true;
-  bool m_verticalAxisVisible   = true;
+  AxisState m_horizontalAxisState = AxisState::Visible;
+  AxisState m_verticalAxisState   = AxisState::Visible;
 
   /// @variable m_horizontalMin
   /// @variable m_horizontalMax
@@ -170,6 +186,9 @@ private:
   void addAxisLabels(ClintStmtOccurrence *occurrence);
   void regenerateAxisLabels();
   void updatePolyhedraPositions();
+  QPolygonF leftArrow(int length, const double pointRadius);
+  QPolygonF topArrow(int length, const double pointRadius);
+
 };
 
 #endif // VIZCOORDINATESYSTEM_H

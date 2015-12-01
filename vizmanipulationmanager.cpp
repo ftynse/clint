@@ -994,6 +994,12 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
 }
 
 void VizManipulationManager::polyhedronResizing(QPointF displacement) {
+  if (m_creatingDimension == 1) {
+    m_polyhedron->coordinateSystem()->setHorizontalAxisState(VizCoordinateSystem::AxisState::WillAppear);
+  } else if (m_creatingDimension == 2) {
+    m_polyhedron->coordinateSystem()->setVerticalAxisState(VizCoordinateSystem::AxisState::WillAppear);
+  }
+
   if (!m_resizing) {
     return;
   }

@@ -15,9 +15,9 @@ VizCoordinateSystem::VizCoordinateSystem(VizProjection *projection, size_t horiz
   QGraphicsObject(parent), m_projection(projection), m_horizontalDimensionIdx(horizontalDimensionIdx), m_verticalDimensionIdx(verticalDimensionIdx) {
 
   if (m_horizontalDimensionIdx == VizProperties::NO_DIMENSION)
-    m_horizontalAxisVisible = false;
+    m_horizontalAxisState = AxisState::Invisible;
   if (m_verticalDimensionIdx == VizProperties::NO_DIMENSION)
-    m_verticalAxisVisible = false;
+    m_verticalAxisState = AxisState::Invisible;
 
   m_font = qApp->font();  // Setting up default font for the view.  Can be adjusted afterwards.
 }
@@ -25,9 +25,9 @@ VizCoordinateSystem::VizCoordinateSystem(VizProjection *projection, size_t horiz
 void VizCoordinateSystem::setVerticalDimensionIdx(size_t verticalDimensionIdx) {
   m_verticalDimensionIdx = verticalDimensionIdx;
   if (m_verticalDimensionIdx == VizProperties::NO_DIMENSION)
-    m_verticalAxisVisible = false;
+    m_verticalAxisState = AxisState::Invisible;
   else
-    m_verticalAxisVisible = true;
+    m_verticalAxisState = AxisState::Visible;
   for (VizPolyhedron *vp : m_polyhedra) {
     vp->occurrenceChanged();
   }
@@ -36,16 +36,17 @@ void VizCoordinateSystem::setVerticalDimensionIdx(size_t verticalDimensionIdx) {
 void VizCoordinateSystem::setHorizontalDimensionIdx(size_t horizontalDimensionIdx) {
   m_horizontalDimensionIdx = horizontalDimensionIdx;
   if (m_horizontalDimensionIdx == VizProperties::NO_DIMENSION)
-    m_horizontalAxisVisible = false;
+    m_horizontalAxisState = AxisState::Invisible;
   else
-    m_horizontalAxisVisible = true;
+    m_horizontalAxisState = AxisState::Visible;
   for (VizPolyhedron *vp : m_polyhedra) {
     vp->occurrenceChanged();
   }
 }
 
 void VizCoordinateSystem::addAxisLabels(ClintStmtOccurrence *occurrence) {
-  if (m_horizontalAxisVisible) {
+  if (m_horizontalAxisState == AxisState::Visible ||
+      m_horizontalAxisState == AxisState::WillDisappear) {
     const char *horizontalName = occurrence->statement()->dimensionName(m_horizontalDimensionIdx).c_str();
     if (m_horizontalName.size() == 0) {
       m_horizontalName = QString(horizontalName);
@@ -53,7 +54,8 @@ void VizCoordinateSystem::addAxisLabels(ClintStmtOccurrence *occurrence) {
       m_horizontalName += QString(",%1").arg(horizontalName);
     }
   }
-  if (m_verticalAxisVisible) {
+  if (m_verticalAxisState == AxisState::Visible ||
+      m_verticalAxisState == AxisState::WillDisappear) {
     const char *verticalName = occurrence->statement()->dimensionName(m_verticalDimensionIdx).c_str();
     if (m_verticalName.size() == 0) {
       m_verticalName = QString(verticalName);
@@ -73,9 +75,9 @@ void VizCoordinateSystem::regenerateAxisLabels() {
 
 bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurrence) {
   // Check if the axes are displayed properly.
-  CLINT_ASSERT((occurrence->dimensionality() > m_horizontalDimensionIdx) == m_horizontalAxisVisible,
+  CLINT_ASSERT((occurrence->dimensionality() <= m_horizontalDimensionIdx) ^ (m_horizontalAxisState == AxisState::Visible),
                "Projecting statement on the axis-less dimension");
-  CLINT_ASSERT((occurrence->dimensionality() > m_verticalDimensionIdx) == m_verticalAxisVisible,
+  CLINT_ASSERT((occurrence->dimensionality() <= m_verticalDimensionIdx) ^ (m_verticalAxisState == AxisState::Visible),
                "Projecting statement on the axis-less dimension");
 
   std::vector<std::vector<int>> points = occurrence->projectOn(m_horizontalDimensionIdx,
@@ -314,6 +316,28 @@ void VizCoordinateSystem::setMinMax(int horizontalMinimum, int horizontalMaximum
   updatePolyhedraPositions();
 }
 
+QPolygonF VizCoordinateSystem::leftArrow(int length, const double pointRadius)
+{
+  QPolygonF triangle;
+  triangle.append(QPointF(length, 0));
+  triangle.append(QPointF(length - 2 * pointRadius, pointRadius));
+  triangle.append(QPointF(length - 2 * pointRadius, -pointRadius));
+  triangle.append(triangle.front());
+
+  return triangle;
+}
+
+QPolygonF VizCoordinateSystem::topArrow(int length, const double pointRadius)
+{
+  QPolygonF triangle;
+  triangle.append(QPointF(0, -length));
+  triangle.append(QPointF(pointRadius, -length + 2 * pointRadius));
+  triangle.append(QPointF(-pointRadius, -length + 2 * pointRadius));
+  triangle.append(triangle.front());
+
+  return triangle;
+}
+
 void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
   Q_UNUSED(option);
   Q_UNUSED(widget);
@@ -327,16 +351,18 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
   painter->setRenderHint(QPainter::Antialiasing);
   painter->setRenderHint(QPainter::TextAntialiasing);
 
-  if (m_horizontalAxisVisible) {
+  if (m_horizontalAxisState == AxisState::Visible ||
+      m_horizontalAxisState == AxisState::WillDisappear) {
+    painter->save();
+    if (m_verticalAxisState == AxisState::WillDisappear) {
+      painter->setPen(QPen(QBrush(Qt::gray), 1.0, Qt::DashLine));
+      painter->setBrush(QBrush(Qt::gray));
+    }
     // Draw axis.
     int length = horizontalAxisLength();
     painter->drawLine(0, 0, length, 0);
     // Draw arrow.
-    QPolygonF triangle;
-    triangle.append(QPointF(length, 0));
-    triangle.append(QPointF(length - 2 * pointRadius, pointRadius));
-    triangle.append(QPointF(length - 2 * pointRadius, -pointRadius));
-    triangle.append(triangle.front());
+    QPolygonF triangle = leftArrow(length, pointRadius);
     painter->drawConvexPolygon(triangle);
 
     // Draw tics.
@@ -358,18 +384,28 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
                       fm.width(m_horizontalName),
                       fm.lineSpacing(),
                       Qt::AlignHCenter | Qt::AlignBottom | Qt::TextDontClip, m_horizontalName);
+    painter->restore();
+  } else if (m_horizontalAxisState == AxisState::WillAppear) {
+    painter->save();
+    painter->setPen(Qt::gray);
+    painter->setBrush(Qt::gray);
+    painter->drawLine(0, 0, 2 * pointDistance, 0);
+    painter->drawConvexPolygon(leftArrow(2 * pointDistance, pointRadius));
+    painter->restore();
   }
 
-  if (m_verticalAxisVisible) {
+  if (m_verticalAxisState == AxisState::Visible ||
+      m_verticalAxisState == AxisState::WillDisappear) {
+    painter->save();
+    if (m_verticalAxisState == AxisState::WillDisappear) {
+      painter->setPen(QPen(QBrush(Qt::gray), 1.0, Qt::DashLine));
+      painter->setBrush(QBrush(Qt::gray));
+    }
     // Draw axis.
     int length = verticalAxisLength();
     painter->drawLine(0, 0, 0, -length);
     // Draw arrow.
-    QPolygonF triangle;
-    triangle.append(QPointF(0, -length));
-    triangle.append(QPointF(pointRadius, -length + 2 * pointRadius));
-    triangle.append(QPointF(-pointRadius, -length + 2 * pointRadius));
-    triangle.append(triangle.front());
+    QPolygonF triangle = topArrow(length, pointRadius);
     painter->drawConvexPolygon(triangle);
 
     // Draw tics.
@@ -393,6 +429,14 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
                       textWidth,
                       pointDistance,
                       Qt::AlignVCenter | Qt::AlignRight | Qt::TextDontClip, m_verticalName);
+    painter->restore();
+  } else if (m_verticalAxisState == AxisState::WillAppear) {
+    painter->save();
+    painter->setPen(Qt::gray);
+    painter->setBrush(Qt::gray);
+    painter->drawLine(0, 0, 0, -2 * pointDistance);
+    painter->drawConvexPolygon(topArrow(2*pointDistance, pointRadius));
+    painter->restore();
   }
 
   if (nextCsIsDependent) {
