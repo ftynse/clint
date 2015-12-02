@@ -773,16 +773,52 @@ void VizManipulationManager::polyhedronAboutToResize(VizPolyhedron *polyhedron, 
   bool oneDimensional = polyhedron->occurrence()->dimensionality() < polyhedron->coordinateSystem()->verticalDimensionIdx();
   bool zeroDimensional = polyhedron->occurrence()->dimensionality() < polyhedron->coordinateSystem()->horizontalDimensionIdx();
   bool aloneInLoop = polyhedron->coordinateSystem()->countPolyhedra() == 1;
+  bool oneLine = polyhedron->localVerticalMin() == polyhedron->localVerticalMax();
+  bool oneColumn = polyhedron->localHorizontalMin() == polyhedron->localHorizontalMax();
+
+  const std::vector<int> &beta = polyhedron->occurrence()->betaVector();
+  bool embedded = false;
+  if (!zeroDimensional && oneDimensional &&
+      (direction == Dir::UP || direction == Dir::DOWN)) {
+    embedded = false;
+  } else if (zeroDimensional) {
+    embedded = false;
+  } else if (!oneDimensional && !zeroDimensional &&
+      beta.size() != polyhedron->occurrence()->depth(polyhedron->coordinateSystem()->verticalDimensionIdx()) + 1) {
+    embedded = false;
+  } else if (!oneLine && (direction == Dir::UP || direction == Dir::DOWN)) {
+    embedded = false;
+  } else if (!oneColumn && (direction == Dir::LEFT || direction == Dir::RIGHT)) {
+    embedded = false;
+  } else {
+    Transformation embedTransformation = Transformation::unembed(beta);
+    embedded = static_cast<bool>(polyhedron->occurrence()->scop()->guessInverseTransformation(embedTransformation));
+  }
+
   if (zeroDimensional && (direction == Dir::LEFT || direction == Dir::RIGHT) && aloneInLoop) {
-    m_creatingDimension = 1;
+    m_creatingDimension = -1;
     m_resizing = false;
   } else if (!zeroDimensional && oneDimensional && (direction == Dir::UP || direction == Dir::DOWN) && aloneInLoop) {
-    m_creatingDimension = 2;
+    m_creatingDimension = -2;
     m_resizing = false;
-  } else if (!zeroDimensional ||
+  } else if (embedded && aloneInLoop && (direction == Dir::LEFT || direction == Dir::RIGHT) && oneDimensional) {
+    m_creatingDimension = -3;
+    m_resizing = false;
+  } else if (embedded && aloneInLoop && (direction == Dir::UP || direction == Dir::DOWN)) {
+    m_creatingDimension = -4;
+    m_resizing = false;
+  } else if ((!zeroDimensional && !oneDimensional) ||
              (oneDimensional && (direction == Dir::LEFT || direction == Dir::RIGHT))) {
-    m_creatingDimension = 0;
-    m_resizing = true;
+    if (((direction == Dir::LEFT || direction == Dir::RIGHT) && oneColumn) ||
+        ((direction == Dir::UP || direction == Dir::DOWN) && oneLine)) {
+      m_creatingDimension = 0;
+      m_resizing = false;
+      polyhedron->resetPointPositions();
+      return;
+    } else {
+      m_creatingDimension = 0;
+      m_resizing = true;
+    }
   } else {
     m_creatingDimension = 0;
     m_resizing = false;
@@ -792,27 +828,37 @@ void VizManipulationManager::polyhedronAboutToResize(VizPolyhedron *polyhedron, 
 }
 
 void VizManipulationManager::polyhedronHasCreatedDimension(VizPolyhedron *polyhedron) {
-  if (!m_creatingDimension)
+  if (m_creatingDimension <= 0) {
+    m_creatingDimension = 0;
     return;
-  bool horizontal = m_creatingDimension == 1;
+  }
+  bool horizontal = (m_creatingDimension % 2) == 1;
+  bool unembed = m_creatingDimension > 2;
   m_creatingDimension = 0;
 
   TransformationGroup group;
-  if (horizontal) { // we know it is zero-dimensional if started horizontal dimension creation
-    group.transformations.push_back(Transformation::embed(polyhedron->occurrence()->betaVector()));
+  if (unembed) {
+    group.transformations.push_back(Transformation::unembed(polyhedron->occurrence()->betaVector()));
   } else {
     group.transformations.push_back(Transformation::embed(polyhedron->occurrence()->betaVector()));
   }
 
   if (!group.transformations.empty()) {
     polyhedron->scop()->transform(group);
-    polyhedron->scop()->executeTransformationSequence();
+    if (!unembed) {
+      polyhedron->scop()->executeTransformationSequence();
+    }
     if (horizontal) {
       polyhedron->coordinateSystem()->setHorizontalDimensionIdx(
+            unembed ? VizProperties::NO_DIMENSION :
             polyhedron->coordinateSystem()->projection()->horizontalDimensionIdx());
     } else {
       polyhedron->coordinateSystem()->setVerticalDimensionIdx(
+            unembed ? VizProperties::NO_DIMENSION :
             polyhedron->coordinateSystem()->projection()->verticalDimensionIdx());
+    }
+    if (unembed) {
+      polyhedron->scop()->executeTransformationSequence();
     }
     polyhedron->coordinateSystem()->update();
   }
@@ -994,20 +1040,46 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
 }
 
 void VizManipulationManager::polyhedronResizing(QPointF displacement) {
-  if (m_creatingDimension == 1) {
+  VizProperties *properties = m_polyhedron->coordinateSystem()->projection()->vizProperties();
+  const double pointDistance = properties->pointDistance();
+  m_horzOffset = round(displacement.x() / pointDistance);
+  m_vertOffset = round(displacement.y() / pointDistance);
+
+  bool verticalJoin = (m_direction == Dir::UP && m_vertOffset == 1) ||
+                      (m_direction == Dir::DOWN && m_vertOffset == -1);
+  bool horizontalJoin = (m_direction == Dir::LEFT && m_horzOffset == 1)  ||
+                        (m_direction == Dir::RIGHT && m_horzOffset == -1);
+
+  if (m_creatingDimension == -1 && abs(m_horzOffset) >= 1) {
+    m_creatingDimension = 1;
     m_polyhedron->coordinateSystem()->setHorizontalAxisState(VizCoordinateSystem::AxisState::WillAppear);
-  } else if (m_creatingDimension == 2) {
+  } else if (m_creatingDimension == -2 && abs(m_vertOffset) >= 1) {
+    m_creatingDimension = 2;
     m_polyhedron->coordinateSystem()->setVerticalAxisState(VizCoordinateSystem::AxisState::WillAppear);
+  } else if (m_creatingDimension == 1 && abs(m_horzOffset) == 0) {
+    m_creatingDimension = -1;
+    m_polyhedron->coordinateSystem()->setHorizontalAxisState(VizCoordinateSystem::AxisState::Invisible);
+  } else if (m_creatingDimension == 2 && abs(m_vertOffset) == 0) {
+    m_creatingDimension = -2;
+    m_polyhedron->coordinateSystem()->setVerticalAxisState(VizCoordinateSystem::AxisState::Invisible);
+  } else if (m_creatingDimension == -3 && horizontalJoin) {
+    m_creatingDimension = 3;
+    m_polyhedron->coordinateSystem()->setHorizontalAxisState(VizCoordinateSystem::AxisState::WillDisappear);
+  } else if (m_creatingDimension == -4 && verticalJoin) {
+    m_creatingDimension = 4;
+    m_polyhedron->coordinateSystem()->setVerticalAxisState(VizCoordinateSystem::AxisState::WillDisappear);
+  } else if (m_creatingDimension == 3 && !horizontalJoin) {
+    m_creatingDimension = -3;
+    m_polyhedron->coordinateSystem()->setHorizontalAxisState(VizCoordinateSystem::AxisState::Visible);
+  } else if (m_creatingDimension == 4 && !verticalJoin) {
+    m_creatingDimension = -4;
+    m_polyhedron->coordinateSystem()->setVerticalAxisState(VizCoordinateSystem::AxisState::Visible);
   }
 
   if (!m_resizing) {
     return;
   }
 
-  VizProperties *properties = m_polyhedron->coordinateSystem()->projection()->vizProperties();
-  const double pointDistance = properties->pointDistance();
-  m_horzOffset = round(displacement.x() / pointDistance);
-  m_vertOffset = round(displacement.y() / pointDistance);
   if (displacement.x() != 0 && m_direction == Dir::RIGHT) {
     m_polyhedron->coordinateSystem()->projection()->ensureFitsHorizontally(
           m_polyhedron->coordinateSystem(),

@@ -354,7 +354,7 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
   if (m_horizontalAxisState == AxisState::Visible ||
       m_horizontalAxisState == AxisState::WillDisappear) {
     painter->save();
-    if (m_verticalAxisState == AxisState::WillDisappear) {
+    if (m_horizontalAxisState == AxisState::WillDisappear) {
       painter->setPen(QPen(QBrush(Qt::gray), 1.0, Qt::DashLine));
       painter->setBrush(QBrush(Qt::gray));
     }

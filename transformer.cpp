@@ -135,6 +135,12 @@ boost::optional<Transformation> ClayTransformer::guessInverseTransformation(osl_
     break;
   }
 
+  case Transformation::Kind::Unembed:
+    if (chlore_extract_embed(scop, ClayBeta(transformation.target())))
+      return Transformation::embed(transformation.target());
+    else
+      return boost::none;
+
   case Transformation::Kind::Collapse:
     throw std::invalid_argument("Unimplemented guessInverseTransformation for collapse");
     break;
@@ -142,6 +148,7 @@ boost::optional<Transformation> ClayTransformer::guessInverseTransformation(osl_
   default:
     throw std::invalid_argument("Cannot guess parameters for this transformation");
   }
+
   return boost::none;
 }
 
@@ -375,7 +382,7 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
     IdentifierMultiMap updatedForwardMapping;
     std::set<Identifier> updatedCreatedMappings;
 
-    CLINT_ASSERT(maximumAt(BetaUtility::firstPrefix(target)) != 0,
+    CLINT_ASSERT(maximumAt(BetaUtility::firstPrefix(target)) == 0,
                  "Cannot unembed statement which is not alone in the loop");
 
     for (auto m : m_forwardMapping) {
