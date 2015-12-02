@@ -896,6 +896,7 @@ void VizManipulationManager::polyhedronAboutToResize(VizPolyhedron *polyhedron, 
 void VizManipulationManager::polyhedronHasCreatedDimension(VizPolyhedron *polyhedron) {
   if (m_creatingDimension <= 0) {
     m_creatingDimension = 0;
+    m_polyhedron = nullptr;
     return;
   }
   bool horizontal = (m_creatingDimension % 2) == 1;
@@ -939,6 +940,7 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
   }
 
   if (!m_resizing) {
+    m_polyhedron = nullptr;
     return;
   }
   m_resizing = false;
