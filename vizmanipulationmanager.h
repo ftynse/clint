@@ -95,7 +95,9 @@ private:
     PT_DETACH_HORIZONTAL,
     PT_DETACH_VERTICAL,
     PT_DETACHED_HORIZONTAL,
-    PT_DETACHED_VERTICAL
+    PT_DETACHED_VERTICAL,
+    PT_ATTACH,
+    PT_ATTACHED
   }    m_pointDetachState;
   int  m_pointDetachValue;
   bool m_pointDetachLast;

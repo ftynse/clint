@@ -126,6 +126,8 @@ public:
     return m_polyhedra.size();
   }
 
+  VizPolyhedron *polyhedron(const std::vector<int> &beta) const;
+
   std::vector<int> betaPrefix() const;
 
   int dependentWith(VizCoordinateSystem *vcs);
@@ -145,6 +147,7 @@ public:
   void resetPolyhedronPos(VizPolyhedron *polyhedron);
 
   void insertPolyhedronAfter(VizPolyhedron *inserted, VizPolyhedron *after);
+  void removePolyhedron(VizPolyhedron *polyhedron);
   void updateAllPositions();
   void deleteInnerDependences();
 

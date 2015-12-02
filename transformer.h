@@ -329,6 +329,7 @@ private:
 
   // A set of all identifiers that were created during the mapping process
   // and did not originally exist in the scop.
+  // TODO: is it useful somehow? does not seem to be referenced outside the class that keeps it up-to-date
   std::set<Identifier> m_createdMappings;
 };
 

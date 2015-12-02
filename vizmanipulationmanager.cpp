@@ -616,10 +616,22 @@ void VizManipulationManager::pointAboutToMove(VizPoint *point) {
       m_pointDetachValue = polyhedron->localVerticalMax() - (selectionVerticalMax - selectionVerticalMin + 1);
       m_pointDetachLast = true;
     }
+  } else if (selectedPoints.size() == allPoints.size() &&
+             polyhedron->coordinateSystem()->countPolyhedra() == 2) { // TODO: allow collapsing a single statement
+                                                                      // this requires figuring out what is the statement it can collapse
+                                                                      // with, extracting both to a separate loop, collapsing the loop
+                                                                      // end fusing back; chlore has functionality to extract statements
+                                                                      // until given depth
+    Transformation collapse = Transformation::collapse(polyhedron->coordinateSystem()->betaPrefix());
+    if (polyhedron->occurrence()->scop()->guessInverseTransformation(collapse)) { // we could try to figure out shifts/reshapes to enable it
+                                                                                  // if it is not with whiteboxing or mapping deviation
+      m_pointDetachState = PT_ATTACH;
+    } else {
+      m_pointDetachState = PT_NODETACH;
+    }
   } else {
     m_pointDetachState = PT_NODETACH;
     return; // no transformation;
-    // TODO: if everything selected -> select the polyhedron; do not allow ISSing all points
   }
 }
 
@@ -628,6 +640,7 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
   case PT_NODETACH:
   case PT_DETACH_VERTICAL:
   case PT_DETACH_HORIZONTAL:
+  case PT_ATTACH:
   {
     std::set<VizPolyhedron *> polyhedra;
     for (VizPoint *vp : point->coordinateSystem()->projection()->selectionManager()->selectedPoints())
@@ -733,6 +746,53 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
   }
     break;
 
+  case PT_ATTACHED:
+  {
+    // XXX: makes assumptions about beta-structure and values (fine for now, given that we can recover betas with chlore)
+    VizPolyhedron *currentPolyhedron = point->polyhedron();
+    VizPolyhedron *remaining = nullptr;
+    std::vector<int> loopBeta = currentPolyhedron->coordinateSystem()->betaPrefix();
+    std::vector<int> remainingBeta(loopBeta), removingBeta(loopBeta);
+    std::vector<int> currentBeta = currentPolyhedron->occurrence()->betaVector();
+    remainingBeta.push_back(0);
+    removingBeta.push_back(1);
+    if (BetaUtility::isPrefixOrEqual(removingBeta, currentBeta)) {
+      // Reparent all selection points to another polyhedron.
+      VizPolyhedron *otherPolyhedron = currentPolyhedron->coordinateSystem()->polyhedron(remainingBeta);
+      CLINT_ASSERT(otherPolyhedron != 0, "Couldn't find a matching polyhedron for collapse");
+      VizSelectionManager *sm = currentPolyhedron->coordinateSystem()->projection()->selectionManager();
+      const std::unordered_set<VizPoint *> selectedPoints = sm->selectedPoints();
+      for (VizPoint *point : selectedPoints) {
+        otherPolyhedron->reparentPoint(point);
+      }
+      currentPolyhedron->coordinateSystem()->removePolyhedron(currentPolyhedron);
+      delete currentPolyhedron;
+      remaining = otherPolyhedron;
+    } else if (BetaUtility::isPrefixOrEqual(remainingBeta, currentBeta)) {
+      // Reparent all points of another polyhedron to the current.
+      VizPolyhedron *otherPolyhedron = currentPolyhedron->coordinateSystem()->polyhedron(removingBeta);
+      CLINT_ASSERT(otherPolyhedron != 0, "Couldn't find a matching polyhedron for collapse");
+      std::unordered_set<VizPoint *> points = otherPolyhedron->points();
+      for (VizPoint *point : points) {
+        currentPolyhedron->reparentPoint(point);
+      }
+      currentPolyhedron->coordinateSystem()->removePolyhedron(otherPolyhedron);
+      delete otherPolyhedron;
+      remaining = currentPolyhedron;
+    } else {
+      CLINT_UNREACHABLE;
+    }
+
+    remaining->updateShape();
+
+    TransformationGroup group;
+    group.transformations.push_back(Transformation::collapse(loopBeta));
+    remaining->scop()->transform(group);
+    remaining->scop()->executeTransformationSequence();
+    remaining->updateInternalDependences();
+    remaining->coordinateSystem()->projection()->updateInnerDependences();
+  }
+    break;
   }
 }
 
@@ -755,6 +815,12 @@ void VizManipulationManager::pointMoving(QPointF position) {
     else
       m_pointDetachState = PT_DETACH_VERTICAL;
     break;
+  case PT_ATTACH:
+  case PT_ATTACHED:
+    if (fabs(position.x()) >= 4.0)
+      m_pointDetachState = PT_ATTACHED;
+    else
+      m_pointDetachState = PT_ATTACH;
   }
 }
 

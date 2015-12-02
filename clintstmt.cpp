@@ -99,3 +99,9 @@ ClintStmtOccurrence *ClintStmt::splitOccurrence(ClintStmtOccurrence *occurrence,
   m_occurrences[beta] = otherOccurrence;
   return otherOccurrence;
 }
+
+void ClintStmt::removeOccurrence(ClintStmtOccurrence *occurrence) {
+  const std::vector<int> beta = occurrence->betaVector();
+  m_occurrences.erase(beta);
+  delete occurrence;
+}

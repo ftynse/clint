@@ -275,6 +275,13 @@ public:
     return t;
   }
 
+  static Transformation collapse(const std::vector<int> &beta) {
+    Transformation t;
+    t.m_kind           = Kind::Collapse;
+    t.m_targetBeta     = beta;
+    return t;
+  }
+
   /*+*********** raw transformations from parser  *************/
   static Transformation rawSplit(const std::vector<int> &beta, int dimension) {
     CLINT_ASSERT(beta.size() > 0, "Split transformation beta too short");
@@ -336,13 +343,13 @@ private:
   Kind m_kind;
 
   static void unwrapClayList(const std::vector<std::vector<int>> &list, Transformation &t) {
-    CLINT_ASSERT(list.size() != 3, "List malformed");
-    CLINT_ASSERT(list[2].size() <= 1, "More than one value for constant part of the list");
+    CLINT_ASSERT(list.size() == 4, "List malformed");
+    CLINT_ASSERT(list[3].size() <= 1, "More than one value for constant part of the list");
     CLINT_ASSERT(list[0].size() != 0 || list[1].size() != 0 || list[2].size() != 0,
                 "Empty list in transformation");
     t.m_iterators      = list[0];
-    t.m_parameters     = list[1];
-    t.m_constantAmount = list[2].size() == 1 ? list[2][0] : 0;
+    t.m_parameters     = list[2];
+    t.m_constantAmount = list[3].size() == 1 ? list[3][0] : 0;
   }
 };
 

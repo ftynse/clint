@@ -202,16 +202,22 @@ void ClintScop::executeTransformationSequence() {
       m_transformer->apply(transformed, transformation);
 
       if (groupsExecuted >= m_groupsExecuted) {
-        // Create the occurrence to reflect the ISS result.
+        // Create the occurrence to reflect the ISS/Collapse result.
+        // XXX: this assumes loop contains only one statement, and makes assumptions on beta-structure.
+        // It is true for the transformation sequences created by VizManipulationManager.
         if (transformation.kind() == Transformation::Kind::IndexSetSplitting) {
           std::vector<int> loopBeta = transformation.target();
-          // XXX: this assumes loop contains only one statement, and makes assumptions on beta-structure.
-          // It is true for the transformation sequences created by VizManipulationManager.
           loopBeta.push_back(0);
           ClintStmtOccurrence *occ = occurrence(loopBeta);
           loopBeta.back() = 1;
           occ->statement()->splitOccurrence(occ, loopBeta);
           m_vizBetaMap[loopBeta] = occ->statement();                 // The subsequent call to resetOccurrences will replace the statement anyway
+        } else if (transformation.kind() == Transformation::Kind::Collapse) {
+          std::vector<int> loopBeta = transformation.target();
+          loopBeta.push_back(1);
+          ClintStmtOccurrence *occ = occurrence(loopBeta);
+          occ->statement()->removeOccurrence(occ);
+          m_vizBetaMap.erase(loopBeta);
         }
       }
     }

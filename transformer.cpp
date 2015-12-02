@@ -140,9 +140,22 @@ boost::optional<Transformation> ClayTransformer::guessInverseTransformation(osl_
       return Transformation::embed(transformation.target());
     else
       return boost::none;
+    break;
 
   case Transformation::Kind::Collapse:
-    throw std::invalid_argument("Unimplemented guessInverseTransformation for collapse");
+  {
+    clay_list_p condition = chlore_extract_iss_condition(scop, ClayBeta(transformation.target()));
+    if (condition) {
+      std::vector<std::vector<int>> list;
+      list.resize(4);
+      for (int i = 0; i < 4; i++) {
+        list[i] = betaFromClay(condition->data[i]);
+      }
+      return Transformation::rawIss(transformation.target(), list);
+    } else {
+      return boost::none;
+    }
+  }
     break;
 
   default:
@@ -307,6 +320,29 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
   }
     break;
 
+  case Transformation::Kind::Collapse:
+  {
+    Identifier target = transformation.target();
+    int stmtNb = maximumAt(target) + 1;
+    CLINT_ASSERT((stmtNb % 2) == 0,
+                 "A collapsable beta-prefix should have an even number of statements");
+
+    IdentifierMultiMap updatedForwardMapping;
+    for (auto m : m_forwardMapping) {
+      Identifier identifier  = m.second;
+      // Remove betas for second parts
+      if (!(BetaUtility::isPrefix(target, identifier) && identifier.at(target.size()) >= stmtNb / 2)) {
+        updatedForwardMapping.emplace(m.first, identifier);
+      } else {
+        m_createdMappings.erase(identifier);
+      }
+    }
+    m_forwardMapping = updatedForwardMapping;
+    syncReverseMapping();
+
+  }
+    break;
+
   case Transformation::Kind::Tile:
   {
     Identifier target = transformation.target();
@@ -400,11 +436,6 @@ void ClayBetaMapper::apply(osl_scop_p scop, const Transformation &transformation
     m_createdMappings = updatedCreatedMappings;
     syncReverseMapping();
   }
-    break;
-
-
-  case Transformation::Kind::Collapse:
-    CLINT_ASSERT(false, "unimplemented");
     break;
 
   case Transformation::Kind::Shift:

@@ -78,9 +78,10 @@ public:
       // apart from beta remapping) that happens in the undefined future; it is also not clear how to deal with multiple statements
       // being created by a transformation (which beta to assign to the remapped statement and which to the one being created;
       // is it important at all? occurrences will filter the scatterings they need, but not sure about dependence maps).
-      // As far as VizManipulationManager deals with association of VizPolyhedron to ClintStmtOccurrrence after it was created,
-      // that part works find.
-      if (transformation.kind() == Transformation::Kind::IndexSetSplitting) {
+      // As long as VizManipulationManager deals with the association of VizPolyhedron to ClintStmtOccurrrence after it was created,
+      // that part works fine.
+      if (transformation.kind() == Transformation::Kind::IndexSetSplitting ||
+          transformation.kind() == Transformation::Kind::Collapse) {
         m_betaMapper->apply(nullptr, tg);
         break;
       }

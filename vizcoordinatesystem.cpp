@@ -269,12 +269,9 @@ void VizCoordinateSystem::reparentPolyhedron(VizPolyhedron *polyhedron) {
   VizCoordinateSystem *oldCS = polyhedron->coordinateSystem();
   if (oldCS == this)
     return;
-  oldCS->m_polyhedra.erase(std::find(std::begin(oldCS->m_polyhedra),
-                                     std::end(oldCS->m_polyhedra),
-                                     polyhedron));
+  oldCS->removePolyhedron(polyhedron);
   m_polyhedra.push_back(polyhedron);
   addAxisLabels(polyhedron->occurrence());
-  oldCS->regenerateAxisLabels();
   polyhedron->reparent(this);
 }
 
@@ -289,6 +286,15 @@ void VizCoordinateSystem::insertPolyhedronAfter(VizPolyhedron *inserted, VizPoly
   inserted->reparent(this);
 
   updatePolyhedraPositions();
+}
+
+void VizCoordinateSystem::removePolyhedron(VizPolyhedron *polyhedron) {
+  auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);
+  CLINT_ASSERT(it != std::end(m_polyhedra),
+               "Trying to remove the polyhedron that is not present in the CS.");
+  m_polyhedra.erase(it);
+  polyhedron->setParentItem(nullptr);
+  regenerateAxisLabels();
 }
 
 void VizCoordinateSystem::polyhedronUpdated(VizPolyhedron *polyhedron) {
@@ -518,4 +524,15 @@ int VizCoordinateSystem::dependentWith(VizCoordinateSystem *vcs) {
   if (dependent)
     return 1;
   return 0;
+}
+
+VizPolyhedron *VizCoordinateSystem::polyhedron(const std::vector<int> &beta) const {
+  VizPolyhedron *result = nullptr;
+  for (VizPolyhedron *vp : m_polyhedra) {
+    if (BetaUtility::isPrefixOrEqual(beta, vp->occurrence()->betaVector()))  {
+      CLINT_ASSERT(result == nullptr, "Expecting only one polyhedron with given beta-prefix"); // implement a different function if needed
+      result = vp;
+    }
+  }
+  return result;
 }
