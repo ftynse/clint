@@ -182,9 +182,7 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
 
   std::vector<std::vector<int>> points =
       program()->enumerator()->enumerate(ready, std::move(visibleDimensions));
-  computeMinMax(points,
-                horizontalDimIdx != -2 ? depth(horizontalDimIdx) - 1 : horizontalDimIdx,
-                verticalDimIdx != -2 ? depth(verticalDimIdx) - 1 : verticalDimIdx);
+  computeMinMax(points, horizontalDimIdx, verticalDimIdx);
 
   return std::move(points);
 }
@@ -409,7 +407,6 @@ std::vector<int> ClintStmtOccurrence::findBoundlikeForm(Bound bound, int dimIdx,
 int ClintStmtOccurrence::minimumValue(int dimIdx) const {
   if (dimIdx >= dimensionality() || dimIdx < 0)
     return 0;
-  dimIdx = depth(dimIdx) - 1;
   if (m_cachedDimMins.count(dimIdx) == 0) {
     projectOn(dimIdx, -2); // FIXME: -2 is VizProperties::NoDimension
   }
@@ -421,7 +418,6 @@ int ClintStmtOccurrence::minimumValue(int dimIdx) const {
 int ClintStmtOccurrence::maximumValue(int dimIdx) const {
   if (dimIdx >= dimensionality() || dimIdx < 0)
     return 0;
-  dimIdx = depth(dimIdx) - 1;
   if (m_cachedDimMaxs.count(dimIdx) == 0) {
     projectOn(dimIdx, -2); // FIXME: -2 is VizProperties::NoDimension
   }
@@ -442,18 +438,6 @@ std::vector<int> ClintStmtOccurrence::untiledBetaVector() const {
     }
   }
   return std::move(beta);
-}
-
-static void updateMinMaxCache(std::unordered_map<int, int> &cache, int dimensionIdx, int offset) {
-  std::unordered_map<int, int> updated;
-  for (auto v : cache) {
-    if (v.first >= dimensionIdx) {
-      updated[v.first + offset] = v.second;
-    } else {
-      updated[v.first] = v.second;
-    }
-  }
-  cache = updated;
 }
 
 void ClintStmtOccurrence::tile(int dimensionIdx, unsigned tileSize) {
@@ -481,10 +465,6 @@ void ClintStmtOccurrence::tile(int dimensionIdx, unsigned tileSize) {
   tileSizes[2 * dimensionIdx + 1] = tileSize;
   m_tilingDimensions = tilingDimensions;
   m_tileSizes = tileSizes;
-
-  // Update min/max caches wrt to new dimensionality.
-  updateMinMaxCache(m_cachedDimMaxs, dimensionIdx, 1);
-  updateMinMaxCache(m_cachedDimMins, dimensionIdx, 1);
 }
 
 void ClintStmtOccurrence::untile(int dimensionIdx) {
@@ -508,7 +488,4 @@ void ClintStmtOccurrence::untile(int dimensionIdx) {
   }
   m_tilingDimensions = tilingDimensions;
   m_tileSizes = tileSizes;
-
-  updateMinMaxCache(m_cachedDimMaxs, dimensionIdx, -1);
-  updateMinMaxCache(m_cachedDimMins, dimensionIdx, -1);
 }

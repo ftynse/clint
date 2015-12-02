@@ -166,7 +166,7 @@ private:
   // FIXME: m_tilingDImensions just duplicates the set of keys of m_tileSizes.
   std::unordered_map<int, unsigned> m_tileSizes;
 
-  // Caches for min/max.
+  // Caches for min/max (index = visible dimension, not computed for tiled).
   mutable std::unordered_map<int, int> m_cachedDimMins;
   mutable std::unordered_map<int, int> m_cachedDimMaxs;
 
