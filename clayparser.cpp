@@ -286,6 +286,12 @@ TransformationGroup create_group(const std::vector<clay_parser::clay_parser_comm
   mapping["reverse"]     = unwrap<std::vector<int>, int>                               (Transformation::reverse);
   mapping["tile"]        = unwrap<std::vector<int>, int, int, int, int>                (Transformation::rawTile);
   mapping["iss"]         = unwrap<std::vector<int>, clay_parser::clay_parser_list>     (wrappedIss);
+  mapping["reshape"]     = unwrap<std::vector<int>, int, int, int>                     (Transformation::reshape);
+  mapping["linearize"]   = unwrap<std::vector<int>, int>                               (Transformation::linearize);
+  mapping["collapse"]    = unwrap<std::vector<int>>                                    (Transformation::collapse);
+  mapping["embed"]       = unwrap<std::vector<int>>                                    (Transformation::embed);
+  mapping["unembed"]     = unwrap<std::vector<int>>                                    (Transformation::unembed);
+  mapping["densify"]     = unwrap<std::vector<int>, int>                               (Transformation::densify);
 
 
   for (const clay_parser::clay_parser_command &cmd : commands) {
