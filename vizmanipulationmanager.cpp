@@ -1202,6 +1202,7 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
     return;
   m_skewing = false;
 
+  // Max is inclusive, so we would need +1 here, but we would also need -1 before division to compute the skew factor
   int horizontalRange = (m_polyhedron->localHorizontalMax() - m_polyhedron->localHorizontalMin());
   int verticalRange   = (m_polyhedron->localVerticalMax() - m_polyhedron->localVerticalMin());
 
@@ -1212,9 +1213,11 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
         m_polyhedron->localVerticalMax() :
         m_polyhedron->localVerticalMin();
 
-  int verticalSkewFactor = round(static_cast<double>(-m_vertOffset) / verticalRange);
-  int horizontalSkewFactor = round(static_cast<double>(m_horzOffset) / horizontalRange);
+  int verticalSkewFactor = horizontalRange == 0 ? 0 : round(static_cast<double>(-m_vertOffset) / horizontalRange);
+  int horizontalSkewFactor = verticalRange == 0 ? 0 : round(static_cast<double>(m_horzOffset) / verticalRange);
   if (verticalSkewFactor == 0 && horizontalSkewFactor == 0) {
+    m_polyhedron = nullptr;
+    m_polyhedron->coordinateSystem()->resetPolyhedronPos(polyhedron);
     return;
   }
 
