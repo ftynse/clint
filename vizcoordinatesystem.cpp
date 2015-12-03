@@ -322,6 +322,18 @@ void VizCoordinateSystem::setMinMax(int horizontalMinimum, int horizontalMaximum
   updatePolyhedraPositions();
 }
 
+void VizCoordinateSystem::setHorizontalMinMax(int horizontalMinimum, int horizontalMaximum) {
+  m_horizontalMin = horizontalMinimum;
+  m_horizontalMax = horizontalMaximum;
+  updatePolyhedraPositions();
+}
+
+void VizCoordinateSystem::setVerticalMinMax(int verticalMinimum, int verticalMaximum) {
+  m_verticalMin   = verticalMinimum;
+  m_verticalMax   = verticalMaximum;
+  updatePolyhedraPositions();
+}
+
 QPolygonF VizCoordinateSystem::leftArrow(int length, const double pointRadius)
 {
   QPolygonF triangle;

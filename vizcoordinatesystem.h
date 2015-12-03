@@ -103,11 +103,19 @@ public:
 
   void setMinMax(int horizontalMinimum, int horizontalMaximum,
                  int verticalMinimum, int verticalMaximum);
+  void setHorizontalMinMax(int horizontalMinimum, int horizontalMaximum);
+  void setVerticalMinMax(int verticalMinimum, int verticalMaximum);
 
   void setMinMax(const std::pair<int, int> &horizontal,
                  const std::pair<int, int> &vertical) {
     setMinMax(horizontal.first, horizontal.second,
               vertical.first, vertical.second);
+  }
+  void setHorizontalMinMax(const std::pair<int, int> &horizontal) {
+    setHorizontalMinMax(horizontal.first, horizontal.second);
+  }
+  void setVerticalMinMax(const std::pair<int, int> &vertical) {
+    setVerticalMinMax(vertical.first, vertical.second);
   }
 
   void minMax(int &horizontalMinimum, int &horizontalMaximum,

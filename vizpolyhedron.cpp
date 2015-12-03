@@ -675,7 +675,7 @@ void VizPolyhedron::prepareExtendRight(double extra) {
     double ratioCoord = static_cast<double>(xCoord - m_localHorizontalMin) /
         static_cast<double>(m_localHorizontalMax - m_localHorizontalMin);
     double ratio = ratioCoord * (extra / pointDistance);
-    vp->setPos(mapToCoordinates(xCoord + ratio, yCoord));
+    vp->setPos(mapToCoordinates(xCoord + ratio, yCoord == VizPoint::NO_COORD ? 0 : yCoord));
   }
 
   // Update polygonal shape positions (fast way without recomputing).
@@ -702,7 +702,7 @@ void VizPolyhedron::prepareExtendLeft(double extra) {
     double ratioCoord = static_cast<double>(m_localHorizontalMax - xCoord) /
         static_cast<double>(m_localHorizontalMax - m_localHorizontalMin);
     double ratio = ratioCoord * (extra / pointDistance);
-    vp->setPos(mapToCoordinates(xCoord + ratio, yCoord));
+    vp->setPos(mapToCoordinates(xCoord + ratio, yCoord == VizPoint::NO_COORD ? 0 : yCoord));
   }
 
   // Update polygonal shape positions (fast way without recomputing).

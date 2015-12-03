@@ -465,9 +465,9 @@ void VizProjection::ensureFitsHorizontally(VizCoordinateSystem *coordinateSystem
     columnMin = INT_MAX;
     columnMax = INT_MIN;
     for (size_t row = 0, row_end = pile.size(); row < row_end; row++) {
-     int hmin, hmax, vmin, vmax;
-     VizCoordinateSystem *cs = pile.at(row);
-     cs->minMax(hmin, hmax, vmin, vmax);
+      int hmin, hmax, vmin, vmax;
+      VizCoordinateSystem *cs = pile.at(row);
+      cs->minMax(hmin, hmax, vmin, vmax);
       if (cs == coordinateSystem) {
         column = col;
       }
@@ -487,9 +487,7 @@ void VizProjection::ensureFitsHorizontally(VizCoordinateSystem *coordinateSystem
   std::vector<VizCoordinateSystem *> pile = m_coordinateSystems.at(column);
   for (size_t row = 0, row_end = pile.size(); row < row_end; row++) {
     VizCoordinateSystem *cs = pile.at(row);
-    int hmin, hmax, vmin, vmax;
-    cs->minMax(hmin, hmax, vmin, vmax);
-    cs->setMinMax(columnMin, columnMax, vmin, vmax); // FIXME: provide functionality for horizontalMinMax separately
+    cs->setHorizontalMinMax(columnMin, columnMax);
   }
   updateProjection();
 }
