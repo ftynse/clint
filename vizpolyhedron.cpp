@@ -108,21 +108,7 @@ void VizPolyhedron::occurrenceChanged() {
   CLINT_ASSERT(m_occurrence, "empty occurrence changed");
   std::vector<std::vector<int>> points =
       occurrence()->projectOn(horizontalDim, verticalDim);
-//  if (horizontalDim != VizProperties::NO_DIMENSION)
-//    horizontalDim = occurrence()->depth(coordinateSystem()->horizontalDimensionIdx()) - 1;
-//  if (verticalDim != VizProperties::NO_DIMENSION)
-//    verticalDim   = occurrence()->depth(coordinateSystem()->verticalDimensionIdx()) - 1;
 
-  // Cannot rely on caches in case of tiling,
-  // dimensionality() is not working until beta-vector for occurrence is updated.
-  // XXX: Is not it fixed with beta mapper running before the emitting pointsChanged()?
-  recomputeMinMax();
-
-  double pointDistance = coordinateSystem()->projection()->vizProperties()->pointDistance();
-
-  // We assume the number of points is the same?
-  int unmatchedNewPoints = 0;
-  std::unordered_set<VizPoint *> matchedPoints;
   for (const std::vector<int> &point : points) {
     std::pair<int, int> scatteredCoordinates, originalCoordinates;
     std::tie(originalCoordinates, scatteredCoordinates) =
@@ -130,20 +116,15 @@ void VizPolyhedron::occurrenceChanged() {
                                           coordinateSystem()->horizontalDimensionIdx(),
                                           coordinateSystem()->verticalDimensionIdx());
     VizPoint *vp = this->point(originalCoordinates);
-    if (vp == nullptr) {
-      ++unmatchedNewPoints;
-    } else {
-      vp->setScatteredCoordinates(scatteredCoordinates); // FIXME: no ifndef
-      std::pair<int, int> realScatteredCoords = pointScatteredCoordsReal(vp);
-      realScatteredCoords.first -= m_localHorizontalMin;
-      realScatteredCoords.second -= m_localVerticalMin;
-      QPointF position = vp->pos();
-      position /= pointDistance;
-      matchedPoints.insert(vp);
+    if (vp != nullptr) { // A point may have been reparented in during the index-set splitting.
+      vp->setScatteredCoordinates(scatteredCoordinates);
     }
   }
-//  CLINT_ASSERT(unmatchedNewPoints == 0, "All new points should match old points by original coordinates");
-//  CLINT_ASSERT(matchedPoints.size() == m_points.size(), "Not all old points were matched");
+  recomputeMinMax();
+  m_coordinateSystem->projection()->ensureFitsHorizontally(
+        m_coordinateSystem, localHorizontalMin(), localHorizontalMax());
+  m_coordinateSystem->projection()->ensureFitsVertically(
+        m_coordinateSystem, localVerticalMin(), localVerticalMax());
 
   // Create lines that symbolize tiles.
   VizProperties *props = coordinateSystem()->projection()->vizProperties();
