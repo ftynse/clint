@@ -27,7 +27,7 @@ void ProjectionView::mouseMoveEvent(QMouseEvent *event) {
 }
 
 void ProjectionView::mouseDoubleClickEvent(QMouseEvent *event) {
-  emit doubleclicked();
   if (m_active)
     QGraphicsView::mouseDoubleClickEvent(event);
+  emit doubleclicked();
 }

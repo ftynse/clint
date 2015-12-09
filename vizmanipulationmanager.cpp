@@ -164,6 +164,7 @@ void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
     polyhedron->scop()->transform(group);
     polyhedron->scop()->executeTransformationSequence();
     polyhedron->coordinateSystem()->projection()->updateInnerDependences();
+    // FIXME: no need to do this anymore, apparently, executeTransformationSequence will trigger it.
     for (VizPolyhedron *vp : selectedPolyhedra) {
       vp->occurrenceChanged();
     }

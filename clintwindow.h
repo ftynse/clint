@@ -5,7 +5,9 @@
 #include <QMainWindow>
 
 #include "clintprogram.h"
+#include "clintprojectionoverview.h"
 #include "vizprojection.h"
+#include "vizproperties.h"
 
 class QWidget;
 class QTextEdit;
@@ -19,6 +21,8 @@ public:
   void regenerateScop(osl_scop_p originalScop = nullptr);
   void regenerateScop(const TransformationSequence &sequence);
   void createProjections(ClintScop *vscop);
+  void paintTogether(QPainter *painter, QSvgGenerator *generator);
+
 signals:
 
 public slots:
@@ -41,7 +45,8 @@ public slots:
   void reparseScript();
 
   void changeParameter(int value);
-  void projectionSelectedInMatrix(int horizontal, int vertical);
+  void projectionSelectedInOverview(int horizontal, int vertical);
+  void projectionSelectedAlone(int horizontal, int vertical);
 
 private:
   QAction *m_actionFileOpen;
@@ -62,8 +67,7 @@ private:
 
   ClintProgram *m_program = nullptr;
   VizProjection *m_projection = nullptr;
-  std::vector<VizProjection *> m_allProjections;
-  QWidget *m_projectionMatrixWidget = nullptr;
+  ClintProjectionOverview *m_projectionOverview = nullptr;
   QWidget *m_graphicalInterface = nullptr;
   QTextEdit *m_codeEditor = nullptr;
   QTextEdit *m_scriptEditor = nullptr;
@@ -72,13 +76,17 @@ private:
 
   bool m_showOriginalCode = false;
   int m_parameterValue = 6;
+  size_t m_horizontalDimSelected = VizProperties::NO_DIMENSION,
+         m_verticalDimSelected = VizProperties::NO_DIMENSION;
+  QString m_fileBasename;
 
   void setupActions();
   void setupMenus();
 
-  void resetCentralWidget(QWidget *interface = nullptr, bool deleteGraphicalInterface = true);
-  void resetProjectionMatrix(ClintScop *vscop);
+  void resetCentralWidget(QWidget *interface = nullptr);
   ClintScop *regenerateScopWithSequence(osl_scop_p originalScop, const TransformationSequence &sequence);
+  void deleteProjectionOverview();
+  void deleteProjection();
 };
 
 #endif // CLINTWINDOW_H

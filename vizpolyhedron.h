@@ -21,6 +21,7 @@ class VizPolyhedron : public QGraphicsObject {
   Q_OBJECT
 public:
   explicit VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSystem *vcs);
+  ~VizPolyhedron();
 
   ClintStmtOccurrence *occurrence() const {
     return m_occurrence;
@@ -155,7 +156,7 @@ public slots:
   void handleHasMoved(const VizHandle *const handle, QPointF displacement);
 
 private:
-  ClintStmtOccurrence *m_occurrence;
+  ClintStmtOccurrence *m_occurrence = nullptr;
   VizCoordinateSystem *m_coordinateSystem;
   QPainterPath m_polyhedronShape;
   QColor m_backgroundColor;
@@ -202,6 +203,7 @@ private:
   QPointF mapToCoordinates(VizPoint *vp) const {
     return mapToCoordinates(pointScatteredCoordsReal(vp));
   }
+  void disconnectAll();
 };
 
 #endif // VIZPOLYHEDRON_H

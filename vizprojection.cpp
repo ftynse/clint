@@ -14,7 +14,7 @@
 VizProjection::VizProjection(int horizontalDimensionIdx, int verticalDimensionIdx, QObject *parent) :
   QObject(parent), m_horizontalDimensionIdx(horizontalDimensionIdx), m_verticalDimensionIdx(verticalDimensionIdx) {
 
-  m_scene = new QGraphicsScene;
+  m_scene = new QGraphicsScene(this);
   m_view = new ProjectionView(m_scene);
   connect(m_view, &ProjectionView::doubleclicked, this, &VizProjection::selectProjection);
 

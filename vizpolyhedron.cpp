@@ -23,6 +23,10 @@ VizPolyhedron::VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSyste
   setOccurrenceSilent(occurrence);
 }
 
+VizPolyhedron::~VizPolyhedron() {
+  disconnectAll();
+}
+
 void VizPolyhedron::updateHandlePositions() {
   if (m_handles.empty()) {
     m_handles = VizHandle::createCenterCornerHandles(this).toVector().toStdVector();
@@ -999,10 +1003,14 @@ void VizPolyhedron::handleHasMoved(const VizHandle *const handle, QPointF displa
   updateHandlePositions();
 }
 
-void VizPolyhedron::setOccurrenceSilent(ClintStmtOccurrence *occurrence) {
+void VizPolyhedron::disconnectAll() {
   if (m_occurrence) {
-    disconnect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
+    disconnect(m_occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
   }
+}
+
+void VizPolyhedron::setOccurrenceSilent(ClintStmtOccurrence *occurrence) {
+  disconnectAll();
   m_occurrence = occurrence;
   if (occurrence) {
     m_backgroundColor = m_coordinateSystem->projection()->vizProperties()->color(occurrence->canonicalOriginalBetaVector());

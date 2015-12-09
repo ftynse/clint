@@ -11,21 +11,16 @@
 
 #include <exception>
 
-void ClintWindow::resetCentralWidget(QWidget *interface, bool deleteGraphicalInterface) {
+void ClintWindow::resetCentralWidget(QWidget *interface) {
   if (centralWidget() != nullptr) {
     QWidget *oldWidget = centralWidget();
-    if (!deleteGraphicalInterface && m_graphicalInterface) {
-      m_graphicalInterface->setParent(nullptr);
-    }
+    m_graphicalInterface->setParent(nullptr);
     m_scriptEditor->setParent(nullptr);
     m_codeEditor->setParent(nullptr);
     m_reparseScriptButton->setParent(nullptr);
     m_reparseCodeButton->setParent(nullptr);
     delete oldWidget;
   }
-
-  if (m_graphicalInterface == m_projectionMatrixWidget && deleteGraphicalInterface)
-    m_projectionMatrixWidget = nullptr;
   m_graphicalInterface = interface;
 
   if (interface == nullptr) {
@@ -86,8 +81,12 @@ ClintWindow::ClintWindow(QWidget *parent) :
 }
 
 ClintWindow::~ClintWindow() {
+  resetCentralWidget(nullptr);
   if (m_projection)
     delete m_projection;
+  if (m_projectionOverview)
+    delete m_projectionOverview;
+  delete m_program;
 }
 
 void ClintWindow::setupActions() {
@@ -181,20 +180,16 @@ void ClintWindow::fileClose() {
     if (vscop)
       disconnect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
   }
-
-  setWindowTitle("Clint: Chunky Loop INTerface");
+  m_fileBasename = QString();
 
   resetCentralWidget(nullptr);
+  deleteProjectionOverview();
   m_program->setParent(nullptr);
   delete m_program;
   m_program = nullptr;
 
-  for (VizProjection *vp : m_allProjections) {
-    vp->setParent(nullptr);
-    disconnect(vp, &VizProjection::selected, this, &ClintWindow::projectionSelectedInMatrix);
-    delete vp;
-  }
-  m_allProjections.clear();
+  setWindowTitle("Clint - Chunky Loop INTeraction");
+
 
   m_fileOpen = false;
   m_actionFileClose->setEnabled(false);
@@ -202,7 +197,7 @@ void ClintWindow::fileClose() {
 }
 
 void ClintWindow::fileSaveSvg() {
-  if (!m_fileOpen)
+  if (!m_fileOpen || m_graphicalInterface == nullptr)
     return;
 
   QString fileName = QFileDialog::getSaveFileName(this, "Save SVG image", QString(), "Scalable Vector Graphics (*.svg)");
@@ -210,30 +205,17 @@ void ClintWindow::fileSaveSvg() {
     return;
 
   QSvgGenerator *generator = new QSvgGenerator;
-  QPainter *painter = nullptr;
   generator->setFileName(fileName);
 
   if (m_projection && m_graphicalInterface == m_projection->widget()) {
     generator->setSize(m_projection->projectionSize());
-    if (!painter) painter = new QPainter(generator);
+    QPainter *painter = new QPainter(generator);
     m_projection->paintProjection(painter);
-  } else if (m_projectionMatrixWidget && m_graphicalInterface == m_projectionMatrixWidget) {
-    QSize totalSize;
-    for (VizProjection *projection : m_allProjections) {
-      QSize size = projection->projectionSize();
-      totalSize.rwidth() += size.width();
-      totalSize.rheight() = qMax(totalSize.height(), size.height());
-    }
-    generator->setSize(totalSize);
-    if (!painter) painter = new QPainter(generator);
-    for (VizProjection *projection : m_allProjections) {
-      QSize size = projection->projectionSize();
-      projection->paintProjection(painter);
-      painter->setTransform(QTransform::fromTranslate(size.width(), 0), true);
-    }
+    delete painter;
+  } else if (m_graphicalInterface == m_projectionOverview) {
+    m_projectionOverview->fillSvg(generator);
   }
 
-  if (painter) delete painter;
   delete generator;
 }
 
@@ -244,49 +226,31 @@ void ClintWindow::changeParameter(int value) {
   }
 }
 
-void ClintWindow::resetProjectionMatrix(ClintScop *vscop) {
-  if (m_projectionMatrixWidget) {
-    m_projectionMatrixWidget->setParent(nullptr);
-    delete m_projectionMatrixWidget;
+void ClintWindow::deleteProjectionOverview() {
+  if (m_projectionOverview != nullptr) {
+    CLINT_ASSERT(m_graphicalInterface != m_projectionOverview,
+                 "Deleting active projection overview");
+    m_projectionOverview->setParent(nullptr);
+    disconnect(m_projectionOverview, &ClintProjectionOverview::projectionSelected,
+               this, &ClintWindow::projectionSelectedInOverview);
+    delete m_projectionOverview;
   }
-
-  m_projectionMatrixWidget = new QWidget(this);
-  QGridLayout *projectionsLayout = new QGridLayout;
-  int counter = 0;
-  for (int i = 0, e = vscop->dimensionality(); i < e - 1; i++) {
-    for (int j = i + 1; j < e; j++) {
-      projectionsLayout->addWidget(m_allProjections[counter++]->widget(), j-1, i);
-    }
-  }
-  projectionsLayout->setContentsMargins(0, 0, 0, 0);
-  m_projectionMatrixWidget->setLayout(projectionsLayout);
+  m_projectionOverview = nullptr;
 }
 
 void ClintWindow::createProjections(ClintScop *vscop) {
-  for (VizProjection *vp : m_allProjections) {
-    vp->setParent(nullptr);
-    disconnect(vp, &VizProjection::selected, this, &ClintWindow::projectionSelectedInMatrix);
-    delete vp;
-  }
-  m_allProjections.clear();
-
-  for (int i = 0, e = vscop->dimensionality(); i < e - 1; i++) {
-    for (int j = i + 1; j < e; j++) {
-      VizProjection *vp = new VizProjection(i, j, this);
-      vp->setViewActive(false);
-      vp->projectScop(vscop);
-      connect(vp, &VizProjection::selected, this, &ClintWindow::projectionSelectedInMatrix);
-      m_allProjections.push_back(vp);
-    }
-  }
-
-  resetProjectionMatrix(vscop);
-  resetCentralWidget(m_projectionMatrixWidget);
+  resetCentralWidget(nullptr);
+  deleteProjectionOverview();
+  deleteProjection();
+  m_projectionOverview = new ClintProjectionOverview(vscop, this);
+  connect(m_projectionOverview, &ClintProjectionOverview::projectionSelected, this, &ClintWindow::projectionSelectedInOverview);
+  projectionSelectedAlone(VizProperties::NO_DIMENSION, VizProperties::NO_DIMENSION);
 }
 
 void ClintWindow::openFileByName(QString fileName) {
   char *cFileName = strdup(QFile::encodeName(fileName).constData());
   QString fileNameNoPath = QFileInfo(fileName).fileName();
+  m_fileBasename = fileNameNoPath;
   FILE *file = fopen(cFileName, "r");
   free(cFileName);
   if (!file) {
@@ -311,8 +275,6 @@ void ClintWindow::openFileByName(QString fileName) {
     QMessageBox::warning(this, QString(), "No SCoP in the given file", QMessageBox::Ok, QMessageBox::Ok);
     return;
   }
-
-  setWindowTitle(QString("%1 - Clint").arg(fileNameNoPath));
 
   m_program = new ClintProgram(scop, originalCode, this);
   ClintScop *vscop = (*m_program)[0];
@@ -373,7 +335,9 @@ void ClintWindow::regenerateScop(osl_scop_p originalScop) {
   m_actionEditRedo->setEnabled(newscop->hasRedo());
   m_actionEditUndo->setEnabled(newscop->hasUndo());
 
-  delete oldscop;
+  oldscop->setParent(nullptr);
+  oldscop->deleteLater();
+//  delete oldscop;
 }
 
 void ClintWindow::regenerateScop(const TransformationSequence &sequence) {
@@ -386,7 +350,9 @@ void ClintWindow::regenerateScop(const TransformationSequence &sequence) {
   m_actionEditRedo->setEnabled(false);
   m_actionEditUndo->setEnabled(false);
 
-  delete oldscop;
+  oldscop->setParent(nullptr);
+  oldscop->deleteLater();
+//  delete oldscop;
 }
 
 void ClintWindow::editUndo() {
@@ -414,9 +380,17 @@ void ClintWindow::editRedo() {
 }
 
 void ClintWindow::editVizProperties() {
-  if (m_allProjections.size() == 0)
+  if (m_projection == nullptr && m_projectionOverview == nullptr)
     return;
-  PropertiesDialog *dialog = new PropertiesDialog(m_allProjections[0]->vizProperties());
+  VizProperties *props = nullptr;
+  if (m_projection)
+    props = m_projection->vizProperties();
+  else
+    props = m_projectionOverview->vizProperties();
+  if (props == nullptr)
+    return;
+
+  PropertiesDialog *dialog = new PropertiesDialog(props);
 //  connect(dialog, &QDialog::rejected, dialog, &QDialog::deleteLater);
   connect(dialog, &PropertiesDialog::parameterChange, this, &ClintWindow::changeParameter);
   dialog->show();
@@ -431,16 +405,9 @@ void ClintWindow::viewProjectionMatrixToggled(bool value) {
   if (!m_actionViewProjectionMatrix->isEnabled())
     return;
   if (value) {
-    resetCentralWidget(m_projectionMatrixWidget, false); // Do not kill m_projection's view...
-    if (m_projection) {
-      m_projection->setParent(nullptr);
-      delete m_projection;
-      m_projection = nullptr;
-    }
+    projectionSelectedAlone(VizProperties::NO_DIMENSION, VizProperties::NO_DIMENSION);
   } else {
-    m_projection = new VizProjection(0, 1, this);
-    m_projection->projectScop((* m_program)[0]);
-    resetCentralWidget(m_projection->widget(), false);
+    projectionSelectedInOverview(0, 1); // FIXME: hardcoded values here...
   }
 }
 
@@ -502,7 +469,7 @@ void ClintWindow::reparseScript() {
 }
 
 void ClintWindow::scopTransformed() {
-  if (!m_program)
+  if (!m_program || !m_graphicalInterface)
     return;
   ClintScop *vscop = (*m_program)[0];
   if (!vscop)
@@ -517,22 +484,60 @@ void ClintWindow::scopTransformed() {
   m_actionEditUndo->setEnabled(vscop->hasUndo());
   m_actionEditRedo->setEnabled(false);
 
-  for (VizProjection *vp : m_allProjections) {
-    vp->updateProjection();
+  if (m_graphicalInterface == m_projection->widget()) {
+    m_projection->updateProjection();
+  }
+  if (m_graphicalInterface == m_projectionOverview) {
+    m_projectionOverview->updateAllProjections();
   }
 }
 
-void ClintWindow::projectionSelectedInMatrix(int horizontal, int vertical) {
+void ClintWindow::deleteProjection() {
   if (m_projection) {
+    CLINT_ASSERT(m_graphicalInterface != m_projection->widget(),
+                 "Deleting active projection");
+    disconnect(m_projection, &VizProjection::selected, this, &ClintWindow::projectionSelectedAlone);
     m_projection->setParent(nullptr);
-    delete m_projection;
+    m_projection->widget()->setParent(nullptr);
+    m_projection->widget()->deleteLater();
+    m_projection->deleteLater();
   }
+  m_projection = nullptr;
+}
+
+void ClintWindow::projectionSelectedInOverview(int horizontal, int vertical) {
+  deleteProjection();
   m_projection = new VizProjection(horizontal, vertical, this);
   m_projection->projectScop((* m_program)[0]);
-  resetCentralWidget(m_projection->widget(), false);
+  connect(m_projection, &VizProjection::selected, this, &ClintWindow::projectionSelectedAlone);
+  resetCentralWidget(m_projection->widget());
 
-  // FIXME: using action's state as model value, baaad!
+  m_horizontalDimSelected = horizontal;
+  m_verticalDimSelected = vertical;
+
+  // Prevent setChecked from triggering another action.
   m_actionViewProjectionMatrix->setEnabled(false);
   m_actionViewProjectionMatrix->setChecked(false);
   m_actionViewProjectionMatrix->setEnabled(true);
+
+  setWindowTitle(QString("%1 [projection %2x%3] - Clint").arg(m_fileBasename).arg(horizontal).arg(vertical));
+}
+
+void ClintWindow::projectionSelectedAlone(int horizontal, int vertical) {
+  (void) horizontal;
+  (void) vertical;
+
+  m_horizontalDimSelected = VizProperties::NO_DIMENSION;
+  m_verticalDimSelected = VizProperties::NO_DIMENSION;
+
+  resetCentralWidget(m_projectionOverview);
+  deleteProjection();
+  m_projectionOverview->updateAllProjections();
+  m_projectionOverview->update();
+  // Prevent setChecked from triggering another action.
+  m_actionViewProjectionMatrix->setEnabled(false);
+  m_actionViewProjectionMatrix->setChecked(true);
+  m_actionViewProjectionMatrix->setEnabled(true);
+
+  setWindowTitle(QString("%1 [overview] - Clint").arg(m_fileBasename));
 }
