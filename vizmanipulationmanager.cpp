@@ -767,7 +767,7 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
         otherPolyhedron->reparentPoint(point);
       }
       currentPolyhedron->coordinateSystem()->removePolyhedron(currentPolyhedron);
-      delete currentPolyhedron;
+      currentPolyhedron->deleteLater();
       remaining = otherPolyhedron;
     } else if (BetaUtility::isPrefixOrEqual(remainingBeta, currentBeta)) {
       // Reparent all points of another polyhedron to the current.
@@ -778,7 +778,7 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
         currentPolyhedron->reparentPoint(point);
       }
       currentPolyhedron->coordinateSystem()->removePolyhedron(otherPolyhedron);
-      delete otherPolyhedron;
+      otherPolyhedron->deleteLater();
       remaining = currentPolyhedron;
     } else {
       CLINT_UNREACHABLE;
