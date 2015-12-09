@@ -155,6 +155,8 @@ public slots:
   void handleAboutToMove(const VizHandle *const handle);
   void handleHasMoved(const VizHandle *const handle, QPointF displacement);
 
+  void occurrenceDeleted();
+
 private:
   ClintStmtOccurrence *m_occurrence = nullptr;
   VizCoordinateSystem *m_coordinateSystem;

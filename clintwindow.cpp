@@ -82,11 +82,14 @@ ClintWindow::ClintWindow(QWidget *parent) :
 
 ClintWindow::~ClintWindow() {
   resetCentralWidget(nullptr);
-  if (m_projection)
-    delete m_projection;
-  if (m_projectionOverview)
+  if (m_projection) {
+    if (m_projection->widget() && m_projection->widget()->parent() == nullptr)
+      delete m_projection->widget();
+    if (m_projection->parent() == nullptr)
+      delete m_projection;
+  }
+  if (m_projectionOverview && m_projectionOverview->parent() == nullptr)
     delete m_projectionOverview;
-  delete m_program;
 }
 
 void ClintWindow::setupActions() {
@@ -184,8 +187,9 @@ void ClintWindow::fileClose() {
 
   resetCentralWidget(nullptr);
   deleteProjectionOverview();
+  deleteProjection();
   m_program->setParent(nullptr);
-  delete m_program;
+  m_program->deleteLater();
   m_program = nullptr;
 
   setWindowTitle("Clint - Chunky Loop INTeraction");

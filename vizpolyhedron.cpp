@@ -105,6 +105,7 @@ void VizPolyhedron::resetPointPositions() {
 void VizPolyhedron::occurrenceChanged() {
   int horizontalDim = coordinateSystem()->horizontalDimensionIdx();
   int verticalDim   = coordinateSystem()->verticalDimensionIdx();
+  CLINT_ASSERT(m_occurrence, "empty occurrence changed");
   std::vector<std::vector<int>> points =
       occurrence()->projectOn(horizontalDim, verticalDim);
 //  if (horizontalDim != VizProperties::NO_DIMENSION)
@@ -1006,6 +1007,7 @@ void VizPolyhedron::handleHasMoved(const VizHandle *const handle, QPointF displa
 void VizPolyhedron::disconnectAll() {
   if (m_occurrence) {
     disconnect(m_occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
+    disconnect(m_occurrence, &ClintStmtOccurrence::destroyed, this, &VizPolyhedron::occurrenceDeleted);
   }
 }
 
@@ -1015,5 +1017,10 @@ void VizPolyhedron::setOccurrenceSilent(ClintStmtOccurrence *occurrence) {
   if (occurrence) {
     m_backgroundColor = m_coordinateSystem->projection()->vizProperties()->color(occurrence->canonicalOriginalBetaVector());
     connect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
+    connect(occurrence, &ClintStmtOccurrence::destroyed, this, &VizPolyhedron::occurrenceDeleted);
   }
+}
+
+void VizPolyhedron::occurrenceDeleted() {
+  m_occurrence = nullptr;
 }
