@@ -180,10 +180,9 @@ void VizPolyhedron::setInternalDependences(std::vector<std::vector<int>> &&depen
 
 void VizPolyhedron::updateInternalDependences() {
   for (VizDepArrow *vda : m_deps) {
-    vda->setParentItem(nullptr);
+    // setting parent to nullptr led to segfault after delete.
     vda->setVisible(false);
-    // TODO: what happend with the deletion here?
-//    delete vda;
+    delete vda;
   }
   m_deps.clear();
 
