@@ -11,6 +11,15 @@ VizPoint::VizPoint(VizPolyhedron *polyhedron) :
   setFlag(QGraphicsItem::ItemIsSelectable);
   setFlag(QGraphicsItem::ItemIsMovable);
   setFlag(QGraphicsItem::ItemSendsGeometryChanges);
+
+  if (m_polyhedron) {
+    VizProperties *props = m_polyhedron->coordinateSystem()->projection()->vizProperties();
+    if (props->filledPoints() && m_polyhedron->occurrence()) {
+      setColor(props->color(m_polyhedron->occurrence()->betaVector()));
+    } else {
+      setColor(QColor::fromRgb(100, 100, 100, 127));
+    }
+  }
 }
 
 void VizPoint::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
@@ -92,4 +101,20 @@ void VizPoint::setOriginalCoordinates(int horizontal, int vertical) {
 void VizPoint::setScatteredCoordinates(int horizontal, int vertical) {
   m_scatteredHorizontal = horizontal;
   m_scatteredVertical = vertical;
+}
+
+ClintStmt *VizPoint::statement() const {
+  return m_polyhedron->statement();
+}
+
+ClintScop *VizPoint::scop() const {
+  return m_polyhedron->scop();
+}
+
+ClintProgram *VizPoint::program() const {
+  return m_polyhedron->program();
+}
+
+VizCoordinateSystem *VizPoint::coordinateSystem() const {
+  return m_polyhedron->coordinateSystem();
 }

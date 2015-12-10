@@ -1,21 +1,24 @@
 #ifndef VIZPOLYHEDRON_H
 #define VIZPOLYHEDRON_H
 
-#include <QGraphicsObject>
-#include <QPainterPath>
-
-#include "vizcoordinatesystem.h"
-#include "vizdeparrow.h"
-#include "vizhandle.h"
 #include "clintprogram.h"
 #include "clintscop.h"
 #include "clintstmt.h"
 #include "clintstmtoccurrence.h"
+#include "vizcoordinatesystem.h"
+#include "vizhandle.h"
 
+#include <QGraphicsObject>
+#include <QPainterPath>
 #include <QtWidgets>
 #include <QtGui>
 
+#include <unordered_map>
+
+#include <boost/functional/hash.hpp>
+
 class VizPoint;
+class VizDepArrow;
 
 class VizPolyhedron : public QGraphicsObject {
   Q_OBJECT
@@ -61,10 +64,7 @@ public:
 
   void recomputeMinMax();
 
-  void setProjectedPoints(std::vector<std::vector<int>> &&points,
-                          int horizontalMin, int horizontalMax,
-                          int verticalMin, int verticalMax);
-  void setInternalDependences(const std::vector<std::vector<int>> &dependences);
+  void setInternalDependences(std::vector<std::vector<int>> &&dependences);
   void resetPointPositions();
 
   void reparent(VizCoordinateSystem *vcs) {
@@ -110,12 +110,11 @@ public:
     setPos(QPointF(x, y));
   }
 
-  VizPoint *point(std::pair<int, int> &originalCoordinates) const;
-  const std::unordered_set<VizPoint *> &points() const {
-    return m_points;
-  }
+  std::unordered_set<VizPoint *> points(const std::pair<int, int> &originalCoordiantes) const;
+  std::unordered_set<VizPoint *> points() const;
 
   void reparentPoint(VizPoint *point);
+  bool hasPoints() const;
 
   void updateShape() {
     recomputeMinMax();
@@ -169,7 +168,11 @@ private:
 
   std::vector<QLineF> m_tileLines;
 
-  std::unordered_set<VizPoint *> m_points;
+  // Mapping from 2D original coordinates to all points in the projection with these original coordinates.
+  typedef std::unordered_multimap<std::pair<int, int>, VizPoint *, boost::hash<std::pair<int, int>>> PointMap;
+  PointMap m_pts;
+  void reprojectPoints();
+
   std::unordered_set<VizDepArrow *> m_deps;
   int m_localHorizontalMin = 0;
   int m_localVerticalMin   = 0;

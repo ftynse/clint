@@ -502,8 +502,9 @@ void ClintWindow::deleteProjection() {
                  "Deleting active projection");
     disconnect(m_projection, &VizProjection::selected, this, &ClintWindow::projectionSelectedAlone);
     m_projection->setParent(nullptr);
-    m_projection->widget()->setParent(nullptr);
-    m_projection->widget()->deleteLater();
+    // FIXME: this should be deleted, but segfaults when doubleclicking on the projection (not from the menu or undo).
+//    m_projection->widget()->setParent(nullptr);
+//    m_projection->widget()->deleteLater();
     m_projection->deleteLater();
   }
   m_projection = nullptr;

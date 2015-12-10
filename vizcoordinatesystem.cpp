@@ -1,6 +1,7 @@
 #include "vizcoordinatesystem.h"
 #include "vizpolyhedron.h"
 #include "vizprojection.h"
+#include "vizdeparrow.h"
 #include "vizpoint.h"
 #include "clintstmtoccurrence.h"
 #include "clintdependence.h"
@@ -80,30 +81,27 @@ bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurr
   CLINT_ASSERT((occurrence->dimensionality() <= m_verticalDimensionIdx) ^ (m_verticalAxisState == AxisState::Visible),
                "Projecting statement on the axis-less dimension");
 
-  std::vector<std::vector<int>> points = occurrence->projectOn(m_horizontalDimensionIdx,
-                                                               m_verticalDimensionIdx);
-
-  if (points.size() == 0)
-    return false;
-
   // Add iterator variable names to the list.
   addAxisLabels(occurrence);
+
+  VizPolyhedron *vp = new VizPolyhedron(occurrence, this);
+  if (!vp->hasPoints()) {
+    delete vp;
+    return false;
+  }
+
+  m_polyhedra.push_back(vp);
+  polyhedronUpdated(vp);
 
   int occurrenceHorizontalMin = occurrence->minimumValue(m_horizontalDimensionIdx);
   int occurrenceHorizontalMax = occurrence->maximumValue(m_horizontalDimensionIdx);
   int occurrenceVerticalMin   = occurrence->minimumValue(m_verticalDimensionIdx);
   int occurrenceVerticalMax   = occurrence->maximumValue(m_verticalDimensionIdx);
-  VizPolyhedron *vp = new VizPolyhedron(occurrence, this);
-  vp->setProjectedPoints(std::move(points),
-                         occurrenceHorizontalMin,
-                         occurrenceHorizontalMax,
-                         occurrenceVerticalMin,
-                         occurrenceVerticalMax);
-  m_polyhedra.push_back(vp);
   setMinMax(std::min(occurrenceHorizontalMin, m_horizontalMin),
             std::max(occurrenceHorizontalMax, m_horizontalMax),
             std::min(occurrenceVerticalMin, m_verticalMin),
             std::max(occurrenceVerticalMax, m_verticalMax));
+
   const VizProperties *props = projection()->vizProperties();
   if (props->filledPolygons())
     vp->setColor(projection()->vizProperties()->color(occurrence->betaVector()));
@@ -149,49 +147,9 @@ void VizCoordinateSystem::updateInnerDependences() {
   update();
 }
 
-void VizCoordinateSystem::setInnerDependencesBetween(VizPolyhedron *vp1, VizPolyhedron *vp2, std::vector<std::vector<int>> &&lines, bool violated) {
-  // TODO: this is very similar to VizPolyhedron::setInternalDependences. Generalize
-  // one CS is not supposed to contain polyhedra of different visible dimensionality, so number of coordinates are equal
-  for (const std::vector<int> &dep : lines) {
-    std::pair<int, int> sourceCoordinates {VizPoint::NO_COORD, VizPoint::NO_COORD};
-    std::pair<int, int> targetCoordinates {VizPoint::NO_COORD, VizPoint::NO_COORD};
-    if (dep.size() == 0) {
-      // TODO: figure out what to do with such dependence
-      continue;
-    } else if (dep.size() == 2) {
-      sourceCoordinates.first = dep[0];
-      targetCoordinates.first = dep[1];
-    } else if (dep.size() == 4) {
-      sourceCoordinates.first = dep[0];
-      sourceCoordinates.second = dep[1];
-      targetCoordinates.first = dep[2];
-      targetCoordinates.second = dep[3];
-    } else {
-      CLINT_UNREACHABLE;
-    }
-
-    // FIXME: this is very inefficient.  Change storage of points to a map by original coodinates.
-    VizPoint *sourcePoint = nullptr,
-             *targetPoint = nullptr;
-    sourcePoint = vp1->point(sourceCoordinates);
-    targetPoint = vp2->point(targetCoordinates);
-
-    if (!targetPoint || !sourcePoint) {
-//      qDebug() << "Could not find point corresponding to "
-//               << QVector<int>::fromStdVector(vp1->occurrence()->betaVector()) << sourceCoordinates.first << sourceCoordinates.second << " -> "
-//               << QVector<int>::fromStdVector(vp2->occurrence()->betaVector()) << targetCoordinates.first << targetCoordinates.second;
-      continue;
-    }
-
-    VizDepArrow *depArrow = new VizDepArrow(sourcePoint, targetPoint,
-                                            this, violated);
-    if (violated) {
-      depArrow->setZValue(100);
-    } else {
-      depArrow->setZValue(42);
-    }
-    m_depArrows.insert(depArrow);
-  }
+void VizCoordinateSystem::setInnerDependencesBetween(VizPolyhedron *vp1, VizPolyhedron *vp2,
+                                                     std::vector<std::vector<int>> &&lines, bool violated) {
+  vizDependenceArrowsCreate(vp1, vp2, std::forward<std::vector<std::vector<int>>>(lines), violated, this, m_depArrows);
 }
 
 
@@ -300,8 +258,8 @@ void VizCoordinateSystem::removePolyhedron(VizPolyhedron *polyhedron) {
 void VizCoordinateSystem::polyhedronUpdated(VizPolyhedron *polyhedron) {
   const double pointDistance = m_projection->vizProperties()->pointDistance();
   auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);
-  CLINT_ASSERT(it != std::end(m_polyhedra),
-               "Polyhedron updated does not belong to the coordinate system");
+  if (it == std::end(m_polyhedra))
+    return;
   double offset = m_projection->vizProperties()->polyhedronOffset() * (it - std::begin(m_polyhedra));
 
   // check (assert) if the actual position corresponds to the computed one;
@@ -309,7 +267,8 @@ void VizCoordinateSystem::polyhedronUpdated(VizPolyhedron *polyhedron) {
   expected.rx() = offset + (polyhedron->localHorizontalMin() - m_horizontalMin + 1) * pointDistance;
   expected.ry() = -(offset + (polyhedron->localVerticalMin() - m_verticalMin + 1) * pointDistance);
 
-  // update it to fit in the grid (todo animation)
+  // update it to fit in the grid
+  // TODO: animation
   polyhedron->setPos(expected);
 }
 

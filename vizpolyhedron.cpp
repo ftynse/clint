@@ -1,4 +1,5 @@
 #include "macros.h"
+#include "vizdeparrow.h"
 #include "vizmanipulationmanager.h"
 #include "vizpolyhedron.h"
 #include "vizpoint.h"
@@ -21,6 +22,9 @@ VizPolyhedron::VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSyste
   setAcceptHoverEvents(true);
 
   setOccurrenceSilent(occurrence);
+  if (occurrence != nullptr) {
+    occurrenceChanged();
+  }
 }
 
 VizPolyhedron::~VizPolyhedron() {
@@ -56,44 +60,9 @@ void VizPolyhedron::setPointVisiblePos(VizPoint *vp, int x, int y) {
   vp->setPos(x * pointDistance, -y * pointDistance);
 }
 
-void VizPolyhedron::setProjectedPoints(std::vector<std::vector<int>> &&points,
-                                       int horizontalMin,
-                                       int horiontalMax,
-                                       int verticalMin,
-                                       int verticalMax) {
-  // FIXME: this function re-adds points if called twice; document or change this behavior
-  CLINT_ASSERT(m_points.size() == 0, "Funciton may not be called twice for the same object");
-  m_localHorizontalMin = horizontalMin;
-  m_localHorizontalMax = horiontalMax;
-  m_localVerticalMin   = verticalMin;
-  m_localVerticalMax   = verticalMax;
-  const VizProperties *props = coordinateSystem()->projection()->vizProperties();
-  for (const std::vector<int> &point : points) {
-    VizPoint *vp = new VizPoint(this);
-    if (props->filledPoints()) {
-      vp->setColor(props->color(occurrence()->betaVector()));
-    } else {
-      vp->setColor(QColor::fromRgb(100, 100, 100, 127));
-    }
-
-    std::pair<int, int> scatteredCoordinates, originalCoordinates;
-    std::tie(originalCoordinates, scatteredCoordinates) =
-        m_occurrence->parseProjectedPoint(point,
-                                          coordinateSystem()->horizontalDimensionIdx(),
-                                          coordinateSystem()->verticalDimensionIdx());
-    vp->setOriginalCoordinates(originalCoordinates.first, originalCoordinates.second);
-    vp->setScatteredCoordinates(scatteredCoordinates.first, scatteredCoordinates.second);
-    setPointVisiblePos(vp,
-                       scatteredCoordinates.first  == VizPoint::NO_COORD ? 0 : scatteredCoordinates.first  - horizontalMin,
-                       scatteredCoordinates.second == VizPoint::NO_COORD ? 0 : scatteredCoordinates.second - verticalMin);
-    m_points.insert(vp);
-  }
-  recomputeShape();
-  updateHandlePositions();
-}
-
 void VizPolyhedron::resetPointPositions() {
-  for (VizPoint *vp : m_points) {
+  for (auto p : m_pts) {
+    VizPoint *vp = p.second;
     int x, y;
     std::tie(x, y) = vp->scatteredCoordinates();
     if (x == VizPoint::NO_COORD) x = 0;
@@ -102,12 +71,17 @@ void VizPolyhedron::resetPointPositions() {
   }
 }
 
-void VizPolyhedron::occurrenceChanged() {
+bool VizPolyhedron::hasPoints() const {
+  return m_pts.size() != 0;
+}
+
+void VizPolyhedron::reprojectPoints() {
   int horizontalDim = coordinateSystem()->horizontalDimensionIdx();
   int verticalDim   = coordinateSystem()->verticalDimensionIdx();
   CLINT_ASSERT(m_occurrence, "empty occurrence changed");
   std::vector<std::vector<int>> points =
       occurrence()->projectOn(horizontalDim, verticalDim);
+  PointMap updatedPoints;
 
   for (const std::vector<int> &point : points) {
     std::pair<int, int> scatteredCoordinates, originalCoordinates;
@@ -115,12 +89,34 @@ void VizPolyhedron::occurrenceChanged() {
         m_occurrence->parseProjectedPoint(point,
                                           coordinateSystem()->horizontalDimensionIdx(),
                                           coordinateSystem()->verticalDimensionIdx());
-    VizPoint *vp = this->point(originalCoordinates);
-    if (vp != nullptr) { // A point may have been reparented in during the index-set splitting.
-      vp->setScatteredCoordinates(scatteredCoordinates);
+    VizPoint *vp;
+    auto it = m_pts.find(originalCoordinates);
+    if (it != std::end(m_pts)) {
+      vp = it->second;
+      m_pts.erase(it);
+    } else {
+      vp = new VizPoint(this);
+      vp->setOriginalCoordinates(originalCoordinates);
     }
+    vp->setScatteredCoordinates(scatteredCoordinates);
+    updatedPoints.emplace(originalCoordinates, vp);
   }
-  recomputeMinMax();
+
+  for (auto p : m_pts) {
+    p.second->setParent(nullptr);
+    p.second->setParentItem(nullptr);
+    p.second->deleteLater();
+  }
+  m_pts.clear();
+  m_pts = updatedPoints;
+}
+
+void VizPolyhedron::occurrenceChanged() {
+  int horizontalDim = coordinateSystem()->horizontalDimensionIdx();
+  int verticalDim   = coordinateSystem()->verticalDimensionIdx();
+  CLINT_ASSERT(m_occurrence, "empty occurrence changed");
+  reprojectPoints();
+  updateShape();
   m_coordinateSystem->projection()->ensureFitsHorizontally(
         m_coordinateSystem, localHorizontalMin(), localHorizontalMax());
   m_coordinateSystem->projection()->ensureFitsVertically(
@@ -161,70 +157,32 @@ void VizPolyhedron::occurrenceChanged() {
   updateHandlePositions();
 }
 
-VizPoint *VizPolyhedron::point(std::pair<int, int> &originalCoordinates) const {
-  // FIXME: change this when points are stored as a map by original coordinates
-  for (VizPoint *vp : m_points) {
-    if (vp->originalCoordinates() == originalCoordinates) {
-      return vp;
-    }
+std::unordered_set<VizPoint *> VizPolyhedron::points() const {
+  std::unordered_set<VizPoint *> result;
+  for (auto it = std::begin(m_pts); it != std::end(m_pts); ++it) {
+    result.insert(it->second);
   }
-  return nullptr;
+  return std::move(result);
 }
 
-void VizPolyhedron::setInternalDependences(const std::vector<std::vector<int>> &dependences) {
-  // Internal dependences are have even number of coordinates since dimensionality
-  // of target and source domains are equal (they come from the same statement occurrence).
-  for (const std::vector<int> &dep : dependences) {
-    std::pair<int, int> sourceCoordinates {VizPoint::NO_COORD, VizPoint::NO_COORD};
-    std::pair<int, int> targetCoordinates {VizPoint::NO_COORD, VizPoint::NO_COORD};
-    if (dep.size() == 0) {
-      // TODO: figure out what to do with such dependence
-      continue;
-    } else if (dep.size() == 2) {
-      sourceCoordinates.first = dep[0];
-      targetCoordinates.first = dep[1];
-    } else if (dep.size() == 4) {
-      sourceCoordinates.first = dep[0];
-      sourceCoordinates.second = dep[1];
-      targetCoordinates.first = dep[2];
-      targetCoordinates.second = dep[3];
-    } else {
-      CLINT_UNREACHABLE;
-    }
-
-    // FIXME: this is very inefficient.  Change storage of points to a map by original coodinates.
-    VizPoint *sourcePoint = nullptr,
-             *targetPoint = nullptr;
-    for (VizPoint *vp : m_points) {
-      if (vp->originalCoordinates() == sourceCoordinates) {
-        sourcePoint = vp;
-      }
-      if (vp->originalCoordinates() == targetCoordinates) {
-        targetPoint = vp;
-      }
-      if (targetPoint && sourcePoint) {
-        break;
-      }
-    }
-
-    if (!targetPoint || !sourcePoint) {
-//      qDebug() << "Could not find point corresponding to "
-//               << sourceCoordinates.first << sourceCoordinates.second << " -> "
-//               << targetCoordinates.first << targetCoordinates.second;
-      continue;
-    } else {
-
-    }
-
-    VizDepArrow *depArrow = new VizDepArrow(sourcePoint, targetPoint, this, false);
-    m_deps.insert(depArrow);
+std::unordered_set<VizPoint *> VizPolyhedron::points(const std::pair<int, int> &originalCoordiantes) const {
+  std::unordered_set<VizPoint *> result;
+  auto range = m_pts.equal_range(originalCoordiantes);
+  for (auto it = range.first; it != range.second; ++it) {
+    result.insert(it->second);
   }
+  return std::move(result);
+}
+
+void VizPolyhedron::setInternalDependences(std::vector<std::vector<int>> &&dependences) {
+  vizDependenceArrowsCreate(this, this, std::forward<std::vector<std::vector<int>>>(dependences), false, this, m_deps);
 }
 
 void VizPolyhedron::updateInternalDependences() {
   for (VizDepArrow *vda : m_deps) {
     vda->setParentItem(nullptr);
     vda->setVisible(false);
+    // TODO: what happend with the deletion here?
 //    delete vda;
   }
   m_deps.clear();
@@ -237,7 +195,8 @@ void VizPolyhedron::updateInternalDependences() {
 
 std::vector<VizPoint *> VizPolyhedron::convexHull() const {
   std::vector<VizPoint *> list;
-  for (VizPoint *vp : m_points) {
+  for (auto p : m_pts) {
+    VizPoint *vp = p.second;
     list.push_back(vp);
   }
 
@@ -625,16 +584,24 @@ void VizPolyhedron::reparentPoint(VizPoint *point) {
   if (point->polyhedron() == this)
     return;
 
-  if (point->polyhedron())
-    point->polyhedron()->m_points.erase(point);
+  if (point->polyhedron()) {
+    VizPolyhedron *other = point->polyhedron();
+    PointMap::iterator it, eit;
+    std::tie(it, eit) = other->m_pts.equal_range(point->originalCoordinates());
+    PointMap::iterator found = std::find_if(it, eit, [point](auto p) { return p.second == point; });
+    if (found != eit) {
+      other->m_pts.erase(found);
+    }
+  }
   point->reparent(this);
-  m_points.insert(point);
+  m_pts.emplace(point->originalCoordinates(), point);
 }
 
 void VizPolyhedron::recomputeMinMax() {
   int horizontalMin = INT_MAX, horizontalMax = INT_MIN,
       verticalMin = INT_MAX, verticalMax = INT_MIN;
-  for (VizPoint *vp : m_points) {
+  for (auto p : m_pts) {
+    VizPoint *vp = p.second;
     int x,y;
     std::tie(x, y) = vp->scatteredCoordinates();
     if (x == VizPoint::NO_COORD) x = 0;
@@ -655,7 +622,8 @@ void VizPolyhedron::prepareExtendRight(double extra) {
   const double pointDistance = props->pointDistance();
 
   // Update point positions.
-  for (VizPoint *vp : m_points) {
+  for (auto p : m_pts) {
+    VizPoint *vp = p.second;
     int xCoord, yCoord;
     std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
     double ratioCoord = static_cast<double>(xCoord - m_localHorizontalMin) /
@@ -682,7 +650,8 @@ void VizPolyhedron::prepareExtendLeft(double extra) {
   const double pointDistance = props->pointDistance();
 
   // Update point positions.
-  for (VizPoint *vp : m_points) {
+  for (auto p : m_pts) {
+    VizPoint *vp = p.second;
     int xCoord, yCoord;
     std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
     double ratioCoord = static_cast<double>(m_localHorizontalMax - xCoord) /
@@ -709,7 +678,8 @@ void VizPolyhedron::prepareExtendUp(double extra) {
   const double pointDistance = props->pointDistance();
 
   // Update point positions.
-  for (VizPoint *vp : m_points) {
+  for (auto p : m_pts) {
+    VizPoint *vp = p.second;
     int xCoord, yCoord;
     std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
     double ratioCoord = static_cast<double>(yCoord - m_localVerticalMin) /
@@ -736,7 +706,8 @@ void VizPolyhedron::prepareExtendDown(double extra) {
   const double pointDistance = props->pointDistance();
 
   // Update point positions.
-  for (VizPoint *vp : m_points) {
+  for (auto p : m_pts) {
+    VizPoint *vp = p.second;
     int xCoord, yCoord;
     std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
     double ratioCoord = static_cast<double>(m_localVerticalMax - yCoord) /
@@ -763,7 +734,8 @@ void VizPolyhedron::prepareSkewVerticalRight(double offset) {
   const double pointDistance = props->pointDistance();
 
   // Update point positions.
-  for (VizPoint *vp : m_points) {
+  for (auto p : m_pts) {
+    VizPoint *vp = p.second;
     int xCoord, yCoord;
     std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
 //    double ratioCoord = static_cast<double>(yCoord - m_localVerticalMin + xCoord - m_localHorizontalMin) /
@@ -790,7 +762,8 @@ void VizPolyhedron::prepareSkewVerticalLeft(double offset) {
   const double pointDistance = props->pointDistance();
 
   // Update point positions.
-  for (VizPoint *vp : m_points) {
+  for (auto p : m_pts) {
+    VizPoint *vp = p.second;
     int xCoord, yCoord;
     std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
     double ratioCoord = static_cast<double>(m_localHorizontalMax - xCoord) /
@@ -815,7 +788,8 @@ void VizPolyhedron::prepareSkewHorizontalTop(double offset) {
   const double pointDistance = props->pointDistance();
 
   // Update point positions.
-  for (VizPoint *vp : m_points) {
+  for (auto p : m_pts) {
+    VizPoint *vp = p.second;
     int xCoord, yCoord;
     std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
     double ratioCoord = static_cast<double>(yCoord - m_localVerticalMin) /
@@ -840,7 +814,8 @@ void VizPolyhedron::prepareSkewHorizontalBottom(double offset) {
   const double pointDistance = props->pointDistance();
 
   // Update point positions.
-  for (VizPoint *vp : m_points) {
+  for (auto p : m_pts) {
+    VizPoint *vp = p.second;
     int xCoord, yCoord;
     std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
     double ratioCoord = static_cast<double>(m_localVerticalMax - yCoord) /
@@ -867,7 +842,8 @@ void VizPolyhedron::prepareRotateAngle(double angle) {
   transform.rotate(angle);
   transform.translate(-m_rotationCenter.x(), -m_rotationCenter.y());
   m_polyhedronShape = transform.map(m_originalPolyhedronShape);
-  for (VizPoint *vp : m_points) {
+  for (auto p : m_pts) {
+    VizPoint *vp = p.second;
     QPointF position = transform.map(mapToCoordinates(pointScatteredCoordsReal(vp)));
     vp->setPos(position);
   }
@@ -989,6 +965,12 @@ void VizPolyhedron::disconnectAll() {
   if (m_occurrence) {
     disconnect(m_occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
     disconnect(m_occurrence, &ClintStmtOccurrence::destroyed, this, &VizPolyhedron::occurrenceDeleted);
+  }
+
+  for (VizHandle *vh : m_handles) {
+    disconnect(vh, &VizHandle::moving, this, &VizPolyhedron::handleMoving);
+    disconnect(vh, &VizHandle::aboutToMove, this, &VizPolyhedron::handleAboutToMove);
+    disconnect(vh, &VizHandle::hasMoved, this, &VizPolyhedron::handleHasMoved);
   }
 }
 

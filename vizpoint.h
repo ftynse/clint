@@ -4,11 +4,11 @@
 #include <QGraphicsItem>
 #include <QPainterPath>
 
-#include <vizcoordinatesystem.h>
-#include <vizpolyhedron.h>
-#include <clintprogram.h>
-#include <clintscop.h>
-#include <clintstmt.h>
+#include "vizpolyhedron.h"
+#include "vizcoordinatesystem.h"
+#include "clintprogram.h"
+#include "clintscop.h"
+#include "clintstmt.h"
 
 class VizPoint : public QGraphicsObject
 {
@@ -22,21 +22,10 @@ public:
     return m_polyhedron;
   }
 
-  ClintStmt *statement() const {
-    return m_polyhedron->statement();
-  }
-
-  ClintScop *scop() const {
-    return m_polyhedron->scop();
-  }
-
-  ClintProgram *program() const {
-    return m_polyhedron->program();
-  }
-
-  VizCoordinateSystem *coordinateSystem() const {
-    return m_polyhedron->coordinateSystem();
-  }
+  ClintStmt *statement() const;
+  ClintScop *scop() const;
+  ClintProgram *program() const;
+  VizCoordinateSystem *coordinateSystem() const;
 
   void setOriginalCoordinates(int horizontal = NO_COORD, int vertical = NO_COORD);
   void setScatteredCoordinates(int horizontal = NO_COORD, int vertical = NO_COORD);
