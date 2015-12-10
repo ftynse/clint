@@ -152,6 +152,12 @@ void VizCoordinateSystem::setInnerDependencesBetween(VizPolyhedron *vp1, VizPoly
   vizDependenceArrowsCreate(vp1, vp2, std::forward<std::vector<std::vector<int>>>(lines), violated, this, m_depArrows);
 }
 
+void VizCoordinateSystem::updateInternalDependences() {
+  for (VizPolyhedron *vp : m_polyhedra) {
+    vp->updateInternalDependences();
+  }
+}
+
 
 std::vector<int> VizCoordinateSystem::betaPrefix() const {
 //  // FIXME: this works only for the first two dimensions, betas should be set up in construction

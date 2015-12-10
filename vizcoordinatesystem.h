@@ -89,6 +89,7 @@ public:
 
   bool projectStatementOccurrence(ClintStmtOccurrence *occurrence);
   void updateInnerDependences();
+  void updateInternalDependences();
   void setInnerDependencesBetween(VizPolyhedron *vp1, VizPolyhedron *vp2, std::vector<std::vector<int>> &&lines, bool violated);
 
   void extendHorizontally(int minimum, int maximum) {

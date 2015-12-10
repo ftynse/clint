@@ -303,6 +303,14 @@ void VizProjection::updateInnerDependences() {
   }
 }
 
+void VizProjection::updateInternalDependences() {
+  for (auto pile : m_coordinateSystems) {
+    for (VizCoordinateSystem *vcs : pile) {
+      vcs->updateInternalDependences();
+    }
+  }
+}
+
 static int firstDifferentDimension(const std::vector<int> &beta1, const std::vector<int> &beta2) {
   // With beta-vectors for statements, we cannot have a match that is not equality,
   // i.e. we cannot have simultaneously [1] and [1,3] as beta-vectors for statements.

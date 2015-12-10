@@ -537,7 +537,7 @@ void ClintWindow::projectionSelectedAlone(int horizontal, int vertical) {
 
   resetCentralWidget(m_projectionOverview);
   deleteProjection();
-  m_projectionOverview->updateAllProjections();
+  m_projectionOverview->updateRowColumn(horizontal, vertical);
   m_projectionOverview->update();
   // Prevent setChecked from triggering another action.
   m_actionViewProjectionMatrix->setEnabled(false);

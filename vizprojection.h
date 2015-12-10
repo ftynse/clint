@@ -108,6 +108,7 @@ public:
   VizCoordinateSystem *insertCs(IsCsResult csAt, int dimensionality);
   void updateOuterDependences();
   void updateInnerDependences();
+  void updateInternalDependences();
 
   void setViewActive(bool active) {
     if (m_view)

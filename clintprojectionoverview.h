@@ -27,6 +27,7 @@ signals:
 public slots:
   void updateAllProjections();
   void updateProjection(int horizontalDim, int verticalDim);
+  void updateRowColumn(int horizontalDim, int verticalDim);
 
 private:
   std::map<std::pair<int, int>, VizProjection *> m_allProjections = std::map<std::pair<int, int>, VizProjection *>();

@@ -41,6 +41,24 @@ void ClintProjectionOverview::updateAllProjections() {
   for (auto element : m_allProjections) {
     VizProjection *projection = element.second;
     projection->updateProjection();
+    projection->updateInnerDependences();
+    projection->updateOuterDependences();
+    projection->updateInternalDependences();
+  }
+}
+
+void ClintProjectionOverview::updateRowColumn(int horizontalDim, int verticalDim) {
+  for (auto element : m_allProjections) {
+    int h, v;
+    std::tie(h, v) = element.first;
+    if (h != horizontalDim && v != verticalDim && h != verticalDim && v != horizontalDim)
+      continue;
+
+    VizProjection *projection = element.second;
+    projection->updateProjection();
+    projection->updateInnerDependences();
+    projection->updateOuterDependences();
+    projection->updateInternalDependences();
   }
 }
 
