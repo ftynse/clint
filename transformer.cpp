@@ -46,13 +46,13 @@ void ClayTransformer::apply(osl_scop_p scop, const Transformation &transformatio
   case Transformation::Kind::Skew:
   {
     err = clay_skew(scop, ClayBeta(transformation.target()), transformation.depth(),
-                    transformation.secondDepth(), -transformation.constantAmount(), m_options);
+                    transformation.secondDepth(), transformation.constantAmount(), m_options);
   }
     break;
   case Transformation::Kind::Reshape:
   {
     err = clay_reshape(scop, ClayBeta(transformation.target()), transformation.depth(),
-                       transformation.secondDepth(), -transformation.constantAmount(), m_options);
+                       transformation.secondDepth(), transformation.constantAmount(), m_options);
     break;
   }
   case Transformation::Kind::IndexSetSplitting:

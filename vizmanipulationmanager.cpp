@@ -1251,7 +1251,7 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
                                         m_polyhedron->occurrence()->betaVector(),
                                         verticalDepth,
                                         polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                        verticalSkewFactor));
+                                        -verticalSkewFactor));
     }
     // horizontal
     if (horizontalSkewFactor != 0) {
@@ -1259,7 +1259,7 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
                                         m_polyhedron->occurrence()->betaVector(),
                                         horizontalDepth,
                                         polyhedron->coordinateSystem()->verticalDimensionIdx() + 1, // input dim is not subject to tiling
-                                        horizontalSkewFactor));
+                                        -horizontalSkewFactor));
     }
 
     if (horizontalPreShiftAmount != 0) {

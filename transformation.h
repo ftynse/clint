@@ -69,7 +69,7 @@ public:
     return t;
   }
 
-  static Transformation skew(const std::vector<int> &beta, int sourceDimension, int targetDimension, int factor) {
+  static Transformation skew(const std::vector<int> &beta, int targetDimension, int sourceDimension, int factor) {
     CLINT_ASSERT(sourceDimension <= beta.size(), "Dimension overflow");
     CLINT_ASSERT(targetDimension <= beta.size(), "Dimension overflow");
     Transformation t;
