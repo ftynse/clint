@@ -463,6 +463,7 @@ void ClintWindow::reparseScript() {
   try {
     TransformationSequence newSequence = parser.parse(plainText.toStdString());
     regenerateScop(newSequence);
+    updateCodeEditor();
   } catch (std::logic_error e) {
     QMessageBox::critical(this, "Could not parse transformation", e.what(),
                           QMessageBox::Ok, QMessageBox::Ok);
@@ -488,7 +489,7 @@ void ClintWindow::scopTransformed() {
   m_actionEditUndo->setEnabled(vscop->hasUndo());
   m_actionEditRedo->setEnabled(false);
 
-  if (m_graphicalInterface == m_projection->widget()) {
+  if (m_projection && m_graphicalInterface == m_projection->widget()) {
     m_projection->updateProjection();
   }
   if (m_graphicalInterface == m_projectionOverview) {
