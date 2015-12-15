@@ -21,37 +21,30 @@ ClintStmtOccurrence *ClintStmtOccurrence::split(const std::vector<int> &betaVect
 void ClintStmtOccurrence::resetOccurrence(osl_statement_p stmt, const std::vector<int> &betaVector) {
   bool differentBeta = (m_betaVector == betaVector);
   bool differentPoints = false;
-  std::vector<osl_relation_p> oslScatterings;
   m_betaVector = betaVector;
   m_oslStatement = stmt;
 
   if (stmt == nullptr) {
-    if (m_oslScatterings.size() != 0)
+    if (m_oslScattering != nullptr)
       emit pointsChanged();
     if (differentBeta)
       emit betaChanged();
     return;
   }
 
-  oslListForeach(stmt->scattering, [this,&betaVector,&oslScatterings,&differentPoints](osl_relation_p scattering) {
+  osl_relation_p oslScattering = nullptr;
+  oslListForeach(stmt->scattering, [&oslScattering,&betaVector](osl_relation_p scattering) {
     if (betaExtract(scattering) == betaVector) {
-      oslScatterings.push_back(scattering);
-      if (m_oslScatterings.size() == 0)
-        differentPoints = true;
-      // Check if the scattering relation is equal to any other old scattering relation in this occurrence.
-      // If it is not, than this occurrence was indeed affected by the transformation and should send corresponding updates.
-      if (!differentPoints) {
-        auto found = std::find_if(std::begin(m_oslScatterings), std::end(m_oslScatterings), [scattering](auto it) {
-          return osl_relation_equal(it, scattering);
-        });
-        differentPoints = differentPoints || found == std::end(m_oslScatterings);
-      }
+      CLINT_ASSERT(oslScattering == nullptr,
+                   "Duplicate beta-vector found");
+      oslScattering = scattering;
     }
   });
-  m_oslScatterings.clear();
-  m_oslScatterings = oslScatterings;
-  CLINT_ASSERT(m_oslScatterings.size() != 0,
+  CLINT_ASSERT(oslScattering != nullptr,
                "Trying to create an occurrence for the inexistent beta-vector");
+
+  differentPoints = !osl_relation_equal(oslScattering, m_oslScattering);
+  m_oslScattering = oslScattering;
 
   if (differentPoints) {
     emit pointsChanged();
@@ -89,18 +82,18 @@ int ClintStmtOccurrence::ignoreTilingDim(int dim) const {
 }
 
 std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimIdx, int verticalDimIdx) const {
-  CLINT_ASSERT(m_oslScatterings.size() == 1,
-               "Multiple scatterings for one occurrence are not supported yet");
-  CLINT_ASSERT(m_oslStatement != nullptr,
+  if (m_oslScattering == nullptr) {
+    std::cerr << "don't project" << std::endl;
+  }
+  CLINT_ASSERT(m_oslStatement != nullptr && m_oslScattering != nullptr,
                "Trying to project a non-initialized statement");
-  osl_relation_p scattering = m_oslScatterings[0];
 
   // Transform iterator (alpha only) indices to enumerator (beta-alpha-beta) indices
   // betaDims are found properly iff the dimensionalityChecker assertion holds.
   int horizontalScatDimIdx    = 1 + 2 * horizontalDimIdx;
   int verticalScatDimIdx      = 1 + 2 * verticalDimIdx;
-  int horizontalOrigDimIdx   = scattering->nb_output_dims + horizontalDimIdx;
-  int verticalOrigDimIdx     = scattering->nb_output_dims + verticalDimIdx;
+  int horizontalOrigDimIdx   = m_oslScattering->nb_output_dims + horizontalDimIdx;
+  int verticalOrigDimIdx     = m_oslScattering->nb_output_dims + verticalDimIdx;
 
   horizontalScatDimIdx  = ignoreTilingDim(horizontalScatDimIdx);
   verticalScatDimIdx    = ignoreTilingDim(verticalScatDimIdx);
@@ -132,39 +125,37 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
   };
   oslListForeach(m_oslStatement->domain, dimensionalityCheckerFunction, m_oslStatement->domain->nb_output_dims,
                  m_oslStatement->domain->nb_input_dims, m_oslStatement->domain->nb_parameters);
-  std::for_each(std::begin(m_oslScatterings), std::end(m_oslScatterings),
-                std::bind(dimensionalityCheckerFunction, std::placeholders::_1,
-                          m_oslScatterings.front()->nb_output_dims,
-                          m_oslScatterings.front()->nb_input_dims,
-                          m_oslScatterings.front()->nb_parameters));
+  CLINT_ASSERT(m_oslStatement->domain->nb_output_dims == m_oslScattering->nb_input_dims,
+               "Scattering is not compatible with the domain");
 
-  bool horizontalOrigDimValid = horizontalOrigDimIdx < scattering->nb_output_dims
+  bool horizontalOrigDimValid = horizontalOrigDimIdx < m_oslScattering->nb_output_dims
       + m_oslStatement->domain->nb_output_dims;
-  bool verticalOrigDimValid = verticalOrigDimIdx < scattering->nb_output_dims
+  bool verticalOrigDimValid = verticalOrigDimIdx < m_oslScattering->nb_output_dims
       + m_oslStatement->domain->nb_output_dims;
 
   // Get original and scattered iterator values depending on the axis displayed.
   bool projectHorizontal = (horizontalDimIdx != -2) && (dimensionality() > horizontalDimIdx); // FIXME: -2 is in VizProperties::NO_DIMENSION, but should be in a different class since it has nothing to do with viz
   bool projectVertical   = (verticalDimIdx != -2) && (dimensionality() > verticalDimIdx);
-  CLINT_ASSERT(!(projectHorizontal ^ (horizontalScatDimIdx >= 0 && horizontalScatDimIdx < scattering->nb_output_dims)),
+  CLINT_ASSERT(!(projectHorizontal ^ (horizontalScatDimIdx >= 0 && horizontalScatDimIdx < m_oslScattering->nb_output_dims)),
                "Trying to project to the horizontal dimension that is not present in scattering");
-  CLINT_ASSERT(!(projectVertical ^ (verticalScatDimIdx >= 0 && verticalScatDimIdx < scattering->nb_output_dims)),
+  CLINT_ASSERT(!(projectVertical ^ (verticalScatDimIdx >= 0 && verticalScatDimIdx < m_oslScattering->nb_output_dims)),
                "Trying to project to the vertical dimension that is not present in scattering");
 
+  std::vector<osl_relation_p> scatterings { m_oslScattering };
   osl_relation_p applied = oslApplyScattering(oslListToVector(m_oslStatement->domain),
-                                              m_oslScatterings);
+                                              scatterings);
   osl_relation_p ready = oslRelationsWithContext(applied, m_statement->scop()->fixedContext());
 
   std::vector<int> allDimensions;
-  allDimensions.reserve(scattering->nb_output_dims + 2);
+  allDimensions.reserve(m_oslScattering->nb_output_dims + 2);
   if (projectHorizontal && horizontalOrigDimValid) {
     allDimensions.push_back(horizontalScatDimIdx);
   }
   if (projectVertical && verticalOrigDimValid) {
     allDimensions.push_back(verticalScatDimIdx);
   }
-  for (int i = 0, e = scattering->nb_input_dims; i < e; ++i) {
-    allDimensions.push_back(scattering->nb_output_dims + i);
+  for (int i = 0, e = m_oslScattering->nb_input_dims; i < e; ++i) {
+    allDimensions.push_back(m_oslScattering->nb_output_dims + i);
   }
   std::vector<std::vector<int>> points = program()->enumerator()->enumerate(ready, allDimensions);
   computeMinMax(points, horizontalDimIdx, verticalDimIdx);
@@ -309,13 +300,11 @@ static bool isParametricBoundary(int row, osl_relation_p scattering) {
 }
 
 std::vector<int> ClintStmtOccurrence::findBoundlikeForm(Bound bound, int dimIdx, int constValue) {
-  CLINT_ASSERT(m_oslScatterings.size() == 1, "Cannot find a form for multiple scatterings at the same time");
-
   std::vector<int> zeroParameters(m_oslStatement->domain->nb_parameters, 0);
   std::vector<int> parameterValues = scop()->parameterValues();
 
   int oslDimIdx = 1 + dimIdx * 2 + 1;
-  osl_relation_p scheduledDomain = ISLEnumerator::scheduledDomain(m_oslStatement->domain, m_oslScatterings.front());
+  osl_relation_p scheduledDomain = ISLEnumerator::scheduledDomain(m_oslStatement->domain, m_oslScattering);
   int lowerRow = oslRelationDimUpperBound(scheduledDomain, oslDimIdx);
   int upperRow = oslRelationDimLowerBound(scheduledDomain, oslDimIdx);
 
