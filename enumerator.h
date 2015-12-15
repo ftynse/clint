@@ -7,6 +7,8 @@
 
 #include <osl/osl.h>
 
+#include <vector>
+
 #include "macros.h"
 
 class Enumerator {
@@ -20,16 +22,12 @@ public:
    */
   virtual std::vector<std::vector<int>> enumerate(osl_relation_p relation, const std::vector<int> &dimensions) = 0;
   /**
-   * @brief Get the logical execution date of a statement instance identified by the given vector if iterator values.
-   * @param [in] stmt  Statement, instance of which is being projected.
-   * @param [in] point Iterator values for the statement instance.
-   * @return Logical execution date in beta-alpha format.
-   */
-  virtual std::vector<int> map(osl_statement_p stmt, const std::vector<int> &point) = 0;
-  /**
    * @brief Virtual desctructor.  Reimplement in all derived classes with non-trival memory management.
    */
   virtual ~Enumerator() {}
+
+  const static int NO_COORD = INT_MAX;
+  const static int NO_DIMENSION = -2;
 };
 
 class ISLContextRAII {
@@ -38,14 +36,14 @@ public:
   }
 
   ~ISLContextRAII() {
-    isl_ctx_free(ctx_);
+    isl_ctx_free(m_ctx);
   }
 
   isl_ctx *ctx() {
-    if (ctx_ == nullptr) {
-      ctx_ = isl_ctx_alloc();
+    if (m_ctx == nullptr) {
+      m_ctx = isl_ctx_alloc();
     }
-    return ctx_;
+    return m_ctx;
   }
 
   isl_ctx *operator ()() {
@@ -57,7 +55,7 @@ public:
   }
 
 private:
-  isl_ctx *ctx_;
+  isl_ctx *m_ctx;
 };
 
 /**
@@ -66,7 +64,6 @@ private:
 class ISLEnumerator : public Enumerator {
 public:
   std::vector<std::vector<int> > enumerate(osl_relation_p relation, const std::vector<int> &dimensions) override;
-  std::vector<int> map(osl_statement_p stmt, const std::vector<int> &point) override;
 
   ~ISLEnumerator() override;
 
@@ -121,13 +118,13 @@ public:
   static osl_relation_p scheduledDomain(osl_relation_p domain, osl_relation_p schedule);
 
 private:
-  static ISLContextRAII islContext_;
+  static ISLContextRAII m_islContext;
 
   template <typename T>
   static osl_relation_p isl2osl(isl_printer *(&Func)(isl_printer *, T *), T *t) {
     CLINT_ASSERT(t != nullptr, "ISL object is null");
 
-    isl_printer *prn = isl_printer_to_str(islContext_);
+    isl_printer *prn = isl_printer_to_str(m_islContext);
     prn = isl_printer_set_output_format(prn, ISL_FORMAT_EXT_POLYLIB);
     prn = Func(prn, t);
     char *str = isl_printer_get_str(prn);
@@ -146,7 +143,7 @@ private:
     CLINT_ASSERT(relation != nullptr, "Relation pointer is null");
 
     char *string = osl_relation_spprint_polylib(relation, NULL);
-    T *t = Func(islContext_, string);
+    T *t = Func(m_islContext, string);
     free(string);
     return t;
   }

@@ -1,7 +1,12 @@
 #include "enumerator.h"
 
+#include <vector>
+
 /// Application-wide ISL context
-ISLContextRAII ISLEnumerator::islContext_;
+ISLContextRAII ISLEnumerator::m_islContext;
+
+const int Enumerator::NO_COORD;
+const int Enumerator::NO_DIMENSION;
 
 namespace {
 int addISLPointToVector(isl_point *point, void *vect) {
@@ -77,13 +82,6 @@ osl_relation_p ISLEnumerator::scheduledDomain(osl_relation_p domain, osl_relatio
   osl_relation_p result = setToOSLRelation(islScheduledDomain);
   isl_set_free(islScheduledDomain);
   return result;
-}
-
-std::vector<int> ISLEnumerator::map(osl_statement_p stmt, const std::vector<int> &point) {
-  (void) stmt;
-  (void) point;
-  CLINT_ASSERT(false, "Unimplemented");
-  return std::move(std::vector<int>());
 }
 
 ISLEnumerator::~ISLEnumerator() {
