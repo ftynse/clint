@@ -9,6 +9,11 @@
 
 #define CLINT_WARNING_LEVEL  CLINT_WARNING_DEBUG
 
+#define CLINT_LEVELED_MESSAGE(condition, text, level) \
+  do { \
+   if (!(condition)) {_clint_warning_("condition failed" #condition, text, __FILE__, __LINE__, level); } \
+  } while (false) \
+
 #define CLINT_ASSERT(condition, text) \
   do { \
     if (!(condition)) { _clint_assert_(#condition, text, __FILE__, __LINE__); } \
@@ -21,12 +26,7 @@
   CLINT_LEVELED_MESSAGE(condition, text, CLINT_WARNING_INFO)
 
 #define CLINT_DEBUG(condition, text) \
-  CLINT_LEVELD_MESSAGE(condition, text, CLINT_WARNING_DEBUG)
-
-#define CLINT_LEVELED_MESSAGE(condition, text, level) \
-  do { \
-   if (!(condition)) {_clint_warning_("condition failed" #condition, text, __FILE__, __LINE__, level); } \
-  } while (false) \
+  CLINT_LEVELED_MESSAGE(condition, text, CLINT_WARNING_DEBUG)
 
 #define CLINT_UNREACHABLE  \
   _clint_assert_("false", "Unrechable code", __FILE__, __LINE__);
