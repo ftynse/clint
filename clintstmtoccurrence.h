@@ -27,8 +27,8 @@ public:
 
   int ignoreTilingDim(int dimension) const;
   std::vector<std::vector<int>> projectOn(int horizontalDimIdx, int verticalDimIdx) const;
-  std::pair<std::pair<int, int>, std::pair<int, int>> parseProjectedPoint(const std::vector<int> &point,
-                                                                          int horizontalDimIdx, int verticalDimIdx) const;
+  std::pair<std::vector<int>, std::pair<int, int>> parseProjectedPoint(std::vector<int> point,
+                                                                       int horizontalDimIdx, int verticalDimIdx) const;
 
   int dimensionality() const {
     return static_cast<int>(m_betaVector.size())
@@ -57,6 +57,10 @@ public:
     // TODO: this should actually be a computation of explicitly-defined dimensions
     // we make take it from chlore, but for now we assume the relation is well-defined, i.e.
     // there are as many explicit defintions as input dimensions (global validity).
+    return m_oslScatterings.front()->nb_input_dims;
+  }
+
+  int inputDimensionality() const {
     return m_oslScatterings.front()->nb_input_dims;
   }
 

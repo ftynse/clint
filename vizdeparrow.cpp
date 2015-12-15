@@ -7,14 +7,14 @@
 #include <QtWidgets>
 
 VizDepArrow::VizDepArrow(QPointF source, QPointF target, VizPolyhedron *parent, bool violated) :
-  QGraphicsObject(parent), m_violated(violated), m_coordinateSystemParent(nullptr) {
+  QGraphicsObject(parent), m_coordinateSystemParent(nullptr), m_violated(violated) {
 
   m_vizProperties = parent->coordinateSystem()->projection()->vizProperties();
   pointLink(source, target);
 }
 
 VizDepArrow::VizDepArrow(QPointF source, QPointF target, VizCoordinateSystem *parent, bool violated) :
-  QGraphicsObject(parent), m_violated(violated), m_coordinateSystemParent(parent) {
+  QGraphicsObject(parent), m_coordinateSystemParent(parent), m_violated(violated) {
 
   m_vizProperties = parent->projection()->vizProperties();
   pointLink(source, target);
@@ -37,7 +37,7 @@ void VizDepArrow::pointLinkCS(VizPoint *source, VizPoint *target) {
 }
 
 VizDepArrow::VizDepArrow(VizPoint *source, VizPoint *target, VizCoordinateSystem *parent, bool violated) :
-  QGraphicsObject(parent), m_sourcePoint(source), m_targetPoint(target), m_violated(violated), m_coordinateSystemParent(parent) {
+  QGraphicsObject(parent), m_sourcePoint(source), m_targetPoint(target), m_coordinateSystemParent(parent), m_violated(violated) {
 
   m_vizProperties = parent->projection()->vizProperties();
   pointLinkCS(source, target);

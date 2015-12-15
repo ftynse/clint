@@ -93,11 +93,6 @@ void VizPoint::mouseMoveEvent(QGraphicsSceneMouseEvent *event) {
   coordinateSystem()->projection()->manipulationManager()->pointMoving(diff);
 }
 
-void VizPoint::setOriginalCoordinates(int horizontal, int vertical) {
-  m_originalHorizontal = horizontal;
-  m_originalVertical = vertical;
-}
-
 void VizPoint::setScatteredCoordinates(int horizontal, int vertical) {
   m_scatteredHorizontal = horizontal;
   m_scatteredVertical = vertical;

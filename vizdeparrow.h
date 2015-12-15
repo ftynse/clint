@@ -46,47 +46,43 @@ void vizDependenceArrowsCreate(VizPolyhedron *sourcePolyhedron,
                                bool violated,
                                ParentType *parentObject,
                                std::unordered_set<VizDepArrow *> &set) {
-  // one CS is not supposed to contain polyhedra of different visible dimensionality, so number of coordinates are equal
+  int sourceInputDimensionality = sourcePolyhedron->occurrence()->inputDimensionality();
+  int targetInputDimensionality = targetPolyhedron->occurrence()->inputDimensionality();
+
+  typedef std::pair<std::pair<int, int>, std::pair<int, int>> DepCoordinates;
+  std::unordered_set<DepCoordinates, boost::hash<DepCoordinates>> existingDependences;
+
   for (const std::vector<int> &dep : dependences) {
-    std::pair<int, int> sourceCoordinates {VizPoint::NO_COORD, VizPoint::NO_COORD};
-    std::pair<int, int> targetCoordinates {VizPoint::NO_COORD, VizPoint::NO_COORD};
-    if (dep.size() == 0) {
-      // TODO: figure out what to do with such dependence
+    CLINT_ASSERT(sourceInputDimensionality + targetInputDimensionality <= dep.size(),
+                 "Not enough dimensions in a dependence projection");
+    std::vector<int> sourceCoordinates(std::begin(dep),
+                                       std::begin(dep) + sourceInputDimensionality);
+    std::vector<int> targetCoordinates(std::begin(dep) + sourceInputDimensionality,
+                                       std::begin(dep) + sourceInputDimensionality + targetInputDimensionality);
+
+    VizPoint *sourcePoint = sourcePolyhedron->point(sourceCoordinates),
+             *targetPoint = targetPolyhedron->point(targetCoordinates);
+
+    if (!sourcePoint || !targetPoint)
       continue;
-    } else if (dep.size() == 2) {
-      sourceCoordinates.first = dep[0];
-      targetCoordinates.first = dep[1];
-    } else if (dep.size() == 4) {
-      sourceCoordinates.first = dep[0];
-      sourceCoordinates.second = dep[1];
-      targetCoordinates.first = dep[2];
-      targetCoordinates.second = dep[3];
-    } else {
-      CLINT_UNREACHABLE;
-    }
 
-    std::unordered_set<VizPoint *> sourcePoints = sourcePolyhedron->points(sourceCoordinates);
-    std::unordered_set<VizPoint *> targetPoints = targetPolyhedron->points(targetCoordinates);
+    DepCoordinates depCoordinates = std::make_pair(sourcePoint->scatteredCoordinates(),
+                                                   targetPoint->scatteredCoordinates());
 
-    if (targetPoints.size() == 0 || sourcePoints.size() == 0) {
+    // Omit self-dependences.
+    if (depCoordinates.first == depCoordinates.second)
       continue;
-    }
 
-    // XXX: this may be wrong when projecting skewed 3d on 2d: we assume every dependence between
-    // original points should be kept for each pair of scattered points with identical original coordinates,
-    // but it may be false.  Use both original and scattered coordinates in the dependence to select only
-    // those truly present for the point?  Will index-set splitting fix it automatically?
-    for (VizPoint *sourcePoint : sourcePoints) {
-      for (VizPoint *targetPoint : targetPoints) {
-        VizDepArrow *depArrow = new VizDepArrow(sourcePoint, targetPoint,
-                                                parentObject, violated);
-        if (violated) {
-          depArrow->setZValue(100);
-        } else {
-          depArrow->setZValue(42);
-        }
-        set.insert(depArrow);
+    if (existingDependences.count(depCoordinates) == 0) {
+      VizDepArrow *depArrow = new VizDepArrow(sourcePoint, targetPoint,
+                                              parentObject, violated);
+      if (violated) {
+        depArrow->setZValue(100);
+      } else {
+        depArrow->setZValue(42);
       }
+      set.insert(depArrow);
+      existingDependences.emplace(depCoordinates);
     }
   }
 }

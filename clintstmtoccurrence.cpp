@@ -144,7 +144,6 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
       + m_oslStatement->domain->nb_output_dims;
 
   // Get original and scattered iterator values depending on the axis displayed.
-  std::vector<int> visibleDimensions;
   bool projectHorizontal = (horizontalDimIdx != -2) && (dimensionality() > horizontalDimIdx); // FIXME: -2 is in VizProperties::NO_DIMENSION, but should be in a different class since it has nothing to do with viz
   bool projectVertical   = (verticalDimIdx != -2) && (dimensionality() > verticalDimIdx);
   CLINT_ASSERT(!(projectHorizontal ^ (horizontalScatDimIdx >= 0 && horizontalScatDimIdx < scattering->nb_output_dims)),
@@ -152,70 +151,44 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
   CLINT_ASSERT(!(projectVertical ^ (verticalScatDimIdx >= 0 && verticalScatDimIdx < scattering->nb_output_dims)),
                "Trying to project to the vertical dimension that is not present in scattering");
 
-  // Deal with stripmine cases in inner ifs.
-  // TODO: use a structure with optional<int> for each point rather than plain vector
-  // it would allow to differentiate cases where some values are not present and why;
-  // namely 2 scattered for 1 original in case of stripmine vs 1 scattered for 2 original in case of flatten
-  if (!projectHorizontal && !projectVertical) {
-    // This is just a point, no actual enumeration needed.
-    // All the dimensions being projected out, the result of enumeration is a single zero-dimensional point.
-  } else if (projectHorizontal && !projectVertical) {
-    visibleDimensions.push_back(horizontalScatDimIdx);
-    if (horizontalOrigDimValid)
-      visibleDimensions.push_back(horizontalOrigDimIdx);
-  } else if (!projectHorizontal && projectVertical) {
-    visibleDimensions.push_back(verticalScatDimIdx);
-    if (verticalOrigDimValid)
-      visibleDimensions.push_back(verticalOrigDimIdx);
-  } else {
-    visibleDimensions.push_back(horizontalScatDimIdx);
-    visibleDimensions.push_back(verticalScatDimIdx);
-    if (horizontalOrigDimValid)
-      visibleDimensions.push_back(horizontalOrigDimIdx);
-    if (verticalOrigDimValid)
-      visibleDimensions.push_back(verticalOrigDimIdx);
-  }
-
   osl_relation_p applied = oslApplyScattering(oslListToVector(m_oslStatement->domain),
                                               m_oslScatterings);
   osl_relation_p ready = oslRelationsWithContext(applied, m_statement->scop()->fixedContext());
 
-  std::vector<std::vector<int>> points =
-      program()->enumerator()->enumerate(ready, std::move(visibleDimensions));
+  std::vector<int> allDimensions;
+  allDimensions.reserve(scattering->nb_output_dims + 2);
+  if (projectHorizontal && horizontalOrigDimValid) {
+    allDimensions.push_back(horizontalScatDimIdx);
+  }
+  if (projectVertical && verticalOrigDimValid) {
+    allDimensions.push_back(verticalScatDimIdx);
+  }
+  for (int i = 0, e = scattering->nb_input_dims; i < e; ++i) {
+    allDimensions.push_back(scattering->nb_output_dims + i);
+  }
+  std::vector<std::vector<int>> points = program()->enumerator()->enumerate(ready, allDimensions);
   computeMinMax(points, horizontalDimIdx, verticalDimIdx);
 
   return std::move(points);
 }
 
-std::pair<std::pair<int, int>, std::pair<int, int>> ClintStmtOccurrence::parseProjectedPoint(const std::vector<int> &point,
-                                                                                             int horizontalDimIdx,
-                                                                                             int verticalDimIdx) const {
-  std::pair<int, int> originalCoordinates  {INT_MAX, INT_MAX}; // FIXME: INT_MAX is VizPoint::NO_COORD
-  std::pair<int, int> scatteredCoordinates {INT_MAX, INT_MAX};
-  if (point.size() == 0) {
-    // This is okay.
-  } else if (point.size() == 1 && visibleDimensionality() <= horizontalDimIdx) {
+std::pair<std::vector<int>, std::pair<int, int>> ClintStmtOccurrence::parseProjectedPoint(std::vector<int> point,
+                                                                                          int horizontalDimIdx,
+                                                                                          int verticalDimIdx) const {
+  std::pair<int, int> scatteredCoordinates {INT_MAX, INT_MAX}; // FIXME: INT_MAX is VizPoint::NO_COORD
+
+  if (visibleDimensionality() >= horizontalDimIdx && horizontalDimIdx != -2) {
+    CLINT_ASSERT(point.size() > 0, "Not enough dimensions");
     scatteredCoordinates.first = point[0];
-  } else if (point.size() == 2 && visibleDimensionality() > horizontalDimIdx) {
-    // "Normal" scattered one-dimensional statement
-    scatteredCoordinates.first = point[0];
-    originalCoordinates.first = point[1];
-  } else if (point.size() == 2 && visibleDimensionality() <= horizontalDimIdx) {
-    scatteredCoordinates.first = point[0];
-    scatteredCoordinates.second = point[1];
-  } else if (point.size() == 3 && visibleDimensionality() <= verticalDimIdx) {
-    scatteredCoordinates.first = point[0];
-    scatteredCoordinates.second = point[1];
-    originalCoordinates.first = point[2];
-  } else if (point.size() == 4 && visibleDimensionality() > verticalDimIdx) {
-    scatteredCoordinates.first = point[0];
-    scatteredCoordinates.second = point[1];
-    originalCoordinates.first = point[2];
-    originalCoordinates.second = point[3];
-  } else {
-    CLINT_UNREACHABLE;
+    point.erase(std::begin(point));
   }
-  return std::make_pair(originalCoordinates, scatteredCoordinates);
+  if (visibleDimensionality() >= verticalDimIdx && verticalDimIdx != -2) {
+    CLINT_ASSERT(point.size() > 0, "Not enough dimensions");
+    scatteredCoordinates.second = point[0];
+    point.erase(std::begin(point));
+  }
+
+  return std::make_pair(point, scatteredCoordinates);
 }
 
 
@@ -234,8 +207,8 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
     return;
   }
 
-  std::pair<int, int> originalCoordinates, scatteredCoordinates;
-  std::tie(originalCoordinates, scatteredCoordinates) = parseProjectedPoint(points.front(), horizontalDimIdx, verticalDimIdx);
+  std::pair<int, int> scatteredCoordinates;
+  std::tie(std::ignore, scatteredCoordinates) = parseProjectedPoint(points.front(), horizontalDimIdx, verticalDimIdx);
   bool computeHorizontal = scatteredCoordinates.first != INT_MAX && horizontalDimIdx != -2; // FIXME: INT_MAX is VizPoint::NO_COORD
   bool computeVertical = scatteredCoordinates.second != INT_MAX && verticalDimIdx != -2;
   if (computeHorizontal) {
@@ -271,15 +244,6 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
     m_cachedDimMins[verticalDimIdx] = verticalMin;
     m_cachedDimMaxs[verticalDimIdx] = verticalMax;
   }
-}
-
-static inline void negateBonudlikeForm(std::vector<int> &form) {
-  if (form.size() <= 2)
-    return;
-  for (size_t i = 1; i < form.size() - 1; i++) {
-    form[i] = -form[i];
-  }
-  form.back() = -form.back() - 1;
 }
 
 std::vector<int> ClintStmtOccurrence::makeBoundlikeForm(Bound bound, int dimIdx, int constValue,

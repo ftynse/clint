@@ -21,36 +21,23 @@ ClintDependence::projectOn(int horizontalDimIdx, int verticalDimIdx) {
                "Changed required in Clint to ensure compatibility.");
 
   int nbSourceColumns = m_dependence->source_nb_output_dims_domain +
-                        m_dependence->source_nb_output_dims_access;
-
-  int horizontalDimS1 = horizontalDimIdx;
-  int verticalDimS1   = verticalDimIdx;
-  int horizontalDimS2 = horizontalDimS1 + nbSourceColumns;
-  int verticalDimS2   = verticalDimS1 + nbSourceColumns;
-
+      m_dependence->source_nb_output_dims_access;
   std::vector<int> visibleDimensions;
-  bool projectHorizontalS1 = m_dependence->source_nb_output_dims_domain > horizontalDimIdx;
-  bool projectHorizontalS2 = m_dependence->target_nb_output_dims_domain > horizontalDimIdx;
-  bool projectVerticalS1 = m_dependence->source_nb_output_dims_domain > verticalDimIdx;
-  bool projectVerticalS2 = m_dependence->target_nb_output_dims_domain > verticalDimIdx;
 
-  if (projectHorizontalS1)
-    visibleDimensions.push_back(horizontalDimS1);
-  if (projectVerticalS1)
-    visibleDimensions.push_back(verticalDimS1);
-  if (projectHorizontalS2)
-    visibleDimensions.push_back(horizontalDimS2);
-  if (projectVerticalS2)
-    visibleDimensions.push_back(verticalDimS2);
+  for (int i = 0; i < m_dependence->source_nb_output_dims_domain; i++) {
+    visibleDimensions.push_back(i);
+  }
+  for (int i = 0; i < m_dependence->target_nb_output_dims_domain; i++) {
+    visibleDimensions.push_back(nbSourceColumns + i);
+  }
 
   osl_relation_p domain = osl_relation_nclone(m_dependence->domain, 1);
   domain->nb_output_dims += domain->nb_input_dims;
   domain->nb_input_dims = 0;
   osl_relation_p ready = oslRelationWithContext(domain, m_source->scop()->fixedContext());
   osl_relation_free(domain);
-  std::vector<std::vector<int>> points =
+  std::vector<std::vector<int>> projection =
       m_source->program()->enumerator()->enumerate(ready, visibleDimensions);
-
-  return std::move(points);
+  return projection;
 }
 

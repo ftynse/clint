@@ -110,7 +110,7 @@ public:
     setPos(QPointF(x, y));
   }
 
-  std::unordered_set<VizPoint *> points(const std::pair<int, int> &originalCoordiantes) const;
+  VizPoint *point(const std::vector<int> &originalCoordinates) const;
   std::unordered_set<VizPoint *> points() const;
 
   void reparentPoint(VizPoint *point);
@@ -145,6 +145,8 @@ public:
   void resetRotate();
 
   void prepareRotateAngle(double angle);
+
+  void debugPrintPoints();
 signals:
   void positionChanged();
 
@@ -169,8 +171,9 @@ private:
   std::vector<QLineF> m_tileLines;
 
   // Mapping from 2D original coordinates to all points in the projection with these original coordinates.
-  typedef std::unordered_multimap<std::pair<int, int>, VizPoint *, boost::hash<std::pair<int, int>>> PointMap;
+  typedef std::unordered_map<std::vector<int>, VizPoint *, boost::hash<std::vector<int>>> PointMap;
   PointMap m_pts;
+  PointMap m_pointOthers; /// Points with original coordinates different than those in m_pts, projected at the same position.
   void reprojectPoints();
 
   std::unordered_set<VizDepArrow *> m_deps;

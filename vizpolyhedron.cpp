@@ -81,25 +81,36 @@ void VizPolyhedron::reprojectPoints() {
   CLINT_ASSERT(m_occurrence, "empty occurrence changed");
   std::vector<std::vector<int>> points =
       occurrence()->projectOn(horizontalDim, verticalDim);
-  PointMap updatedPoints;
+
+  PointMap updatedPoints, extraPoints;
+  std::unordered_map<std::pair<int, int>,
+                     VizPoint *,
+                     boost::hash<std::pair<int, int>>> visibleScatteredCoordiantes;
 
   for (const std::vector<int> &point : points) {
-    std::pair<int, int> scatteredCoordinates, originalCoordinates;
+    std::pair<int, int> scatteredCoordinates;
+    std::vector<int> originalCoordinates;
     std::tie(originalCoordinates, scatteredCoordinates) =
         m_occurrence->parseProjectedPoint(point,
                                           coordinateSystem()->horizontalDimensionIdx(),
                                           coordinateSystem()->verticalDimensionIdx());
-    VizPoint *vp;
-    auto it = m_pts.find(originalCoordinates);
-    if (it != std::end(m_pts)) {
-      vp = it->second;
-      m_pts.erase(it);
+    if (visibleScatteredCoordiantes.count(scatteredCoordinates) == 0) {
+      VizPoint *vp;
+      auto it = m_pts.find(originalCoordinates);
+      if (it != m_pts.end()) {
+        vp = it->second;
+        m_pts.erase(it);
+      } else {
+        vp = new VizPoint(this);
+        vp->setOriginalCoordinates(originalCoordinates);
+      }
+      vp->setScatteredCoordinates(scatteredCoordinates);
+      updatedPoints.emplace(originalCoordinates, vp);
+      visibleScatteredCoordiantes.emplace(scatteredCoordinates, vp);
     } else {
-      vp = new VizPoint(this);
-      vp->setOriginalCoordinates(originalCoordinates);
+      VizPoint *vp = visibleScatteredCoordiantes[scatteredCoordinates];
+      extraPoints.emplace(originalCoordinates, vp);
     }
-    vp->setScatteredCoordinates(scatteredCoordinates);
-    updatedPoints.emplace(originalCoordinates, vp);
   }
 
   for (auto p : m_pts) {
@@ -109,6 +120,9 @@ void VizPolyhedron::reprojectPoints() {
   }
   m_pts.clear();
   m_pts = updatedPoints;
+  m_pointOthers.clear();
+  m_pointOthers = extraPoints;
+}
 }
 
 void VizPolyhedron::occurrenceChanged() {
@@ -165,13 +179,14 @@ std::unordered_set<VizPoint *> VizPolyhedron::points() const {
   return std::move(result);
 }
 
-std::unordered_set<VizPoint *> VizPolyhedron::points(const std::pair<int, int> &originalCoordiantes) const {
-  std::unordered_set<VizPoint *> result;
-  auto range = m_pts.equal_range(originalCoordiantes);
-  for (auto it = range.first; it != range.second; ++it) {
-    result.insert(it->second);
+VizPoint *VizPolyhedron::point(const std::vector<int> &originalCoordinates) const {
+  if (m_pts.count(originalCoordinates) != 0) {
+    return m_pts.at(originalCoordinates);
+  } else if (m_pointOthers.count(originalCoordinates) != 0) {
+    return m_pointOthers.at(originalCoordinates);
+  } else {
+    return nullptr;
   }
-  return std::move(result);
 }
 
 void VizPolyhedron::setInternalDependences(std::vector<std::vector<int>> &&dependences) {
@@ -985,4 +1000,18 @@ void VizPolyhedron::setOccurrenceSilent(ClintStmtOccurrence *occurrence) {
 
 void VizPolyhedron::occurrenceDeleted() {
   m_occurrence = nullptr;
+}
+
+void VizPolyhedron::debugPrintPoints() {
+#ifndef NDEBUG
+  for (auto elem : m_pts) {
+    std::cerr << "(";
+    if (elem.first.size() != 0) {
+      std::copy(std::begin(elem.first), --std::end(elem.first), std::ostream_iterator<int>(std::cerr, ", "));
+      std::cerr << elem.first.back();
+    }
+    std::pair<int, int> scattered = elem.second->scatteredCoordinates();
+    std::cerr << ") -> (" << scattered.first << ", " << scattered.second << ")" << std::endl;
+  }
+#endif
 }

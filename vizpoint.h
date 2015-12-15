@@ -27,19 +27,18 @@ public:
   ClintProgram *program() const;
   VizCoordinateSystem *coordinateSystem() const;
 
-  void setOriginalCoordinates(int horizontal = NO_COORD, int vertical = NO_COORD);
   void setScatteredCoordinates(int horizontal = NO_COORD, int vertical = NO_COORD);
 
-  void setOriginalCoordinates(const std::pair<int, int> &coordinates) {
-    setOriginalCoordinates(coordinates.first, coordinates.second);
+  void setOriginalCoordinates(const std::vector<int> &coordinates) {
+    m_originalCoordinates = coordinates;
   }
 
   void setScatteredCoordinates(const std::pair<int, int> &coordinates) {
     setScatteredCoordinates(coordinates.first, coordinates.second);
   }
 
-  std::pair<int, int> originalCoordinates() const {
-    return std::move(std::make_pair(m_originalHorizontal, m_originalVertical));
+  const std::vector<int> &originalCoordinates() const {
+    return m_originalCoordinates;
   }
 
   std::pair<int, int> scatteredCoordinates() const {
@@ -76,12 +75,10 @@ public:
 
 private:
   VizPolyhedron *m_polyhedron;
-  QVector<int> alphaBetaVector;
   // These coordinates do not define point position on the coordinate system
   // or in the polyhedron.  The position is relative to the axes intersection
   // and minima of the point coordinates in the polyhedron.
-  int m_originalHorizontal  = NO_COORD;
-  int m_originalVertical    = NO_COORD;
+  std::vector<int> m_originalCoordinates;
   int m_scatteredHorizontal = NO_COORD;
   int m_scatteredVertical   = NO_COORD;
 
