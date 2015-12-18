@@ -7,12 +7,14 @@
 #include "clintstmtoccurrence.h"
 #include "vizcoordinatesystem.h"
 #include "vizhandle.h"
+#include "vizpolyhedronshapeanimation.h"
 
 #include <QGraphicsObject>
 #include <QPainterPath>
 #include <QtWidgets>
 #include <QtGui>
 
+#include <functional>
 #include <unordered_map>
 
 #include <boost/functional/hash.hpp>
@@ -22,6 +24,8 @@ class VizDepArrow;
 
 class VizPolyhedron : public QGraphicsObject {
   Q_OBJECT
+
+  friend class VizPolyhedronShapeAnimation;
 public:
   explicit VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSystem *vcs);
   ~VizPolyhedron();
@@ -119,12 +123,12 @@ public:
   void updateShape() {
     recomputeMinMax();
     recomputeShape();
-    resetPointPositions();
+//    resetPointPositions();
   }
 
   void updateInternalDependences();
 
-  void setOccurrenceSilent(ClintStmtOccurrence *occurrence);
+  void setOccurrenceImmediate(ClintStmtOccurrence *occurrence);
 
   void hideHandles() {
     setHandleVisible(false);
@@ -158,6 +162,9 @@ public slots:
 
   void occurrenceDeleted();
 
+private slots:
+  void updateHandlePositions();
+
 private:
   ClintStmtOccurrence *m_occurrence = nullptr;
   VizCoordinateSystem *m_coordinateSystem;
@@ -170,11 +177,20 @@ private:
 
   std::vector<QLineF> m_tileLines;
 
+  QAbstractAnimation *m_transitionAnimation = nullptr;
+  VizPolyhedronShapeAnimation *m_shapeAnimation = nullptr;
+
   // Mapping from 2D original coordinates to all points in the projection with these original coordinates.
   typedef std::unordered_map<std::vector<int>, VizPoint *, boost::hash<std::vector<int>>> PointMap;
   PointMap m_pts;
   PointMap m_pointOthers; /// Points with original coordinates different than those in m_pts, projected at the same position.
   void reprojectPoints();
+
+  void setupAnimation();
+  void setAnimationProgress(double progress);
+  void playAnimation();
+  void stopAnimation();
+  void clearAnimation();
 
   std::unordered_set<VizDepArrow *> m_deps;
   int m_localHorizontalMin = 0;
@@ -196,10 +212,9 @@ private:
   void setPointVisiblePos(VizPoint *vp, int x, int y);
   static std::pair<int, int> pointScatteredCoordsReal(const VizPoint *vp);
   std::vector<VizPoint *> convexHull() const;
-  QPolygonF computePolygon() const;
+  QPolygonF recomputePolygon() const;
   void recomputeShape();
 
-  void updateHandlePositions();
   void setHandleVisible(bool visible = true);
 
   QPointF mapToCoordinates(double x, double y) const;
@@ -212,6 +227,13 @@ private:
     return mapToCoordinates(pointScatteredCoordsReal(vp));
   }
   void disconnectAll();
+  std::vector<QPointF> buildPolygonPoints(std::vector<VizPoint *> points,
+                                          std::function<QPointF (const VizPoint *)> coordinates) const;
+  void recomputeSmoothShapeImpl(std::function<QPointF (const VizPoint *)> coordinates);
+  QPolygonF recomputePolygonImpl(std::function<QPointF (const VizPoint *)> coordinates) const;
+  std::vector<VizPoint *> convexHullImpl(std::function<std::pair<int, int> (const VizPoint *)> coordinates) const;
+  std::vector<VizPoint *> convexHullImpl2(std::function<QPointF (const VizPoint *)> coordinates) const;
+  void recreateTileLines();
 };
 
 #endif // VIZPOLYHEDRON_H

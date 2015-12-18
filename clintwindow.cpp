@@ -367,8 +367,12 @@ void ClintWindow::editUndo() {
   if (!vscop)
     return;
   CLINT_ASSERT(vscop->hasUndo(), "No undo possible, but the button is enabled");
+  m_undoing = true;
   vscop->undoTransformation();
-  regenerateScop();
+  m_undoing = false;
+  m_actionEditRedo->setEnabled(vscop->hasRedo());
+  m_actionEditUndo->setEnabled(vscop->hasUndo());
+//  regenerateScop();
 }
 
 void ClintWindow::editRedo() {
@@ -379,8 +383,12 @@ void ClintWindow::editRedo() {
   if (!vscop)
     return;
   CLINT_ASSERT(vscop->hasRedo(), "No redo possible, but the button is enabled");
+  m_undoing = true;
   vscop->redoTransformation();
-  regenerateScop();
+  m_undoing = false;
+  m_actionEditRedo->setEnabled(vscop->hasRedo());
+  m_actionEditUndo->setEnabled(vscop->hasUndo());
+//  regenerateScop();
 }
 
 void ClintWindow::editVizProperties() {
@@ -483,7 +491,7 @@ void ClintWindow::scopTransformed() {
   updateCodeEditor();
   m_scriptEditor->setText(QString(vscop->currentScript()));
 
-  if (vscop->hasRedo())
+  if (vscop->hasRedo() && !m_undoing)
     vscop->clearRedo();
 
   m_actionEditUndo->setEnabled(vscop->hasUndo());

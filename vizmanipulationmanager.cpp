@@ -735,7 +735,7 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
 
     betaLoop.push_back(originalPosition);
     ClintStmtOccurrence *occurrence = oldPolyhedron->scop()->occurrence(betaLoop);
-    polyhedron->setOccurrenceSilent(occurrence);
+    polyhedron->setOccurrenceImmediate(occurrence);
     polyhedron->occurrenceChanged(); // Occurrence is not set when the transformation is executed so we have to notify changes manually.
     oldPolyhedron->updateInternalDependences();
     polyhedron->updateInternalDependences();
@@ -1285,7 +1285,7 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
     // Fix to the original position
     m_polyhedron->coordinateSystem()->resetPolyhedronPos(polyhedron);
   }
-  m_polyhedron->updateShape();
+//  m_polyhedron->updateShape();
 
   m_polyhedron = nullptr;
 }

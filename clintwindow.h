@@ -80,6 +80,8 @@ private:
          m_verticalDimSelected = VizProperties::NO_DIMENSION;
   QString m_fileBasename;
 
+  bool m_undoing = false;
+
   void setupActions();
   void setupMenus();
 

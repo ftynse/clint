@@ -408,7 +408,7 @@ void ClintScop::undoTransformation() {
   m_undoneTransformationSeq.groups.push_back(m_transformationSeq.groups.back());
   m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1);
   --m_groupsExecuted;
-//  executeTransformationSequence();
+  executeTransformationSequence();
 }
 
 void ClintScop::redoTransformation() {
@@ -417,7 +417,7 @@ void ClintScop::redoTransformation() {
   m_transformationSeq.groups.push_back(m_undoneTransformationSeq.groups.back());
   m_undoneTransformationSeq.groups.erase(std::end(m_undoneTransformationSeq.groups) - 1);
   ++m_groupsExecuted;
-//  executeTransformationSequence();
+  executeTransformationSequence();
 }
 
 void ClintScop::clearRedo() {
