@@ -1213,8 +1213,10 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
   int verticalSkewFactor = horizontalRange == 0 ? 0 : round(static_cast<double>(-m_vertOffset) / horizontalRange);
   int horizontalSkewFactor = verticalRange == 0 ? 0 : round(static_cast<double>(m_horzOffset) / verticalRange);
   if (verticalSkewFactor == 0 && horizontalSkewFactor == 0) {
-    m_polyhedron = nullptr;
+    m_polyhedron->resetPointPositions();
+    m_polyhedron->updateShape();
     m_polyhedron->coordinateSystem()->resetPolyhedronPos(polyhedron);
+    m_polyhedron = nullptr;
     return;
   }
 
