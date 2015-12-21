@@ -13,6 +13,14 @@
 #include <algorithm>
 #include <vector>
 
+VizPolyhedron::VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSystem *vcs, CreateShadowTag) :
+  QGraphicsObject(vcs), m_occurrence(occurrence), m_coordinateSystem(vcs) {
+
+  setEnabled(false);
+  setOccurrenceImmediate(occurrence);
+  disconnectAll();
+}
+
 VizPolyhedron::VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSystem *vcs) :
   QGraphicsObject(vcs), m_occurrence(occurrence), m_coordinateSystem(vcs) {
 
@@ -26,13 +34,14 @@ VizPolyhedron::VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSyste
   connect(m_shapeAnimation, &VizPolyhedronShapeAnimation::stateChanged, this, &VizPolyhedron::updateHandlePositions);
 
   setOccurrenceImmediate(occurrence);
-  if (occurrence != nullptr) {
-    occurrenceChanged();
-  }
 }
 
 VizPolyhedron::~VizPolyhedron() {
   disconnectAll();
+}
+
+VizPolyhedron *VizPolyhedron::createShadow() {
+  return new VizPolyhedron(m_occurrence, m_coordinateSystem, CreateShadowTag());
 }
 
 void VizPolyhedron::updateHandlePositions() {
@@ -226,14 +235,19 @@ void VizPolyhedron::recreateTileLines() {
   }
 }
 
+void VizPolyhedron::occurrenceTentativelyChanged() {
+  CLINT_ASSERT(m_occurrence, "empty occurrence changed");
+
+  coordinateSystem()->createPolyhedronShadow(this);
+}
+
 void VizPolyhedron::occurrenceChanged() {
   CLINT_ASSERT(m_occurrence, "empty occurrence changed");
+
+  coordinateSystem()->clearPolyhedronShadows();
   reprojectPoints();
-//  recomputeMinMax();
   setupAnimation();
   playAnimation();
-//  resetPointPositions();
-//  recomputeShape();
   m_coordinateSystem->projection()->ensureFitsHorizontally(
         m_coordinateSystem, localHorizontalMin(), localHorizontalMax());
   m_coordinateSystem->projection()->ensureFitsVertically(
@@ -684,12 +698,21 @@ void VizPolyhedron::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
   Q_UNUSED(widget);
   painter->save();
   painter->setRenderHint(QPainter::Antialiasing);
-  if (option->state & QStyle::State_Selected) {
+  if (!(option->state & QStyle::State_Enabled)) {
+    QPen grayPen = QPen(painter->pen());
+    grayPen.setColor(Qt::gray);
+    painter->setPen(grayPen);
+  } else if (option->state & QStyle::State_Selected) {
     QPen fatPen = QPen(painter->pen());
     fatPen.setWidth(painter->pen().widthF() * 2.0);
     painter->setPen(fatPen);
   }
-  painter->setBrush(m_backgroundColor);
+
+  if (option->state & QStyle::State_Enabled) {
+    painter->setBrush(m_backgroundColor);
+  } else {
+    painter->setBrush(QColor::fromRgb(230, 230, 230, 100));
+  }
   painter->drawPath(m_polyhedronShape);
 
   painter->drawLines(m_tileLines.data(), m_tileLines.size());
@@ -1176,11 +1199,11 @@ void VizPolyhedron::handleMoving(const VizHandle *const handle, QPointF displace
       break;
     }
 
-    // Do not allow simultaneous horizontal and vertical skew (no support in clay)
-    if (fabs(displacement.x()) < 5 || fabs(displacement.y()) > fabs(displacement.x()))
-      displacement.rx() = 0;
-    else
-      displacement.ry() = 0;
+//    // Do not allow simultaneous horizontal and vertical skew (no support in clay)
+//    if (fabs(displacement.x()) < 5 || fabs(displacement.y()) > fabs(displacement.x()))
+//      displacement.rx() = 0;
+//    else
+//      displacement.ry() = 0;
     vmm->polyhedronSkewing(displacement);
     break;
   default:
@@ -1217,7 +1240,7 @@ void VizPolyhedron::handleHasMoved(const VizHandle *const handle, QPointF displa
 
 void VizPolyhedron::disconnectAll() {
   if (m_occurrence) {
-    disconnect(m_occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
+    disconnect(m_occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceTentativelyChanged);
     disconnect(m_occurrence, &ClintStmtOccurrence::destroyed, this, &VizPolyhedron::occurrenceDeleted);
   }
 
@@ -1233,7 +1256,7 @@ void VizPolyhedron::setOccurrenceImmediate(ClintStmtOccurrence *occurrence) {
   m_occurrence = occurrence;
   if (occurrence) {
     m_backgroundColor = m_coordinateSystem->projection()->vizProperties()->color(occurrence->canonicalOriginalBetaVector());
-    connect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
+    connect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceTentativelyChanged);
     connect(occurrence, &ClintStmtOccurrence::destroyed, this, &VizPolyhedron::occurrenceDeleted);
 
     reprojectPoints();

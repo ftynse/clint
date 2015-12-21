@@ -129,6 +129,8 @@ public:
 
   int minimumValue(int dimIdx) const;
   int maximumValue(int dimIdx) const;
+  int minimumOrigValue(int dimIdx) const;
+  int maximumOrigValue(int dimIdx) const;
 
   void resetOccurrence(osl_statement_p stmt, const std::vector<int> &betaVector);
   void resetBetaVector(const std::vector<int> &betaVector);
@@ -171,6 +173,8 @@ private:
   // Caches for min/max (index = visible dimension, not computed for tiled).
   mutable std::unordered_map<int, int> m_cachedDimMins;
   mutable std::unordered_map<int, int> m_cachedDimMaxs;
+  mutable std::unordered_map<int, int> m_cachedOrigDimMins;
+  mutable std::unordered_map<int, int> m_cachedOrigDimMaxs;
 
   void computeMinMax(const std::vector<std::vector<int>> &points,
                      int horizontalDimIdx, int verticalDimIdx) const;

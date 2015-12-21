@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QPointF>
 
+#include <boost/optional.hpp>
+
 class VizPolyhedron;
 class VizPoint;
 class VizCoordinateSystem;
@@ -77,6 +79,8 @@ private:
   VizPolyhedron *m_polyhedron = nullptr;
   VizPoint *m_point = nullptr;
   VizCoordinateSystem *m_coordinateSystem = nullptr;
+  boost::optional<TransformationGroup> m_currentGroup;
+  bool m_currentGroupFailed = false;
 
   int m_initCSHorizontalMin, m_initCSVerticalMin;
 
@@ -112,6 +116,7 @@ private:
   }
 
   void remapBetas(TransformationGroup group, ClintScop *scop);
+  TransformationGroup computeReshapeTransformationGroup();
 };
 
 #endif // VIZMANIPULATIONMANAGER_H

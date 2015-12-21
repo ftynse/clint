@@ -184,9 +184,9 @@ std::pair<std::vector<int>, std::pair<int, int>> ClintStmtOccurrence::parseProje
 
 
 void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &points,
-                                      int horizontalDimIdx, int verticalDimIdx) const {
-  // Initialize with extreme values for min and max unless already computed for previous polyhedron
+                                        int horizontalDimIdx, int verticalDimIdx) const {
   int horizontalMin, horizontalMax, verticalMin = 0, verticalMax = 0;
+  std::vector<int> originalMins, originalMaxs;
   if (horizontalDimIdx == -2) { // FIXME: -2 is in VizProperties::NO_DIMENSION
     return;
   }
@@ -198,8 +198,9 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
     return;
   }
 
+  std::vector<int> originalCoordiantes;
   std::pair<int, int> scatteredCoordinates;
-  std::tie(std::ignore, scatteredCoordinates) = parseProjectedPoint(points.front(), horizontalDimIdx, verticalDimIdx);
+  std::tie(originalCoordiantes, scatteredCoordinates) = parseProjectedPoint(points.front(), horizontalDimIdx, verticalDimIdx);
   bool computeHorizontal = scatteredCoordinates.first != INT_MAX && horizontalDimIdx != -2; // FIXME: INT_MAX is VizPoint::NO_COORD
   bool computeVertical = scatteredCoordinates.second != INT_MAX && verticalDimIdx != -2;
   if (computeHorizontal) {
@@ -210,16 +211,24 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
     verticalMin = INT_MAX;
     verticalMax = INT_MIN;
   }
+  originalMins.resize(originalCoordiantes.size(), INT_MAX);
+  originalMaxs.resize(originalCoordiantes.size(), INT_MIN);
 
   // Compute min and max values for projected iterators of the current coordinate system.
   for (const std::vector<int> &point : points) {
+    std::tie(originalCoordiantes, scatteredCoordinates) =
+        parseProjectedPoint(point, horizontalDimIdx, verticalDimIdx);
     if (computeHorizontal) {
-      horizontalMin = std::min(horizontalMin, point[0]);
-      horizontalMax = std::max(horizontalMax, point[0]);
+      horizontalMin = std::min(horizontalMin, scatteredCoordinates.first);
+      horizontalMax = std::max(horizontalMax, scatteredCoordinates.first);
     }
     if (computeVertical) {
-      verticalMin = std::min(verticalMin, point[1]);
-      verticalMax = std::max(verticalMax, point[1]);
+      verticalMin = std::min(verticalMin, scatteredCoordinates.second);
+      verticalMax = std::max(verticalMax, scatteredCoordinates.second);
+    }
+    for (size_t i = 0, e = originalMins.size(); i < e; ++i) {
+      originalMins[i] = std::min(originalCoordiantes[i], originalMins[i]);
+      originalMaxs[i] = std::max(originalCoordiantes[i], originalMaxs[i]);
     }
   }
   CLINT_ASSERT(horizontalMin != INT_MIN, "Could not compute horizontal minimum");
@@ -234,6 +243,10 @@ void ClintStmtOccurrence::computeMinMax(const std::vector<std::vector<int>> &poi
   if (computeVertical) {
     m_cachedDimMins[verticalDimIdx] = verticalMin;
     m_cachedDimMaxs[verticalDimIdx] = verticalMax;
+  }
+  for (size_t i = 0, e = originalMins.size(); i < e; ++i) {
+    m_cachedOrigDimMins[i] = originalMins[i];
+    m_cachedOrigDimMaxs[i] = originalMaxs[i];
   }
 }
 
@@ -377,6 +390,28 @@ int ClintStmtOccurrence::maximumValue(int dimIdx) const {
   CLINT_ASSERT(m_cachedDimMaxs.count(dimIdx) == 1,
                "max cache failure");
   return m_cachedDimMaxs[dimIdx];
+}
+
+int ClintStmtOccurrence::minimumOrigValue(int dimIdx) const {
+  if (dimIdx >= inputDimensionality() || dimIdx < 0)
+    return 0;
+  if (m_cachedOrigDimMins.count(dimIdx) == 0) {
+    projectOn(-2, -2);
+  }
+  CLINT_ASSERT(m_cachedOrigDimMins.count(dimIdx) == 1,
+               "orig min cache failure");
+  return m_cachedOrigDimMins[dimIdx];
+}
+
+int ClintStmtOccurrence::maximumOrigValue(int dimIdx) const {
+  if (dimIdx >= inputDimensionality() || dimIdx < 0)
+    return 0;
+  if (m_cachedOrigDimMaxs.count(dimIdx) == 0) {
+    projectOn(-2, -2);
+  }
+  CLINT_ASSERT(m_cachedOrigDimMaxs.count(dimIdx) == 1,
+               "orig min cache failure");
+  return m_cachedOrigDimMaxs[dimIdx];
 }
 
 std::vector<int> ClintStmtOccurrence::untiledBetaVector() const {

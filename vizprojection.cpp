@@ -39,6 +39,14 @@ void VizProjection::updateProjection() {
   m_view->viewport()->update();
 }
 
+void VizProjection::finalizeOccurrenceChange() {
+  for (auto pile : m_coordinateSystems) {
+    for (VizCoordinateSystem *vcs : pile) {
+      vcs->finalizeOccurrenceChange();
+    }
+  }
+}
+
 VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
   bool found = false;
   size_t pileIndex = static_cast<size_t>(-1);

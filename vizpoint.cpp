@@ -27,10 +27,14 @@ void VizPoint::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
   painter->save();
   const double radius =
       m_polyhedron->coordinateSystem()->projection()->vizProperties()->pointRadius();
-  if (option->state & QStyle::State_Selected)
+  if (option->state & QStyle::State_Selected ||
+      !(option->state & QStyle::State_Enabled))
     painter->setBrush(QBrush(Qt::white));
   else
     painter->setBrush(QBrush(m_color));
+  if (!(option->state & QStyle::State_Enabled))
+    painter->setPen(QColor(Qt::gray));
+
   painter->drawEllipse(QPointF(0, 0), radius, radius);
   painter->restore();
 }

@@ -60,16 +60,27 @@ void VizDepArrow::repoint() {
 }
 
 void VizDepArrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-  Q_UNUSED(option);
   Q_UNUSED(widget);
 
   painter->setRenderHint(QPainter::Antialiasing);
-  if (m_violated) {
-    painter->setPen(Qt::red);
-    painter->setBrush(Qt::red);
+  if (option->state & QStyle::State_Enabled) {
+    if (m_violated) {
+      painter->setPen(Qt::red);
+      painter->setBrush(Qt::red);
+    }
+    painter->drawLine(m_arrowLine);
+    painter->fillPath(m_arrowHead, QBrush(Qt::black));
+  } else {
+    if (m_violated) {
+      painter->setPen(QColor::fromRgb(255, 220, 220));
+      painter->setBrush(QColor::fromRgb(255, 220, 220));
+    } else {
+      painter->setPen(Qt::lightGray);
+      painter->setBrush(Qt::lightGray);
+    }
+    painter->drawLine(m_arrowLine);
+    painter->fillPath(m_arrowHead, QBrush(Qt::lightGray));
   }
-  painter->drawLine(m_arrowLine);
-  painter->fillPath(m_arrowHead, QBrush(Qt::black));
 }
 
 QRectF VizDepArrow::boundingRect() const {

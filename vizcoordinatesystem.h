@@ -155,6 +155,9 @@ public:
   void reparentPolyhedron(VizPolyhedron *polyhedron);
   void resetPolyhedronPos(VizPolyhedron *polyhedron);
 
+  void createPolyhedronShadow(VizPolyhedron *polyhedron);
+  void clearPolyhedronShadows();
+
   void insertPolyhedronAfter(VizPolyhedron *inserted, VizPolyhedron *after);
   void removePolyhedron(VizPolyhedron *polyhedron);
   void updateAllPositions();
@@ -163,9 +166,11 @@ public:
 signals:
 
 public slots:
+  void finalizeOccurrenceChange();
 
 private:
   std::vector<VizPolyhedron *> m_polyhedra;
+  std::unordered_map<size_t, VizPolyhedron *> m_polyhedronShadows;
   ClintProgram *m_program;
   VizProjection *m_projection;
   std::unordered_set<VizDepArrow *> m_depArrows;
@@ -200,6 +205,11 @@ private:
   void updatePolyhedraPositions();
   QPolygonF leftArrow(int length, const double pointRadius);
   QPolygonF topArrow(int length, const double pointRadius);
+
+  void setAnyPolyhedronPosition(VizPolyhedron *polyhedron, int horizontal,
+                                int vertical, ssize_t idx,
+                                bool ignoreHorizontal = false,
+                                bool ignoreVertical = false);
 
 };
 

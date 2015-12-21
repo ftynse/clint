@@ -125,6 +125,7 @@ signals:
 public slots:
   void updateProjection();
   void selectProjection();
+  void finalizeOccurrenceChange();
 
 private:
   ProjectionView *m_view;

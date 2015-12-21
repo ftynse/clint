@@ -30,6 +30,8 @@ public:
   explicit VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSystem *vcs);
   ~VizPolyhedron();
 
+  VizPolyhedron *createShadow();
+
   ClintStmtOccurrence *occurrence() const {
     return m_occurrence;
   }
@@ -156,6 +158,7 @@ signals:
 
 public slots:
   void occurrenceChanged();
+  void occurrenceTentativelyChanged();
   void handleMoving(const VizHandle *const handle, QPointF displacement);
   void handleAboutToMove(const VizHandle *const handle);
   void handleHasMoved(const VizHandle *const handle, QPointF displacement);
@@ -208,6 +211,9 @@ private:
   QPointF m_rotationCenter;
 
   bool m_mouseEventForwarding = false;
+
+  struct CreateShadowTag {};
+  VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSystem *vcs, CreateShadowTag);
 
   void setPointVisiblePos(VizPoint *vp, int x, int y);
   static std::pair<int, int> pointScatteredCoordsReal(const VizPoint *vp);
