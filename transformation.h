@@ -59,6 +59,8 @@ public:
     return m_iterators;
   }
 
+  bool operator ==(const Transformation &other) const;
+
   static Transformation constantShift(const std::vector<int> &beta, int dimension, int amount) {
     CLINT_ASSERT(dimension <= beta.size(), "Dimension overflow");
     Transformation t;
@@ -355,6 +357,9 @@ private:
 
 struct TransformationGroup {
   std::vector<Transformation> transformations;
+
+  bool operator == (const TransformationGroup &other) const;
+  bool operator != (const TransformationGroup &other) const;
 };
 
 struct TransformationSequence {
