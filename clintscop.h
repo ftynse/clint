@@ -51,12 +51,6 @@ public:
     return iterator->second;
   }
 
-  void transform(const Transformation &t) {
-    TransformationGroup tg;
-    tg.transformations.push_back(t);
-    transform(tg);
-  }
-
   void transform(const TransformationGroup &tg) {
     m_transformationSeq.groups.push_back(tg);
     for (const Transformation &transformation : tg.transformations) {
@@ -86,6 +80,12 @@ public:
         break;
       }
     }
+  }
+
+  void discardLastTransformationGroup() {
+    CLINT_ASSERT(m_transformationSeq.groups.size() != 0,
+                 "Cannot discard a group in empty sequence");
+    m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1);
   }
 
   void executeTransformationSequence();

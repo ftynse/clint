@@ -53,6 +53,9 @@ public:
   }
 
   void recomputePos();
+  QPointF center() const {
+    return rect().center();
+  }
 
   void mousePressEvent(QGraphicsSceneMouseEvent *event);
   void mouseMoveEvent(QGraphicsSceneMouseEvent *event);

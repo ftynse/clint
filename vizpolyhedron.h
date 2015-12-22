@@ -30,7 +30,7 @@ public:
   explicit VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSystem *vcs);
   ~VizPolyhedron();
 
-  VizPolyhedron *createShadow();
+  VizPolyhedron *createShadow(bool visible = true);
 
   ClintStmtOccurrence *occurrence() const {
     return m_occurrence;
@@ -137,15 +137,12 @@ public:
     m_hovered = false;
   }
 
+  VizHandle *handle(VizHandle::Kind kind) const;
+
   void prepareExtendRight(double extra);
   void prepareExtendLeft(double extra);
   void prepareExtendUp(double extra);
   void prepareExtendDown(double extra);
-
-  void prepareSkewHorizontalTop(double offset);
-  void prepareSkewHorizontalBottom(double offset);
-  void prepareSkewVerticalLeft(double offset);
-  void prepareSkewVerticalRight(double offset);
 
   double prepareRotate(QPointF displacement);
   void resetRotate();
@@ -153,12 +150,21 @@ public:
   void prepareRotateAngle(double angle);
 
   void debugPrintPoints();
+
+  void setupAnimation();
+  void setAnimationProgress(double progress);
+  void playAnimation();
+  void stopAnimation();
+  void clearAnimation();
+
+  void skipNextUpdate();
+
 signals:
   void positionChanged();
 
 public slots:
   void occurrenceChanged();
-  void occurrenceTentativelyChanged();
+  void finalizeOccurrenceChange();
   void handleMoving(const VizHandle *const handle, QPointF displacement);
   void handleAboutToMove(const VizHandle *const handle);
   void handleHasMoved(const VizHandle *const handle, QPointF displacement);
@@ -167,6 +173,7 @@ public slots:
 
 private slots:
   void updateHandlePositions();
+  void updateHandlePositionsOnFinished();
 
 private:
   ClintStmtOccurrence *m_occurrence = nullptr;
@@ -177,6 +184,7 @@ private:
   std::vector<VizHandle *> m_handles;
   bool m_hovered = false;
   QPainterPath m_originalPolyhedronShape;
+  bool m_disableHandleUpdatesInAnimation = true;
 
   std::vector<QLineF> m_tileLines;
 
@@ -188,12 +196,7 @@ private:
   PointMap m_pts;
   PointMap m_pointOthers; /// Points with original coordinates different than those in m_pts, projected at the same position.
   void reprojectPoints();
-
-  void setupAnimation();
-  void setAnimationProgress(double progress);
-  void playAnimation();
-  void stopAnimation();
-  void clearAnimation();
+  void enlargeCoordinateSystem();
 
   std::unordered_set<VizDepArrow *> m_deps;
   int m_localHorizontalMin = 0;
@@ -211,6 +214,7 @@ private:
   QPointF m_rotationCenter;
 
   bool m_mouseEventForwarding = false;
+  bool m_skipNextUpdate = false;
 
   struct CreateShadowTag {};
   VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSystem *vcs, CreateShadowTag);

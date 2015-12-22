@@ -242,10 +242,19 @@ void VizCoordinateSystem::createPolyhedronShadow(VizPolyhedron *polyhedron) {
   ssize_t index = std::distance(std::begin(m_polyhedra), it);
 
   VizPolyhedron *shadow = m_polyhedra[index]->createShadow();
-  shadow->setEnabled(false);
   setAnyPolyhedronPosition(shadow, shadow->localHorizontalMin(), shadow->localVerticalMin(), index);
   shadow->setZValue(index);
   m_polyhedronShadows.emplace(index, shadow);
+}
+
+void VizCoordinateSystem::createPolyhedronAnimationTarget(VizPolyhedron *polyhedron) {
+  auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);
+  CLINT_ASSERT(it != std::end(m_polyhedra),
+               "Polyhedron updated does not belong to the coordinate system");
+  ssize_t index = std::distance(std::begin(m_polyhedra), it);
+  VizPolyhedron *shadow = polyhedron->createShadow(false);
+  setAnyPolyhedronPosition(shadow, shadow->localHorizontalMin(), shadow->localVerticalMin(), index);
+  m_polyhedronAnimationTargets.emplace(polyhedron, shadow);
 }
 
 void VizCoordinateSystem::clearPolyhedronShadows() {
@@ -259,10 +268,21 @@ void VizCoordinateSystem::clearPolyhedronShadows() {
   m_polyhedronShadows.clear();
 }
 
+void VizCoordinateSystem::clearPolyhedronAnimationTargets() {
+  for (auto p : m_polyhedronAnimationTargets) {
+    VizPolyhedron *shadow = p.second;
+    shadow->setVisible(false);
+    shadow->setParentItem(nullptr);
+    shadow->setParent(nullptr);
+    delete shadow;
+  }
+  m_polyhedronAnimationTargets.clear();
+}
+
 void VizCoordinateSystem::finalizeOccurrenceChange() {
   for (auto p : m_polyhedronShadows) {
     size_t index = p.first;
-    m_polyhedra[index]->occurrenceChanged();
+    m_polyhedra[index]->finalizeOccurrenceChange();
   }
 }
 
@@ -549,4 +569,22 @@ VizPolyhedron *VizCoordinateSystem::polyhedron(const std::vector<int> &beta) con
     }
   }
   return result;
+}
+
+VizPolyhedron *VizCoordinateSystem::shadow(VizPolyhedron *original) const {
+  auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), original);
+  if (it == std::end(m_polyhedra))
+    return nullptr;
+  int index = std::distance(std::begin(m_polyhedra), it);
+  if (m_polyhedronShadows.count(index) != 0) {
+    return m_polyhedronShadows.at(index);
+  }
+  return nullptr;
+}
+
+VizPolyhedron *VizCoordinateSystem::animationTarget(VizPolyhedron *original) const {
+  if (m_polyhedronAnimationTargets.count(original) != 0) {
+    return m_polyhedronAnimationTargets.at(original);
+  }
+  return nullptr;
 }

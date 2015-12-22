@@ -136,6 +136,8 @@ public:
   }
 
   VizPolyhedron *polyhedron(const std::vector<int> &beta) const;
+  VizPolyhedron *shadow(VizPolyhedron *original) const;
+  VizPolyhedron *animationTarget(VizPolyhedron *original) const;
 
   std::vector<int> betaPrefix() const;
 
@@ -156,7 +158,9 @@ public:
   void resetPolyhedronPos(VizPolyhedron *polyhedron);
 
   void createPolyhedronShadow(VizPolyhedron *polyhedron);
+  void createPolyhedronAnimationTarget(VizPolyhedron *polyhedron);
   void clearPolyhedronShadows();
+  void clearPolyhedronAnimationTargets();
 
   void insertPolyhedronAfter(VizPolyhedron *inserted, VizPolyhedron *after);
   void removePolyhedron(VizPolyhedron *polyhedron);
@@ -171,6 +175,7 @@ public slots:
 private:
   std::vector<VizPolyhedron *> m_polyhedra;
   std::unordered_map<size_t, VizPolyhedron *> m_polyhedronShadows;
+  std::unordered_map<VizPolyhedron *, VizPolyhedron *> m_polyhedronAnimationTargets;
   ClintProgram *m_program;
   VizProjection *m_projection;
   std::unordered_set<VizDepArrow *> m_depArrows;

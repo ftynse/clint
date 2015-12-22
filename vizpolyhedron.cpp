@@ -30,8 +30,7 @@ VizPolyhedron::VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSyste
   setAcceptHoverEvents(true);
 
   m_shapeAnimation = new VizPolyhedronShapeAnimation(this);
-  connect(m_shapeAnimation, &VizPolyhedronShapeAnimation::finished, this, &VizPolyhedron::updateHandlePositions);
-  connect(m_shapeAnimation, &VizPolyhedronShapeAnimation::stateChanged, this, &VizPolyhedron::updateHandlePositions);
+  connect(m_shapeAnimation, &VizPolyhedronShapeAnimation::finished, this, &VizPolyhedron::updateHandlePositionsOnFinished);
 
   setOccurrenceImmediate(occurrence);
 }
@@ -40,8 +39,10 @@ VizPolyhedron::~VizPolyhedron() {
   disconnectAll();
 }
 
-VizPolyhedron *VizPolyhedron::createShadow() {
-  return new VizPolyhedron(m_occurrence, m_coordinateSystem, CreateShadowTag());
+VizPolyhedron *VizPolyhedron::createShadow(bool visible) {
+  VizPolyhedron *shadow = new VizPolyhedron(m_occurrence, m_coordinateSystem, CreateShadowTag());
+  shadow->setVisible(visible);
+  return shadow;
 }
 
 void VizPolyhedron::updateHandlePositions() {
@@ -58,6 +59,13 @@ void VizPolyhedron::updateHandlePositions() {
     for (VizHandle *vh : m_handles) {
       vh->recomputePos();
     }
+  }
+}
+
+void VizPolyhedron::updateHandlePositionsOnFinished() {
+  if (!m_disableHandleUpdatesInAnimation) {
+    m_disableHandleUpdatesInAnimation = true;
+    updateHandlePositions();
   }
 }
 
@@ -137,6 +145,19 @@ void VizPolyhedron::reprojectPoints() {
   m_pointOthers = extraPoints;
 }
 
+void VizPolyhedron::enlargeCoordinateSystem() {
+  VizProjection *projection = coordinateSystem()->projection();
+  int horizontalDim = coordinateSystem()->horizontalDimensionIdx();
+  int verticalDim   = coordinateSystem()->verticalDimensionIdx();
+
+  int horizontalMin = m_occurrence->minimumValue(horizontalDim);
+  int horizontalMax = m_occurrence->maximumValue(horizontalDim);
+  int verticalMin = m_occurrence->minimumValue(verticalDim);
+  int verticalMax = m_occurrence->maximumValue(verticalDim);
+  projection->ensureFitsHorizontally(coordinateSystem(), horizontalMin, horizontalMax);
+  projection->ensureFitsVertically(coordinateSystem(), verticalMin, verticalMax);
+}
+
 void VizPolyhedron::setupAnimation() {
   if (m_transitionAnimation && m_transitionAnimation->state() == QAbstractAnimation::Running) {
     CLINT_DEBUG(true, "Running a second animation before the previous one stopped");
@@ -175,11 +196,17 @@ void VizPolyhedron::setupAnimation() {
   m_shapeAnimation->setDuration(1000);
   group->addAnimation(m_shapeAnimation);
 
+  group->start();
+  group->pause();
+
   m_transitionAnimation = group;
 }
 
 void VizPolyhedron::playAnimation() {
-  m_transitionAnimation->start();
+  if (m_transitionAnimation->state() == QAbstractAnimation::Paused)
+    m_transitionAnimation->resume();
+  else
+    m_transitionAnimation->start();
 }
 
 void VizPolyhedron::setAnimationProgress(double progress) {
@@ -194,6 +221,8 @@ void VizPolyhedron::stopAnimation() {
 void VizPolyhedron::clearAnimation() {
   if (m_transitionAnimation) {
     stopAnimation();
+    if (m_shapeAnimation)
+      m_shapeAnimation->setParent(nullptr);
     delete m_transitionAnimation;
     m_transitionAnimation = nullptr;
   }
@@ -235,17 +264,35 @@ void VizPolyhedron::recreateTileLines() {
   }
 }
 
-void VizPolyhedron::occurrenceTentativelyChanged() {
-  CLINT_ASSERT(m_occurrence, "empty occurrence changed");
+void VizPolyhedron::skipNextUpdate() {
+  m_skipNextUpdate = true;
+}
 
-  coordinateSystem()->createPolyhedronShadow(this);
+void VizPolyhedron::finalizeOccurrenceChange() {
+  m_disableHandleUpdatesInAnimation = false;
+  playAnimation();
+
+  m_coordinateSystem->projection()->ensureFitsHorizontally(
+        m_coordinateSystem, localHorizontalMin(), localHorizontalMax());
+  m_coordinateSystem->projection()->ensureFitsVertically(
+        m_coordinateSystem, localVerticalMin(), localVerticalMax());
+
+  recreateTileLines();
+
+  coordinateSystem()->polyhedronUpdated(this);
+  updateHandlePositions();
 }
 
 void VizPolyhedron::occurrenceChanged() {
   CLINT_ASSERT(m_occurrence, "empty occurrence changed");
 
-  coordinateSystem()->clearPolyhedronShadows();
   reprojectPoints();
+  if (m_skipNextUpdate) {
+    m_skipNextUpdate = false;
+    return;
+  }
+
+  m_disableHandleUpdatesInAnimation = false;
   setupAnimation();
   playAnimation();
   m_coordinateSystem->projection()->ensureFitsHorizontally(
@@ -1006,112 +1053,6 @@ void VizPolyhedron::prepareExtendDown(double extra) {
   prepareGeometryChange();
 }
 
-void VizPolyhedron::prepareSkewVerticalRight(double offset) {
-  VizProperties *props = m_coordinateSystem->projection()->vizProperties();
-  const double pointDistance = props->pointDistance();
-
-  // Update point positions.
-  for (auto p : m_pts) {
-    VizPoint *vp = p.second;
-    int xCoord, yCoord;
-    std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
-//    double ratioCoord = static_cast<double>(yCoord - m_localVerticalMin + xCoord - m_localHorizontalMin) /
-//        static_cast<double>(m_localVerticalMax - m_localVerticalMin + m_localHorizontalMax - m_localHorizontalMin);
-    double ratioCoord = static_cast<double>(xCoord - m_localHorizontalMin) /
-        static_cast<double>(m_localHorizontalMax - m_localHorizontalMin);
-    double ratio = ratioCoord * (offset / pointDistance);
-    vp->setPos(mapToCoordinates(xCoord, yCoord + ratio));
-  }
-
-  const double xMax = (m_localHorizontalMax - m_localHorizontalMin) * pointDistance;
-  for (int i = 0, e = m_originalPolyhedronShape.elementCount(); i < e; i++) {
-    double x = m_originalPolyhedronShape.elementAt(i).x;
-    double y = m_originalPolyhedronShape.elementAt(i).y;
-    double ratio = x / xMax;
-    y -= offset * ratio;
-    m_polyhedronShape.setElementPositionAt(i, x, y);
-  }
-  prepareGeometryChange();
-}
-
-void VizPolyhedron::prepareSkewVerticalLeft(double offset) {
-  VizProperties *props = m_coordinateSystem->projection()->vizProperties();
-  const double pointDistance = props->pointDistance();
-
-  // Update point positions.
-  for (auto p : m_pts) {
-    VizPoint *vp = p.second;
-    int xCoord, yCoord;
-    std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
-    double ratioCoord = static_cast<double>(m_localHorizontalMax - xCoord) /
-        static_cast<double>(m_localHorizontalMax - m_localHorizontalMin);
-    double ratio = ratioCoord * (offset / pointDistance);
-    vp->setPos(mapToCoordinates(xCoord, yCoord + ratio));
-  }
-
-  const double xMax = (m_localHorizontalMax - m_localHorizontalMin) * pointDistance;
-  for (int i = 0, e = m_originalPolyhedronShape.elementCount(); i < e; i++) {
-    double x = m_originalPolyhedronShape.elementAt(i).x;
-    double y = m_originalPolyhedronShape.elementAt(i).y;
-    double ratio = 1 - x / xMax;
-    y -= offset * ratio;
-    m_polyhedronShape.setElementPositionAt(i, x, y);
-  }
-  prepareGeometryChange();
-}
-
-void VizPolyhedron::prepareSkewHorizontalTop(double offset) {
-  VizProperties *props = m_coordinateSystem->projection()->vizProperties();
-  const double pointDistance = props->pointDistance();
-
-  // Update point positions.
-  for (auto p : m_pts) {
-    VizPoint *vp = p.second;
-    int xCoord, yCoord;
-    std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
-    double ratioCoord = static_cast<double>(yCoord - m_localVerticalMin) /
-        static_cast<double>(m_localVerticalMax - m_localVerticalMin);
-    double ratio = ratioCoord * (offset / pointDistance);
-    vp->setPos(mapToCoordinates(xCoord + ratio, yCoord));
-  }
-
-//  const double yMax = (m_localVerticalMax - m_localVerticalMin) * pointDistance;
-//  for (int i = 0, e = m_originalPolyhedronShape.elementCount(); i < e; i++) {
-//    double x = m_originalPolyhedronShape.elementAt(i).x;
-//    double y = m_originalPolyhedronShape.elementAt(i).y;
-//    double ratio = y / yMax;
-//    x -= offset * ratio;
-//    m_polyhedronShape.setElementPositionAt(i, x, y);
-//  }
-  prepareGeometryChange();
-}
-
-void VizPolyhedron::prepareSkewHorizontalBottom(double offset) {
-  VizProperties *props = m_coordinateSystem->projection()->vizProperties();
-  const double pointDistance = props->pointDistance();
-
-  // Update point positions.
-  for (auto p : m_pts) {
-    VizPoint *vp = p.second;
-    int xCoord, yCoord;
-    std::tie(xCoord, yCoord) = vp->scatteredCoordinates();
-    double ratioCoord = static_cast<double>(m_localVerticalMax - yCoord) /
-        static_cast<double>(m_localVerticalMax - m_localVerticalMin);
-    double ratio = ratioCoord * (offset / pointDistance);
-    vp->setPos(mapToCoordinates(xCoord + ratio, yCoord));
-  }
-
-  const double yMax = (m_localVerticalMax - m_localVerticalMin) * pointDistance;
-  for (int i = 0, e = m_originalPolyhedronShape.elementCount(); i < e; i++) {
-    double x = m_originalPolyhedronShape.elementAt(i).x;
-    double y = m_originalPolyhedronShape.elementAt(i).y;
-    double ratio = 1 + y / yMax;
-    x += offset * ratio;
-    m_polyhedronShape.setElementPositionAt(i, x, y);
-  }
-  prepareGeometryChange();
-}
-
 void VizPolyhedron::prepareRotateAngle(double angle) {
   prepareGeometryChange();
   QTransform transform;
@@ -1240,7 +1181,7 @@ void VizPolyhedron::handleHasMoved(const VizHandle *const handle, QPointF displa
 
 void VizPolyhedron::disconnectAll() {
   if (m_occurrence) {
-    disconnect(m_occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceTentativelyChanged);
+    disconnect(m_occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
     disconnect(m_occurrence, &ClintStmtOccurrence::destroyed, this, &VizPolyhedron::occurrenceDeleted);
   }
 
@@ -1256,7 +1197,7 @@ void VizPolyhedron::setOccurrenceImmediate(ClintStmtOccurrence *occurrence) {
   m_occurrence = occurrence;
   if (occurrence) {
     m_backgroundColor = m_coordinateSystem->projection()->vizProperties()->color(occurrence->canonicalOriginalBetaVector());
-    connect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceTentativelyChanged);
+    connect(occurrence, &ClintStmtOccurrence::pointsChanged, this, &VizPolyhedron::occurrenceChanged);
     connect(occurrence, &ClintStmtOccurrence::destroyed, this, &VizPolyhedron::occurrenceDeleted);
 
     reprojectPoints();
@@ -1285,4 +1226,13 @@ void VizPolyhedron::debugPrintPoints() {
     std::cerr << ") -> (" << scattered.first << ", " << scattered.second << ")" << std::endl;
   }
 #endif
+}
+
+VizHandle *VizPolyhedron::handle(VizHandle::Kind kind) const {
+  for (VizHandle *h : m_handles) {
+    if (h->kind() == kind) {
+      return h;
+    }
+  }
+  return nullptr;
 }

@@ -6,6 +6,8 @@
 
 #include <boost/optional.hpp>
 
+#include "vizhandle.h"
+
 class VizPolyhedron;
 class VizPoint;
 class VizCoordinateSystem;
@@ -79,8 +81,9 @@ private:
   VizPolyhedron *m_polyhedron = nullptr;
   VizPoint *m_point = nullptr;
   VizCoordinateSystem *m_coordinateSystem = nullptr;
-  boost::optional<TransformationGroup> m_currentGroup;
-  bool m_currentGroupFailed = false;
+  TransformationGroup m_currentShadowGroup, m_currentAnimationGroup;
+  boost::optional<std::pair<TransformationGroup, TransformationGroup>> m_replacedShadowGroup = boost::none;
+  boost::optional<std::pair<TransformationGroup, TransformationGroup>> m_replacedAnimationGroup = boost::none;
 
   int m_initCSHorizontalMin, m_initCSVerticalMin;
 
@@ -93,6 +96,7 @@ private:
   bool m_skewing = false;
   bool m_resizing = false;
   int m_creatingDimension = 0;
+  QPointF m_clickPosition, m_startPosition;
 
   enum {
     PT_NODETACH,
@@ -116,7 +120,11 @@ private:
   }
 
   void remapBetas(TransformationGroup group, ClintScop *scop);
-  TransformationGroup computeReshapeTransformationGroup();
+  TransformationGroup computeReshapeTransformationGroup(bool immediate = false);
+  VizHandle::Kind cornerToHandleKind();
+  bool transformReshapeUntilValid(TransformationGroup &group,
+                                  boost::optional<std::pair<TransformationGroup, TransformationGroup>> &replacedGroup);
+  int absCeilDiv(int numerator, int denominator);
 };
 
 #endif // VIZMANIPULATIONMANAGER_H
