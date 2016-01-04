@@ -7,6 +7,7 @@
 #include <QtDebug>
 
 constexpr int VizHandle::updates[VizHandle::NB_KINDS][VizHandle::NB_KINDS];
+constexpr VizHandle::Kind VizHandle::Corners[4];
 
 VizHandle::VizHandle(QGraphicsItem *item, Kind kind) :
   QGraphicsRectItem(item), m_kind(kind) {

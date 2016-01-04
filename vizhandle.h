@@ -20,6 +20,8 @@ public:
     NB_KINDS
   };
 
+  constexpr static Kind Corners[] { TOPLEFT, TOPRIGHT, BOTTOMLEFT, BOTTOMRIGHT };
+
   VizHandle(QGraphicsItem *item, Kind kind);
 
   Kind kind() const {

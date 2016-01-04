@@ -68,6 +68,13 @@ public:
     return m_localVerticalMax;
   }
 
+  VizPolyhedron *animationTarget() {
+    if (!m_coordinateSystem)
+      return nullptr;
+
+    return m_coordinateSystem->animationTarget(this);
+  }
+
   void recomputeMinMax();
 
   void setInternalDependences(std::vector<std::vector<int>> &&dependences);
@@ -138,6 +145,7 @@ public:
   }
 
   VizHandle *handle(VizHandle::Kind kind) const;
+  VizHandle::Kind maxDisplacementHandleKind();
 
   void prepareExtendRight(double extra);
   void prepareExtendLeft(double extra);

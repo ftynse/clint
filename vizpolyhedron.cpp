@@ -1236,3 +1236,21 @@ VizHandle *VizPolyhedron::handle(VizHandle::Kind kind) const {
   }
   return nullptr;
 }
+
+VizHandle::Kind VizPolyhedron::maxDisplacementHandleKind() {
+  const VizPolyhedron *animTarget = coordinateSystem()->animationTarget(this);
+  CLINT_ASSERT(animTarget != nullptr, "Trying to find maxDisplacementHandle with no animation set up");
+
+  double maximumDistance = -1;
+  VizHandle::Kind h;
+  for (VizHandle::Kind k : VizHandle::Corners) {
+    VizHandle *targetHandle = animTarget->handle(k);
+    VizHandle *currentHandle = handle(k);
+    double distance = QLineF(targetHandle->center(), currentHandle->center()).length();
+    if (distance > maximumDistance) {
+      maximumDistance = distance;
+      h = k;
+    }
+  }
+  return h;
+}
