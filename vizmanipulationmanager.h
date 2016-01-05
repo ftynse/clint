@@ -86,11 +86,10 @@ private:
   boost::optional<std::pair<TransformationGroup, TransformationGroup>> m_replacedShadowGroup = boost::none;
   boost::optional<std::pair<TransformationGroup, TransformationGroup>> m_replacedAnimationGroup = boost::none;
 
-  int m_initCSHorizontalMin, m_initCSVerticalMin;
+  QPointF m_previousDisplacement;
 
   int m_horzOffset, m_vertOffset;
   bool m_detached;
-  bool m_firstMovement = false;
   Dir m_direction;
   int m_corner;
   double m_rotationAngle;

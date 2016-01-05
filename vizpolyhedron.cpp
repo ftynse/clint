@@ -88,7 +88,7 @@ void VizPolyhedron::resetPointPositions() {
     std::tie(x, y) = vp->scatteredCoordinates();
     if (x == VizPoint::NO_COORD) x = 0;
     if (y == VizPoint::NO_COORD) y = 0;
-    setPointVisiblePos(vp, x - m_localHorizontalMin, y - m_localVerticalMin);
+    setPointVisiblePos(vp, x, y);
   }
 }
 
@@ -168,11 +168,11 @@ void VizPolyhedron::setupAnimation() {
   const double pointDistance =
       m_coordinateSystem->projection()->vizProperties()->pointDistance();
 
-  int oldLocalHorizontalMin = m_localHorizontalMin;
-  int oldLocalVerticalMin = m_localVerticalMin;
-  recomputeMinMax();
-  double horizontalOffset = (m_localHorizontalMin - oldLocalHorizontalMin) * pointDistance;
-  double verticalOffset = (m_localVerticalMin - oldLocalVerticalMin) * pointDistance;
+//  int oldLocalHorizontalMin = m_localHorizontalMin;
+//  int oldLocalVerticalMin = m_localVerticalMin;
+  recomputeMinMax(); // FIXME: is this necessary now?
+//  double horizontalOffset = (m_localHorizontalMin - oldLocalHorizontalMin) * pointDistance;
+//  double verticalOffset = (m_localVerticalMin - oldLocalVerticalMin) * pointDistance;
 
   QParallelAnimationGroup *group = new QParallelAnimationGroup();
   for (auto p : m_pts) {
@@ -182,11 +182,11 @@ void VizPolyhedron::setupAnimation() {
     std::tie(x, y) = vp->scatteredCoordinates();
     if (x == VizPoint::NO_COORD) x = 0;
     if (y == VizPoint::NO_COORD) y = 0;
-    x -= m_localHorizontalMin;
-    y -= m_localVerticalMin;
+//    x -= m_localHorizontalMin;
+//    y -= m_localVerticalMin;
     QPointF targetPos = QPointF(x * pointDistance, -y * pointDistance);
     QPointF currentPos = vp->pos();
-    currentPos += QPointF(horizontalOffset, verticalOffset);
+//    currentPos += QPointF(horizontalOffset, verticalOffset);
     animation->setDuration(1000);
     animation->setStartValue(currentPos);
     animation->setEndValue(targetPos);
@@ -244,9 +244,9 @@ void VizPolyhedron::recreateTileLines() {
     CLINT_ASSERT(tileSize != 0,
                  "Dimension appears to be tiled, but the tile size is zero");
     for (int h = (m_localHorizontalMin / tileSize + 1) * tileSize; h <= m_localHorizontalMax; h += tileSize) {
-      m_tileLines.emplace_back((h - 0.5 - m_localHorizontalMin) * props->pointDistance(),
+      m_tileLines.emplace_back((h - 0.5) * props->pointDistance(),
                                -(-0.5) * props->pointDistance(),
-                               (h - 0.5 - m_localHorizontalMin) * props->pointDistance(),
+                               (h - 0.5) * props->pointDistance(),
                                -(m_localVerticalMax - m_localVerticalMin + 0.5) * props->pointDistance());
     }
   }
@@ -257,9 +257,9 @@ void VizPolyhedron::recreateTileLines() {
                  "Dimension appears to be tiled, but the tile size is zero");
     for (int v = (m_localVerticalMin / tileSize + 1) * tileSize; v <= m_localVerticalMax; v += tileSize) {
       m_tileLines.emplace_back((-0.5) * props->pointDistance(),
-                               -(v - 0.5 - m_localVerticalMin) * props->pointDistance(),
+                               -(v - 0.5) * props->pointDistance(),
                                (m_localHorizontalMax - m_localHorizontalMin + 0.5) * props->pointDistance(),
-                               -(v - 0.5 - m_localVerticalMin) * props->pointDistance());
+                               -(v - 0.5) * props->pointDistance());
     }
   }
 }
@@ -900,8 +900,8 @@ std::pair<int, int> VizPolyhedron::pointScatteredCoordsReal(const VizPoint *vp) 
 QPointF VizPolyhedron::mapToCoordinates(double x, double y) const {
   const double pointDistance =
     m_coordinateSystem->projection()->vizProperties()->pointDistance();
-  return QPointF((x - m_localHorizontalMin) * pointDistance,
-                 -(y - m_localVerticalMin) * pointDistance);
+  return QPointF(x * pointDistance,
+                 -y * pointDistance);
 }
 
 void VizPolyhedron::reparentPoint(VizPoint *point) {

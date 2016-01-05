@@ -89,10 +89,6 @@ public:
     setPos(vcs->mapFromScene(scenePosition));
   }
 
-  void setOverrideSetPos(bool value = true) {
-    m_overrideSetPos = value;
-  }
-
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
   QRectF boundingRect() const;
   QPainterPath shape() const;
@@ -113,11 +109,7 @@ public:
   }
 
   void setPos(const QPointF &position) {
-    if (m_overrideSetPos) {
-      m_pressPos = position;
-    } else {
-      QGraphicsObject::setPos(position);
-    }
+    QGraphicsObject::setPos(position);
   }
   void setPos(qreal x, qreal y) {
     setPos(QPointF(x, y));
@@ -216,7 +208,6 @@ private:
 
   bool m_wasPressed = false;
   bool m_wasShiftPressed = false;
-  bool m_overrideSetPos = false;
   QPointF m_pressPos;
 
   QPointF m_rotationCenter;

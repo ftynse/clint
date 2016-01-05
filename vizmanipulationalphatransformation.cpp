@@ -14,6 +14,14 @@ static int absCeilDiv(double numerator, int denominator) {
 VizManipulationAlphaTransformation::~VizManipulationAlphaTransformation() {
 }
 
+void VizManipulationAlphaTransformation::setDisplacement(QPointF displacement) {
+  m_displacement = displacement;
+}
+
+QPointF VizManipulationAlphaTransformation::displacement() const {
+  return m_displacement;
+}
+
 VizManipulationSkewing::VizManipulationSkewing(VizPolyhedron *polyhedron, int corner) :
   m_polyhedron(polyhedron), m_corner(corner) {
 
@@ -169,4 +177,81 @@ double VizManipulationSkewing::animationRatio() {
   QLineF currentLine(m_startPosition, m_startPosition + offset);
 
   return totalLine.length() == 0 ? 0 : currentLine.length() / totalLine.length();
+}
+
+/*==========================================================================*/
+
+VizManipulationShifting::VizManipulationShifting(VizPolyhedron *polyhedron) :
+  m_polyhedron(polyhedron) {
+}
+
+void VizManipulationShifting::postAnimationCreate() {
+}
+
+void VizManipulationShifting::postShadowCreate() {
+}
+
+void VizManipulationShifting::correctUntilValid(TransformationGroup &group,
+                                                boost::optional<std::pair<TransformationGroup, TransformationGroup>> &replacedGroup) {
+  replacedGroup = boost::none;
+  try {
+    m_polyhedron->skipNextUpdate();
+    m_polyhedron->occurrence()->scop()->transform(group);
+    m_polyhedron->occurrence()->scop()->executeTransformationSequence();
+    return;
+  } catch (std::logic_error) {
+    CLINT_UNREACHABLE;  // If happens, make this catch remove all shift transformations from the group.
+  }
+}
+
+TransformationGroup VizManipulationShifting::computeShadowAnimationInternal(bool isAnimation) {
+  int horzOffset, vertOffset;
+  double pointDistance = m_polyhedron->coordinateSystem()->projection()->vizProperties()->pointDistance();
+  if (isAnimation) {
+    horzOffset = absCeilDiv(m_displacement.x(), pointDistance);
+    vertOffset = absCeilDiv(-m_displacement.y(), pointDistance);
+  } else {
+    horzOffset = round(m_displacement.x() / pointDistance);
+    vertOffset = round(-m_displacement.y() / pointDistance);
+  }
+
+  TransformationGroup group;
+  if (horzOffset == 0 && vertOffset == 0) {
+    return group;
+  }
+
+  const std::unordered_set<VizPolyhedron *> &selectedPolyhedra =
+      m_polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
+
+  for (VizPolyhedron *vp : selectedPolyhedra) {
+    const std::vector<int> &beta = vp->occurrence()->betaVector();
+    size_t horzDepth = vp->coordinateSystem()->horizontalDimensionIdx() == VizProperties::NO_DIMENSION ?
+          VizProperties::NO_DIMENSION :
+          vp->occurrence()->depth(vp->coordinateSystem()->horizontalDimensionIdx());
+    size_t vertDepth = vp->coordinateSystem()->verticalDimensionIdx() == VizProperties::NO_DIMENSION ?
+          VizProperties::NO_DIMENSION :
+          vp->occurrence()->depth(vp->coordinateSystem()->verticalDimensionIdx());
+
+    bool oneDimensional = vp->occurrence()->dimensionality() < vp->coordinateSystem()->verticalDimensionIdx();
+    bool zeroDimensional = vp->occurrence()->dimensionality() < vp->coordinateSystem()->horizontalDimensionIdx();
+    if (!zeroDimensional && horzOffset != 0) {
+      Transformation transformation = Transformation::constantShift(beta, horzDepth, -horzOffset);
+      group.transformations.push_back(transformation);
+    }
+    if (!oneDimensional && vertOffset != 0) {
+      Transformation transformation = Transformation::constantShift(beta, vertDepth, -vertOffset);
+      group.transformations.push_back(transformation);
+    }
+  }
+  return group;
+}
+
+std::pair<TransformationGroup, TransformationGroup> VizManipulationShifting::computeShadowAndAnimation() {
+  TransformationGroup shadowGroup = computeShadowAnimationInternal(false);
+  TransformationGroup animationGroup = computeShadowAnimationInternal(true);
+  return std::make_pair(shadowGroup, animationGroup);
+}
+
+double VizManipulationShifting::animationRatio() {
+  return 0;
 }

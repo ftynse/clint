@@ -30,141 +30,32 @@ void VizManipulationManager::polyhedronAboutToMove(VizPolyhedron *polyhedron) {
   m_polyhedron = polyhedron;
   ensureTargetConsistency();
 
-  m_horzOffset = 0;
-  m_vertOffset = 0;
-  m_firstMovement = true;
-
-  int hmax, vmax;
-  polyhedron->coordinateSystem()->minMax(m_initCSHorizontalMin, hmax, m_initCSVerticalMin, vmax);
+  startAlphaTransformation();
+  m_alphaTransformation = new VizManipulationShifting(polyhedron);
+  m_previousDisplacement = QPointF(0, 0);
 }
 
 void VizManipulationManager::polyhedronMoving(VizPolyhedron *polyhedron, QPointF displacement) {
   CLINT_ASSERT(polyhedron == m_polyhedron, "Another polyhedron is being manipulated");
 
-  if (m_firstMovement) {
-    m_firstMovement = false;
-    const std::unordered_set<VizPolyhedron *> &selectedPolyhedra =
-        polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
-    for (VizPolyhedron *vp : selectedPolyhedra) {
-      vp->setOverrideSetPos(true);
-    }
+  // Hold polyhedron position, move points instead, the shape will follow.
+  polyhedron->coordinateSystem()->resetPolyhedronPos(polyhedron);
+  QPointF offset = displacement - m_previousDisplacement;
+  for (VizPoint *vp : polyhedron->points()) {
+    QPointF position = vp->pos();
+    position += offset;
+    vp->setPos(position);
   }
 
-  VizCoordinateSystem *cs = polyhedron->coordinateSystem();
-  const VizProperties *properties = cs->projection()->vizProperties();
-  double absoluteDistanceX = displacement.x() / properties->pointDistance();
-  double absoluteDistanceY = -displacement.y() / properties->pointDistance(); // Inverted vertical axis
-  int horzOffset = static_cast<int>(round(absoluteDistanceX));
-  int vertOffset = static_cast<int>(round(absoluteDistanceY));
-  if (horzOffset != m_horzOffset || vertOffset != m_vertOffset) {
-    // Get selected objects.  (Should be in the same coordinate system.)
-    const std::unordered_set<VizPolyhedron *> &selectedPolyhedra =
-        cs->projection()->selectionManager()->selectedPolyhedra();
-    CLINT_ASSERT(std::find(std::begin(selectedPolyhedra), std::end(selectedPolyhedra), polyhedron) != std::end(selectedPolyhedra),
-                 "The active polyhedra is not selected");
-    int phHmin = INT_MAX, phHmax = INT_MIN, phVmin = INT_MAX, phVmax = INT_MIN;
-    for (VizPolyhedron *ph : selectedPolyhedra) {
-      phHmin = std::min(phHmin, ph->localHorizontalMin());
-      phHmax = std::max(phHmax, ph->localHorizontalMax());
-      phVmin = std::min(phVmin, ph->localVerticalMin());
-      phVmax = std::max(phVmax, ph->localVerticalMax());
-    }
+  alphaTransformationProcess(displacement);
+  m_previousDisplacement = displacement;
 
-    if (horzOffset != m_horzOffset) {
-      int hmin = phHmin + horzOffset;
-      int hmax = phHmax + horzOffset;
-      cs->projection()->ensureFitsHorizontally(cs, hmin, hmax);
-      emit intentionMoveHorizontally(horzOffset - m_horzOffset);
-      m_horzOffset = horzOffset;
-    }
-
-    if (vertOffset != m_vertOffset) {
-      int vmin = phVmin + vertOffset;
-      int vmax = phVmax + vertOffset;
-      cs->projection()->ensureFitsVertically(cs, vmin, vmax);
-      emit intentionMoveVertically(vertOffset - m_vertOffset);
-      m_vertOffset = vertOffset;
-    }
-  }
 }
 
 void VizManipulationManager::polyhedronHasMoved(VizPolyhedron *polyhedron) {
   CLINT_ASSERT(m_polyhedron == polyhedron, "Signaled end of polyhedron movement that was never initiated");
-  m_polyhedron = nullptr;
-  m_firstMovement = false;
-  TransformationGroup group;
-  const std::unordered_set<VizPolyhedron *> &selectedPolyhedra =
-      polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
-  for (VizPolyhedron *vp : selectedPolyhedra) {
-    vp->setOverrideSetPos(false);
-  }
-  if (m_horzOffset != 0 || m_vertOffset != 0) {
-    // TODO: move this code to transformation manager
-    // we need transformation manager to keep three different views in sync
-    CLINT_ASSERT(std::find(std::begin(selectedPolyhedra), std::end(selectedPolyhedra), polyhedron) != std::end(selectedPolyhedra),
-                 "The active polyhedra is not selected");
 
-    for (VizPolyhedron *vp : selectedPolyhedra) {
-      const std::vector<int> beta = vp->occurrence()->betaVector();
-      size_t horzDepth = vp->coordinateSystem()->horizontalDimensionIdx() == VizProperties::NO_DIMENSION ?
-            VizProperties::NO_DIMENSION :
-            vp->occurrence()->depth(vp->coordinateSystem()->horizontalDimensionIdx());
-      int horzAmount = m_horzOffset;
-      size_t vertDepth = vp->coordinateSystem()->verticalDimensionIdx() == VizProperties::NO_DIMENSION ?
-            VizProperties::NO_DIMENSION :
-            vp->occurrence()->depth(vp->coordinateSystem()->verticalDimensionIdx());
-      int vertAmount = m_vertOffset;
-      bool oneDimensional = vp->occurrence()->dimensionality() < vp->coordinateSystem()->verticalDimensionIdx();
-      bool zeroDimensional = vp->occurrence()->dimensionality() < vp->coordinateSystem()->horizontalDimensionIdx();
-      if (!zeroDimensional && m_horzOffset != 0) {
-        Transformation transformation = Transformation::constantShift(beta, horzDepth, -horzAmount);
-        group.transformations.push_back(transformation);
-      }
-      if (!oneDimensional && m_vertOffset != 0) {
-        Transformation transformation = Transformation::constantShift(beta, vertDepth, -vertAmount);
-        group.transformations.push_back(transformation);
-      }
-
-      int hmin, hmax, vmin, vmax;
-      vp->coordinateSystem()->minMax(hmin, hmax, vmin, vmax);
-      // If the coordinate system was extended in the negative direction (minimum decreased)
-      // during this transformation AND the polyhedron is positioned at the lower extrema of
-      // the coordiante system, update its position.  Fixes the problem with big extensions of
-      // the CS if a polyhedron ends up outside coordinate system.
-      const bool fixHorizontal = hmin < m_initCSHorizontalMin &&
-                                 hmin >= (vp->localHorizontalMin() + m_horzOffset);
-      const bool fixVertical   = vmin < m_initCSVerticalMin &&
-                                 vmin >= (vp->localVerticalMin() + m_vertOffset);
-      if (fixHorizontal && fixVertical) {
-        vp->coordinateSystem()->setPolyhedronCoordinates(vp, hmin, vmin);
-      } else if (fixHorizontal) {
-        vp->coordinateSystem()->setPolyhedronCoordinates(vp, hmin, INT_MAX, false, true);
-      } else if (fixVertical) {
-        vp->coordinateSystem()->setPolyhedronCoordinates(vp, INT_MAX, vmin, true, false);
-      }
-      if (zeroDimensional) {
-        vp->coordinateSystem()->setPolyhedronCoordinates(vp, vp->localHorizontalMin(), vp->localVerticalMin());
-      } else if (oneDimensional) {
-        vp->coordinateSystem()->setPolyhedronCoordinates(vp, INT_MAX, vp->localVerticalMin(), true, false);
-      }
-      CLINT_ASSERT(vp->scop() == polyhedron->scop(), "All statement occurrences in the transformation group must be in the same scop");
-    }
-
-    if (m_horzOffset != 0)
-      emit movedHorizontally(m_horzOffset);
-    if (m_vertOffset != 0)
-      emit movedVertically(m_vertOffset);
-  } else {
-    for (VizPolyhedron *vp : selectedPolyhedra) {
-      vp->coordinateSystem()->polyhedronUpdated(vp);
-    }
-  }
-
-  if (!group.transformations.empty()) {
-    polyhedron->scop()->transform(group);
-    polyhedron->scop()->executeTransformationSequence();
-    polyhedron->coordinateSystem()->projection()->updateInnerDependences();
-  }
+  finalizeAlphaTransformation();
 }
 
 

@@ -12,11 +12,15 @@ public:
   virtual void correctUntilValid(TransformationGroup &group,
                                  boost::optional<std::pair<TransformationGroup, TransformationGroup>> &replacedGroup) = 0;
   virtual std::pair<TransformationGroup, TransformationGroup> computeShadowAndAnimation() = 0;
-  virtual void setDisplacement(QPointF displacement) = 0;
-  virtual QPointF displacement() const = 0;
   virtual double animationRatio() = 0;
 
+  virtual void setDisplacement(QPointF displacement) ;
+  virtual QPointF displacement() const;
+
   virtual ~VizManipulationAlphaTransformation();
+
+protected:
+  QPointF m_displacement;
 };
 
 class VizManipulationSkewing : public VizManipulationAlphaTransformation {
@@ -28,14 +32,6 @@ public:
   virtual void correctUntilValid(TransformationGroup &group,
                                  boost::optional<std::pair<TransformationGroup, TransformationGroup>> &replacedGroup) override;
   virtual std::pair<TransformationGroup, TransformationGroup> computeShadowAndAnimation() override;
-
-  virtual void setDisplacement(QPointF displacement) override {
-    m_displacement = displacement;
-  }
-
-  virtual QPointF displacement() const override {
-    return m_displacement;
-  }
 
   virtual double animationRatio() override;
 
@@ -53,9 +49,25 @@ public:
 private:
   VizPolyhedron *m_polyhedron;
   int m_corner;
-  QPointF m_displacement, m_previousDisplacement, m_displacementAtStart;
+  QPointF m_previousDisplacement, m_displacementAtStart;
 
   QPointF m_startPosition, m_targetPosition;
+
+  TransformationGroup computeShadowAnimationInternal(bool isAnimation);
+};
+
+class VizManipulationShifting : public VizManipulationAlphaTransformation {
+public:
+  explicit VizManipulationShifting(VizPolyhedron *polyhedron);
+  virtual void postAnimationCreate() override;
+  virtual void postShadowCreate() override;
+  virtual void correctUntilValid(TransformationGroup &group,
+                                 boost::optional<std::pair<TransformationGroup, TransformationGroup>> &replacedGroup) override;
+  virtual std::pair<TransformationGroup, TransformationGroup> computeShadowAndAnimation() override;
+  virtual double animationRatio() override;
+
+private:
+  VizPolyhedron *m_polyhedron;
 
   TransformationGroup computeShadowAnimationInternal(bool isAnimation);
 };

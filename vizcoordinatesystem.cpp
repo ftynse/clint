@@ -184,12 +184,9 @@ std::vector<int> VizCoordinateSystem::betaPrefix() const {
 }
 
 void VizCoordinateSystem::updatePolyhedraPositions() {
-  const double pointDistance = m_projection->vizProperties()->pointDistance();
   for (size_t i = 0, iend = m_polyhedra.size(); i < iend; i++) {
     VizPolyhedron *vph = m_polyhedra.at(i);
-    double offset = m_projection->vizProperties()->polyhedronOffset() * i;
-    vph->setPos(offset + (vph->localHorizontalMin() - m_horizontalMin + 1) * pointDistance,
-                -(offset + (vph->localVerticalMin() - m_verticalMin + 1) * pointDistance));
+    setAnyPolyhedronPosition(vph, vph->localHorizontalMin(), vph->localVerticalMin(), i);
     vph->setZValue(m_polyhedra.size() + 1 - i);
   }
 }
@@ -205,15 +202,14 @@ void VizCoordinateSystem::updateAllPositions() {
 void VizCoordinateSystem::setAnyPolyhedronPosition(VizPolyhedron *polyhedron, int horizontal,
                                                    int vertical, ssize_t idx,
                                                    bool ignoreHorizontal, bool ignoreVertical) {
-  const double pointDistance = m_projection->vizProperties()->pointDistance();
   double offset = m_projection->vizProperties()->polyhedronOffset() * idx;
   QPointF position = polyhedron->pos();
   double hpos = ignoreHorizontal ?
         position.x() :
-        offset + (horizontal - m_horizontalMin + 1) * pointDistance;
+        offset;
   double vpos = ignoreVertical ?
         position.y() :
-        -(offset + (vertical - m_verticalMin + 1) * pointDistance);
+        -offset;
   polyhedron->setPos(hpos, vpos);
 }
 
@@ -332,7 +328,7 @@ void VizCoordinateSystem::polyhedronUpdated(VizPolyhedron *polyhedron) {
 
   // update it to fit in the grid
   // TODO: animation
-  polyhedron->setPos(expected);
+//  polyhedron->setPos(expected);
 }
 
 void VizCoordinateSystem::setMinMax(int horizontalMinimum, int horizontalMaximum,
@@ -390,6 +386,11 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
   painter->setFont(m_font);
   painter->setRenderHint(QPainter::Antialiasing);
   painter->setRenderHint(QPainter::TextAntialiasing);
+
+  QTransform transform = QTransform::fromTranslate(
+         (m_horizontalMin - 1) * pointDistance,
+        -(m_verticalMin - 1) * pointDistance);
+  painter->setTransform(transform, true);
 
   if (m_horizontalAxisState == AxisState::Visible ||
       m_horizontalAxisState == AxisState::WillDisappear) {
@@ -498,6 +499,8 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
     painter->drawEllipse(position, 4, 4);
     painter->restore();
   }
+
+  painter->resetTransform();
 }
 
 QRectF VizCoordinateSystem::boundingRect() const {
