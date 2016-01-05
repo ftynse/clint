@@ -1172,95 +1172,7 @@ void VizManipulationManager::polyhedronResizing(QPointF displacement) {
   }
 }
 
-int VizManipulationManager::absCeilDiv(double numerator, int denominator) {
-  double ratio = denominator == 0 ? 0 : numerator / denominator;
-  int sign = ratio < 0 ? -1 : 1;
-  return sign * ceil(fabs(ratio));
-}
-
-TransformationGroup VizManipulationManager::computeReshapeTransformationGroup(
-    double horzOffset, double vertOffset,
-    QPointF displacement, QPointF previousDisplacement, bool immediate) {
-  int horizontalDimIdx = m_polyhedron->coordinateSystem()->horizontalDimensionIdx();
-  int verticalDimIdx   = m_polyhedron->coordinateSystem()->verticalDimensionIdx();
-
-  // Max is inclusive, so we would need +1 here, but we would also need -1 before division to compute the skew factor
-  int horizontalRange = (m_polyhedron->occurrence()->maximumOrigValue(horizontalDimIdx) -
-                         m_polyhedron->occurrence()->minimumOrigValue(horizontalDimIdx));
-  int verticalRange =   (m_polyhedron->occurrence()->maximumOrigValue(verticalDimIdx) -
-                         m_polyhedron->occurrence()->minimumOrigValue(verticalDimIdx));
-
-  int verticalSkewFactor;
-  int horizontalSkewFactor;
-
-  if (immediate) {
-    // Round to a larger absolute value (start transformation as soon as possible).
-    verticalSkewFactor = absCeilDiv(-vertOffset, horizontalRange);
-    horizontalSkewFactor = absCeilDiv(horzOffset, verticalRange);
-
-    QPointF displacementSpeed = displacement - previousDisplacement;
-    if (displacement.x() > 0 && displacementSpeed.x() < 0)
-      horizontalSkewFactor -= 1;
-    else if (displacement.x() < 0 && displacementSpeed.x() > 0)
-      horizontalSkewFactor += 1;
-    else if (displacement.y() < 0 && displacementSpeed.y() > 0)
-      verticalSkewFactor -= 1;
-    else if (displacement.y() > 0 && displacementSpeed.y() < 0)
-      verticalSkewFactor += 1;
-  } else {
-    // Double rounding is deliberate.
-    verticalSkewFactor = horizontalRange == 0 ? 0 : round(round(-vertOffset) / horizontalRange);
-    horizontalSkewFactor = verticalRange == 0 ? 0 : round(round(horzOffset) / verticalRange);
-  }
-
-  if (!(m_corner & C_RIGHT)) verticalSkewFactor = -verticalSkewFactor;
-  if (m_corner & C_BOTTOM) horizontalSkewFactor = -horizontalSkewFactor;
-
-  size_t horizontalDepth = horizontalDimIdx != VizProperties::NO_DIMENSION ?
-        m_polyhedron->occurrence()->depth(horizontalDimIdx) :
-        VizProperties::NO_DIMENSION;
-  size_t verticalDepth   = verticalDimIdx != VizProperties::NO_DIMENSION ?
-        m_polyhedron->occurrence()->depth(verticalDimIdx) :
-        VizProperties::NO_DIMENSION;
-
-  TransformationGroup group;
-  if (verticalSkewFactor != 0 || horizontalSkewFactor != 0) {
-    // vertical
-    if (verticalSkewFactor != 0) {
-      group.transformations.push_back(Transformation::reshape(
-                                        m_polyhedron->occurrence()->betaVector(),
-                                        verticalDepth,
-                                        m_polyhedron->coordinateSystem()->horizontalDimensionIdx() + 1,
-                                        -verticalSkewFactor));
-      // post-shift
-      if (m_corner & C_BOTTOM) {
-        group.transformations.push_back(Transformation::constantShift(
-                                          m_polyhedron->occurrence()->betaVector(),
-                                          verticalDepth,
-                                          verticalSkewFactor * horizontalRange));
-      }
-    }
-    // horizontal
-    if (horizontalSkewFactor != 0) {
-      group.transformations.push_back(Transformation::reshape(
-                                        m_polyhedron->occurrence()->betaVector(),
-                                        horizontalDepth,
-                                        m_polyhedron->coordinateSystem()->verticalDimensionIdx() + 1, // input dim is not subject to tiling
-                                        -horizontalSkewFactor));
-
-      // post-shift
-      if ((!m_corner & C_RIGHT)) {
-        group.transformations.push_back(Transformation::constantShift(
-                                          m_polyhedron->occurrence()->betaVector(),
-                                          horizontalDepth,
-                                          horizontalSkewFactor * verticalRange));
-      }
-    }
-
-  }
-  return group;
-}
-
+#if 0
 VizHandle::Kind VizManipulationManager::cornerToHandleKind() {
   VizHandle::Kind kind;
   if (m_corner == (C_TOP | C_LEFT)) {
@@ -1277,61 +1189,9 @@ VizHandle::Kind VizManipulationManager::cornerToHandleKind() {
 
   return kind;
 }
+#endif
 
-bool VizManipulationManager::transformReshapeUntilValid(
-    TransformationGroup &group,
-    boost::optional<std::pair<TransformationGroup, TransformationGroup>> &replacedGroup) {
-  replacedGroup = boost::none;
-  for (int i = 0; i < 10; i++) {
-    try {
-      m_polyhedron->skipNextUpdate();
-      m_polyhedron->occurrence()->scop()->transform(group);
-      m_polyhedron->occurrence()->scop()->executeTransformationSequence();
-      return i == 0;
-    } catch (std::logic_error) {
-      TransformationGroup original = i == 0 ? group : replacedGroup.value().first;
-      m_polyhedron->occurrence()->scop()->discardLastTransformationGroup();
-      for (size_t j = 0; j < group.transformations.size(); ++j) {
-        const Transformation &transformation = group.transformations[j];
-        if (transformation.kind() != Transformation::Kind::Reshape)
-          continue;
-
-        int sign = 0;
-        if (transformation.secondDepth() - 1 == m_polyhedron->coordinateSystem()->verticalAxisLength()) {
-          sign = m_horzOffset < 0 ? -1 : 1;
-        } else {
-          sign = m_vertOffset < 0 ? -1 : 1;
-        }
-        group.transformations[j] = Transformation::reshape(transformation.target(),
-                  transformation.depth(), transformation.secondDepth(),
-                  transformation.constantAmount() + sign);
-      }
-      replacedGroup = boost::make_optional(std::make_pair(original, group));
-    }
-  }
-  CLINT_UNREACHABLE;
-  return false;
-}
-
-void VizManipulationManager::polyhedronAboutToSkew(VizPolyhedron *polyhedron, int corner) {
-  CLINT_ASSERT(polyhedron != nullptr, "cannot resize null polyhedron");
-  m_polyhedron = polyhedron;
-  m_corner = corner;
-
-  // Do not allow multiple polyhedra skew yet.  This would require creating a graphicsGroup
-  // and adding handles for the group to ensure UI consistency.
-  std::unordered_set<VizPolyhedron *> selectedPolyhedra =
-      polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
-  CLINT_ASSERT(selectedPolyhedra.size() == 0, "No selection allowed when skewing");
-
-  bool oneDimensional = polyhedron->occurrence()->dimensionality() < polyhedron->coordinateSystem()->verticalDimensionIdx();
-  bool zeroDimensional = polyhedron->occurrence()->dimensionality() < polyhedron->coordinateSystem()->horizontalDimensionIdx();
-  if (zeroDimensional || oneDimensional) {
-    polyhedron->resetPointPositions();
-    return;
-  }
-  m_skewing = true;
-
+void VizManipulationManager::startAlphaTransformation() {
   // Invariant: animationGroup is always applied, empty if necessary, but shadowGroup contains
   // the transformation that should be applied once the manipulation is over.
   m_currentShadowGroup = TransformationGroup();
@@ -1341,20 +1201,9 @@ void VizManipulationManager::polyhedronAboutToSkew(VizPolyhedron *polyhedron, in
   m_polyhedron->coordinateSystem()->createPolyhedronAnimationTarget(m_polyhedron);
   m_polyhedron->setupAnimation();
   m_polyhedron->coordinateSystem()->createPolyhedronShadow(m_polyhedron);
-
-  m_startPosition = m_polyhedron->handle(m_polyhedron->maxDisplacementHandleKind())->center();
-  m_targetPosition = m_polyhedron->animationTarget()->handle(m_polyhedron->maxDisplacementHandleKind())->center();
-  m_dispalacementAtStart = QPointF(0, 0);
-  m_previousDisplacement = QPointF(0, 0);
 }
 
-void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
-  CLINT_ASSERT(polyhedron == m_polyhedron, "Wrong polyhedron finished skewing");
-
-  if (!m_skewing)
-    return;
-  m_skewing = false;
-
+void VizManipulationManager::finalizeAlphaTransformation() {
   // Shadow group contains the actual transformation, apply it instead of animation group.
   if (m_currentAnimationGroup != m_currentShadowGroup) {
     m_polyhedron->skipNextUpdate();
@@ -1371,24 +1220,13 @@ void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
   m_currentShadowGroup = TransformationGroup();
   m_currentAnimationGroup = TransformationGroup();
   m_polyhedron = nullptr;
-  m_previousDisplacement = QPointF();
+  delete m_alphaTransformation;
 }
 
-void VizManipulationManager::polyhedronSkewing(QPointF displacement) {
-  if (!m_skewing)
-    return;
-
-  VizProperties *properties = m_polyhedron->coordinateSystem()->projection()->vizProperties();
-  const double pointDistance = properties->pointDistance();
-  double horzOffset = displacement.x() / pointDistance;
-  double vertOffset = displacement.y() / pointDistance;
-
-  m_horzOffset = round(horzOffset);
-  m_vertOffset = round(vertOffset);
-
-  TransformationGroup shadowGroup = computeReshapeTransformationGroup(horzOffset, vertOffset, displacement, m_previousDisplacement);
-  TransformationGroup animationGroup = computeReshapeTransformationGroup(horzOffset, vertOffset, displacement, m_previousDisplacement, true);
-  m_previousDisplacement = displacement;
+void VizManipulationManager::alphaTransformationProcess(QPointF displacement) {
+  TransformationGroup shadowGroup, animationGroup;
+  std::tie(shadowGroup, animationGroup) = m_alphaTransformation->computeShadowAndAnimation();
+  m_alphaTransformation->setDisplacement(displacement);
 
   if (m_replacedShadowGroup && m_replacedShadowGroup.value().first == shadowGroup) {
     shadowGroup = m_replacedShadowGroup.value().second;
@@ -1403,19 +1241,18 @@ void VizManipulationManager::polyhedronSkewing(QPointF displacement) {
     // optimization for the case where two different projections are needed
 
     m_polyhedron->occurrence()->scop()->discardLastTransformationGroup();
-    transformReshapeUntilValid(shadowGroup, m_replacedShadowGroup);
+    m_alphaTransformation->correctUntilValid(shadowGroup, m_replacedShadowGroup);
     m_polyhedron->coordinateSystem()->clearPolyhedronShadows();
     m_polyhedron->coordinateSystem()->createPolyhedronShadow(m_polyhedron);
 
+    m_alphaTransformation->postShadowCreate();
+
     m_polyhedron->occurrence()->scop()->discardLastTransformationGroup();
-    transformReshapeUntilValid(animationGroup, m_replacedAnimationGroup);
+    m_alphaTransformation->correctUntilValid(animationGroup, m_replacedAnimationGroup);
     m_polyhedron->coordinateSystem()->clearPolyhedronAnimationTargets();
     m_polyhedron->coordinateSystem()->createPolyhedronAnimationTarget(m_polyhedron);
 
-    VizPolyhedron *animationTarget = m_polyhedron->coordinateSystem()->animationTarget(m_polyhedron);
-    m_startPosition = m_polyhedron->handle(m_polyhedron->maxDisplacementHandleKind())->center();
-    m_dispalacementAtStart = displacement;
-    m_targetPosition = animationTarget->handle(m_polyhedron->maxDisplacementHandleKind())->center();
+    m_alphaTransformation->postAnimationCreate();
 
     m_polyhedron->clearAnimation();
     m_polyhedron->setupAnimation();
@@ -1427,15 +1264,11 @@ void VizManipulationManager::polyhedronSkewing(QPointF displacement) {
     if (animationGroup != m_currentAnimationGroup) {
       m_polyhedron->occurrence()->scop()->discardLastTransformationGroup();
 
-      transformReshapeUntilValid(animationGroup, m_replacedAnimationGroup);
-
+      m_alphaTransformation->correctUntilValid(animationGroup, m_replacedAnimationGroup);
       m_polyhedron->coordinateSystem()->clearPolyhedronAnimationTargets();
       m_polyhedron->coordinateSystem()->createPolyhedronAnimationTarget(m_polyhedron);
 
-      VizPolyhedron *animationTarget = m_polyhedron->coordinateSystem()->animationTarget(m_polyhedron);
-      m_startPosition = m_polyhedron->handle(m_polyhedron->maxDisplacementHandleKind())->center();
-      m_dispalacementAtStart = displacement;
-      m_targetPosition = animationTarget->handle(m_polyhedron->maxDisplacementHandleKind())->center();
+      m_alphaTransformation->postAnimationCreate();
 
       m_polyhedron->clearAnimation();
       m_polyhedron->setupAnimation();
@@ -1452,7 +1285,7 @@ void VizManipulationManager::polyhedronSkewing(QPointF displacement) {
         // Temporarily reproject to a different set of points in order to create a shadow.
         ClintScop *cscop = m_polyhedron->occurrence()->scop();
         cscop->discardLastTransformationGroup();
-        transformReshapeUntilValid(shadowGroup, m_replacedShadowGroup);
+        m_alphaTransformation->correctUntilValid(shadowGroup, m_replacedShadowGroup);
         m_polyhedron->coordinateSystem()->clearPolyhedronShadows();
         m_polyhedron->coordinateSystem()->createPolyhedronShadow(m_polyhedron);
         cscop->discardLastTransformationGroup();
@@ -1461,16 +1294,54 @@ void VizManipulationManager::polyhedronSkewing(QPointF displacement) {
         cscop->executeTransformationSequence();
       }
 
+      m_alphaTransformation->postShadowCreate();
+
       m_currentShadowGroup = shadowGroup;
     }
   }
 
-  QPointF offset = displacement - m_dispalacementAtStart;
-  QLineF totalLine(m_startPosition, m_targetPosition);
-  QLineF currentLine(m_startPosition, m_startPosition + offset);
+  m_polyhedron->setAnimationProgress(m_alphaTransformation->animationRatio());
+}
 
-  double ratio = totalLine.length() == 0 ? 0 : currentLine.length() / totalLine.length();
-  m_polyhedron->setAnimationProgress(ratio);
+void VizManipulationManager::polyhedronAboutToSkew(VizPolyhedron *polyhedron, int corner) {
+  CLINT_ASSERT(polyhedron != nullptr, "cannot resize null polyhedron");
+  m_polyhedron = polyhedron;
+
+  // Do not allow multiple polyhedra skew yet.  This would require creating a graphicsGroup
+  // and adding handles for the group to ensure UI consistency.
+  std::unordered_set<VizPolyhedron *> selectedPolyhedra =
+      polyhedron->coordinateSystem()->projection()->selectionManager()->selectedPolyhedra();
+  CLINT_ASSERT(selectedPolyhedra.size() == 0, "No selection allowed when skewing");
+
+  bool oneDimensional = polyhedron->occurrence()->dimensionality() < polyhedron->coordinateSystem()->verticalDimensionIdx();
+  bool zeroDimensional = polyhedron->occurrence()->dimensionality() < polyhedron->coordinateSystem()->horizontalDimensionIdx();
+  if (zeroDimensional || oneDimensional) {
+    polyhedron->resetPointPositions();
+    return;
+  }
+  m_skewing = true;
+
+  startAlphaTransformation();
+
+  m_alphaTransformation = new VizManipulationSkewing(polyhedron, corner);
+}
+
+void VizManipulationManager::polyhedronHasSkewed(VizPolyhedron *polyhedron) {
+  CLINT_ASSERT(polyhedron == m_polyhedron, "Wrong polyhedron finished skewing");
+
+  if (!m_skewing)
+    return;
+  m_skewing = false;
+
+  finalizeAlphaTransformation();
+}
+
+
+void VizManipulationManager::polyhedronSkewing(QPointF displacement) {
+  if (!m_skewing)
+    return;
+
+  alphaTransformationProcess(displacement);
 }
 
 void VizManipulationManager::polyhedronAboutToRotate(VizPolyhedron *polyhedron, int corner) {

@@ -7,6 +7,7 @@
 #include <boost/optional.hpp>
 
 #include "vizhandle.h"
+#include "vizmanipulationalphatransformation.h"
 
 class VizPolyhedron;
 class VizPoint;
@@ -87,9 +88,6 @@ private:
 
   int m_initCSHorizontalMin, m_initCSVerticalMin;
 
-  QPointF m_previousDisplacement = QPointF();
-  QPointF m_dispalacementAtStart = QPointF();
-
   int m_horzOffset, m_vertOffset;
   bool m_detached;
   bool m_firstMovement = false;
@@ -99,7 +97,11 @@ private:
   bool m_skewing = false;
   bool m_resizing = false;
   int m_creatingDimension = 0;
-  QPointF m_startPosition, m_targetPosition;
+
+  VizManipulationAlphaTransformation *m_alphaTransformation;
+  void startAlphaTransformation();
+  void alphaTransformationProcess(QPointF displacement);
+  void finalizeAlphaTransformation();
 
   enum {
     PT_NODETACH,
@@ -123,14 +125,6 @@ private:
   }
 
   void remapBetas(TransformationGroup group, ClintScop *scop);
-  TransformationGroup computeReshapeTransformationGroup(
-      double horzOffset, double vertOffset,
-      QPointF displacement, QPointF previousDisplacement,
-      bool immediate = false);
-  VizHandle::Kind cornerToHandleKind();
-  bool transformReshapeUntilValid(TransformationGroup &group,
-                                  boost::optional<std::pair<TransformationGroup, TransformationGroup>> &replacedGroup);
-  int absCeilDiv(double numerator, int denominator);
 };
 
 #endif // VIZMANIPULATIONMANAGER_H
