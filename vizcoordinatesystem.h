@@ -136,6 +136,7 @@ public:
   }
 
   VizPolyhedron *polyhedron(const std::vector<int> &beta) const;
+  const std::vector<VizPolyhedron *> &polyhedra() const;
   VizPolyhedron *shadow(VizPolyhedron *original) const;
   VizPolyhedron *animationTarget(VizPolyhedron *original) const;
 
@@ -166,6 +167,8 @@ public:
   void removePolyhedron(VizPolyhedron *polyhedron);
   void updateAllPositions();
   void deleteInnerDependences();
+
+  void reorderPolyhedra(const Transformation &transformation);
 
 signals:
 

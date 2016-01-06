@@ -435,6 +435,147 @@ void VizProjection::projectScop(ClintScop *vscop) {
   updateSceneLayout();
 }
 
+VizPolyhedron *VizProjection::polyhedron(ClintStmtOccurrence *occurrence) const {
+  for (auto pile : m_coordinateSystems) {
+    for (VizCoordinateSystem *vcs : pile) {
+      for (VizPolyhedron *ph : vcs->polyhedra()) {
+        if (ph->occurrence() == occurrence)
+          return ph;
+      }
+    }
+  }
+  return nullptr;
+}
+
+std::vector<int> csFirstPolyhedronBetaVector(const VizCoordinateSystem *const &vcs) {
+  CLINT_ASSERT(vcs->polyhedra().size() != 0,
+               "empty coordinate system present");
+  VizPolyhedron *vph = vcs->polyhedra().at(0);
+  return vph->occurrence()->betaVector();
+}
+
+std::vector<int> pileFirstPolyhedronBetaVector(const std::vector<VizCoordinateSystem *> &pile) {
+  CLINT_ASSERT(pile.size() != 0,
+               "empty pile present");
+  const VizCoordinateSystem *vcs = pile[0];
+  return csFirstPolyhedronBetaVector(vcs);
+}
+
+void VizProjection::reflectBetaTransformations(ClintScop *scop, const TransformationGroup &group) {
+  // When this function is called, betas in the occurrences are not updated yet.
+  if (m_skipBetaGroups != 0) {
+    --m_skipBetaGroups;
+    return;
+  }
+
+  for (const Transformation &transformation : group.transformations) {
+    if (transformation.kind() == Transformation::Kind::Split) {
+      std::vector<int> beta = transformation.target();
+      std::unordered_set<ClintStmtOccurrence *> occs = scop->occurrences(beta);
+      CLINT_ASSERT(occs.size() != 0,
+                   "Couldn't find occurrence from which to split away");
+      ClintStmtOccurrence *occurrence = *occs.begin();
+      VizCoordinateSystem *vcs = polyhedron(occurrence)->coordinateSystem();
+      size_t pileIdx, csIdx;
+      std::tie(pileIdx, csIdx) = csIndices(vcs);
+      int dimension = transformation.target().size() - 2;
+
+      if (dimension >= m_horizontalDimensionIdx &&
+          dimension < m_verticalDimensionIdx &&
+          occurrence->dimensionality() >= m_verticalDimensionIdx) {
+        // move CSs into the new pile
+        CLINT_ASSERT(m_coordinateSystems[pileIdx].size() > csIdx + 1,
+                     "No CSs to split away");
+        m_coordinateSystems.insert(std::begin(m_coordinateSystems) + pileIdx + 1, std::vector<VizCoordinateSystem *>());
+        std::copy(std::begin(m_coordinateSystems[pileIdx]) + csIdx + 1,
+                  std::end(m_coordinateSystems[pileIdx]),
+                  std::back_inserter(m_coordinateSystems[pileIdx + 1]));
+        m_coordinateSystems[pileIdx].erase(
+                  std::begin(m_coordinateSystems[pileIdx]) + csIdx + 1,
+                  std::end(m_coordinateSystems[pileIdx]));
+      } else if (dimension >= m_verticalDimensionIdx ||
+                 (dimension >= m_horizontalDimensionIdx &&
+                  occurrence->dimensionality() < m_verticalDimensionIdx)) {
+
+        // move polyhedra into a new CS
+        VizCoordinateSystem *cs = createCoordinateSystem(occurrence->dimensionality());
+        m_coordinateSystems[pileIdx].insert(std::begin(m_coordinateSystems[pileIdx]) + csIdx + 1,
+                                            cs);
+        std::vector<int> betaPrefix(std::begin(beta), std::end(beta) - 1);
+        for (VizPolyhedron *vph : vcs->polyhedra()) {
+          const std::vector<int> &phBeta = vph->occurrence()->betaVector();
+          if (BetaUtility::isPrefix(betaPrefix, phBeta) &&
+              BetaUtility::follows(beta, phBeta)) {
+            cs->reparentPolyhedron(vph);
+          }
+        }
+      }
+
+    } else if (transformation.kind() == Transformation::Kind::Fuse) {
+      std::vector<int> beta = transformation.target();
+      std::unordered_set<ClintStmtOccurrence *> occs = scop->occurrences(beta);
+      CLINT_ASSERT(occs.size() != 0,
+                   "Couldn't find a CS to fuse with");
+      ClintStmtOccurrence *occurrence = *occs.begin();
+      VizCoordinateSystem *vcs = polyhedron(occurrence)->coordinateSystem();
+      size_t pileIdx, csIdx;
+      std::tie(pileIdx, csIdx) = csIndices(vcs);
+      int dimension = transformation.target().size() - 1;
+
+      if (dimension >= m_horizontalDimensionIdx &&
+          dimension < m_verticalDimensionIdx) {
+        // add contents of next pile to the current pile
+        CLINT_ASSERT(m_coordinateSystems.size() > pileIdx + 1,
+                     "No pile to fuse");
+        std::copy(std::begin(m_coordinateSystems[pileIdx + 1]),
+                  std::end(m_coordinateSystems[pileIdx + 1]),
+                  std::back_inserter(m_coordinateSystems[pileIdx]));
+        m_coordinateSystems.erase(std::begin(m_coordinateSystems) + pileIdx + 1);
+
+      } else if (dimension >= m_verticalDimensionIdx) {
+        // add contents of the next coordinate system to the current
+        CLINT_ASSERT(m_coordinateSystems[pileIdx].size() > csIdx + 1,
+                     "No CS to fuse");
+        VizCoordinateSystem *cs = m_coordinateSystems[pileIdx][csIdx + 1];
+        for (VizPolyhedron *vph : cs->polyhedra()) {
+          vcs->reparentPolyhedron(vph);
+        }
+        deleteCoordinateSystem(cs);
+      }
+    } else if (transformation.kind() == Transformation::Kind::Reorder) {
+      int dimension = transformation.target().size();
+      if (dimension <= m_horizontalDimensionIdx) {
+        // reorder piles
+        m_coordinateSystems = reflectReorder<std::vector<VizCoordinateSystem *>>(
+              m_coordinateSystems, pileFirstPolyhedronBetaVector,
+              transformation, m_horizontalDimensionIdx);
+      } else if (dimension <= m_verticalDimensionIdx) {
+        // reorder CSs
+        for (size_t pileIdx = 0; pileIdx < m_coordinateSystems.size(); ++pileIdx) {
+          if (BetaUtility::isPrefix(transformation.target(),
+                                    pileFirstPolyhedronBetaVector(m_coordinateSystems[pileIdx]))) {
+            m_coordinateSystems[pileIdx] = reflectReorder<VizCoordinateSystem *>(
+                  m_coordinateSystems[pileIdx], csFirstPolyhedronBetaVector,
+                  transformation, m_verticalDimensionIdx);
+          }
+        }
+      } else {
+        // reorder polyhedra
+        for (size_t pileIdx = 0; pileIdx < m_coordinateSystems.size(); ++pileIdx) {
+          for (size_t csIdx = 0; csIdx < m_coordinateSystems[pileIdx].size(); ++csIdx) {
+            VizCoordinateSystem *vcs = m_coordinateSystems[pileIdx][csIdx];
+            if (BetaUtility::isPrefix(transformation.target(),
+                                      vcs->betaPrefix())) {
+              vcs->reorderPolyhedra(transformation);
+            }
+          }
+        }
+      }
+
+    }
+  }
+}
+
 void VizProjection::updateColumnHorizontalMinMax(VizCoordinateSystem *coordinateSystem, int minOffset, int maxOffset) {
   size_t column = static_cast<size_t>(-1);
   int columnMin;

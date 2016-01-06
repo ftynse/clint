@@ -176,7 +176,18 @@ ClayBetaMapper::ClayBetaMapper(ClintScop *scop) {
 }
 
 ClayBetaMapper::~ClayBetaMapper() {
+}
 
+void ClayBetaMapper::reset() {
+  std::set<Identifier> keys;
+  for (auto it : m_forwardMapping) {
+    keys.insert(it.first);
+  }
+  m_forwardMapping.clear();
+  for (auto it : keys) {
+    m_forwardMapping.insert(std::make_pair(it, it));
+  }
+  syncReverseMapping();
 }
 
 void ClayBetaMapper::replaceMappings(Identifier original, Identifier oldModified, Identifier newModified) {

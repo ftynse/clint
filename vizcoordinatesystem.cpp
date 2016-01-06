@@ -574,6 +574,10 @@ VizPolyhedron *VizCoordinateSystem::polyhedron(const std::vector<int> &beta) con
   return result;
 }
 
+const std::vector<VizPolyhedron *> &VizCoordinateSystem::polyhedra() const {
+  return m_polyhedra;
+}
+
 VizPolyhedron *VizCoordinateSystem::shadow(VizPolyhedron *original) const {
   auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), original);
   if (it == std::end(m_polyhedra))
@@ -590,4 +594,13 @@ VizPolyhedron *VizCoordinateSystem::animationTarget(VizPolyhedron *original) con
     return m_polyhedronAnimationTargets.at(original);
   }
   return nullptr;
+}
+
+static std::vector<int> polyhedronBeta(const VizPolyhedron *const &ph) {
+  return ph->occurrence()->betaVector();
+}
+
+void VizCoordinateSystem::reorderPolyhedra(const Transformation &transformation) {
+  m_polyhedra = reflectReorder<VizPolyhedron *>(m_polyhedra, polyhedronBeta, transformation, transformation.target().size());
+  updatePolyhedraPositions();
 }

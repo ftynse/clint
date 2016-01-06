@@ -20,6 +20,7 @@ public:
   void resetProjectionMatrix(ClintScop *cscop);
   VizProperties *vizProperties();
   void fillSvg(QSvgGenerator *generator);
+  void reflectBetaTransformations(ClintScop *cscop, const TransformationGroup &group);
 
 signals:
   void projectionSelected(int horizontalDim, int verticalDim);

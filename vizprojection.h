@@ -119,6 +119,13 @@ public:
     return m_view && m_view->isActive();
   }
 
+  void skipNextBetaGroup() {
+    ++m_skipBetaGroups;
+  }
+
+  VizPolyhedron *polyhedron(ClintStmtOccurrence *occurrence) const;
+  void reflectBetaTransformations(ClintScop *scop, const TransformationGroup &group);
+
 signals:
   void selected(int horizontal, int vertical);
 
@@ -142,8 +149,47 @@ private:
   VizSelectionManager *m_selectionManager;
   VizManipulationManager *m_manipulationManager;
 
+  int m_skipBetaGroups = 0;
+
   void appendCoordinateSystem(int dimensionality);
   void updateSceneLayout();
 };
+
+template <typename Element>
+std::vector<Element> reflectReorder(const std::vector<Element> &container,
+                                    std::function<std::vector<int> (const Element &)> betaExtractor,
+                                    Transformation transformation,
+                                    int dimension) {
+  std::multimap<int, size_t> ordering;
+  bool foundPrefix = false;
+  for (size_t idx = 0; idx < container.size(); ++idx) {
+    std::vector<int> beta = betaExtractor(container[idx]);
+    if (!BetaUtility::isPrefix(transformation.target(), beta)) {
+      ordering.insert(std::make_pair(foundPrefix ? -1 : INT_MAX, idx));
+    } else {
+      foundPrefix = true;
+      ordering.insert(std::make_pair(beta.at(dimension), idx));
+    }
+  }
+
+  // Insertion order is preserved allowing us to simulate moving a group of
+  // sequentially placed piles with the same beta-value (multimap key).
+  // First, put all preceeding piles (not subject to current reorder depth),
+  // then follow the reordering list and, finally, put the remainings piles.
+  std::vector<Element> updatedContainer;
+  updatedContainer.reserve(container.size());
+  std::vector<int> order = transformation.order();
+  order.insert(std::begin(order), -1);
+  order.push_back(INT_MAX);
+  for (int key : transformation.order()) {
+    std::multimap<int, size_t>::iterator it, eit;
+    std::tie(it, eit) = ordering.equal_range(key);
+    for ( ; it != eit; ++it) {
+      updatedContainer.push_back(container[it->second]);
+    }
+  }
+
+  return updatedContainer;
+}
 
 #endif // VIZPROJECTION_H

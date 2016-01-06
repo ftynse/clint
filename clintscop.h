@@ -53,33 +53,7 @@ public:
 
   void transform(const TransformationGroup &tg) {
     m_transformationSeq.groups.push_back(tg);
-    for (const Transformation &transformation : tg.transformations) {
-      // Remap betas when needed.  FIXME: ClintScop should not know which transformation may modify betas
-      // introduce bool Transformation::modifiesLoopStmtOrder() and use it.  Same for checking for ISS transformation.
-      if (transformation.kind() == Transformation::Kind::Fuse ||
-          transformation.kind() == Transformation::Kind::Split ||
-          transformation.kind() == Transformation::Kind::Reorder ||
-          transformation.kind() == Transformation::Kind::Tile ||
-          transformation.kind() == Transformation::Kind::Linearize ||
-          transformation.kind() == Transformation::Kind::Embed ||
-          transformation.kind() == Transformation::Kind::Unembed) {
-        remapBetas(tg);
-        break;
-      }
-      // XXX: needs rethinking
-      // This weird move allows to workaround the 1-to-1 mapping condition imposed by the current implementation of remapBetas.
-      // The problem is primarily caused by the fact of ClintStmtOccurrence creation in executeTransformationSequence (thus
-      // apart from beta remapping) that happens in the undefined future; it is also not clear how to deal with multiple statements
-      // being created by a transformation (which beta to assign to the remapped statement and which to the one being created;
-      // is it important at all? occurrences will filter the scatterings they need, but not sure about dependence maps).
-      // As long as VizManipulationManager deals with the association of VizPolyhedron to ClintStmtOccurrrence after it was created,
-      // that part works fine.
-      if (transformation.kind() == Transformation::Kind::IndexSetSplitting ||
-          transformation.kind() == Transformation::Kind::Collapse) {
-        m_betaMapper->apply(nullptr, tg);
-        break;
-      }
-    }
+    remapWithTransformationGroup(m_transformationSeq.groups.size() - 1);
   }
 
   void discardLastTransformationGroup() {
@@ -168,6 +142,7 @@ public:
 
 signals:
   void transformExecuted();
+  void groupAboutToExecute(size_t);
   void dimensionalityChanged();
 
 public slots:
@@ -186,6 +161,8 @@ private:
   void resetOccurrences(osl_scop_p transformed);
 
   void remapBetas(const TransformationGroup &tg);
+  void remapBetasFull();
+  void remapWithTransformationGroup(size_t index);
 
   osl_scop_p m_scopPart;
   osl_scop_p m_appliedScopCache = nullptr;
@@ -211,6 +188,7 @@ private:
   char *m_currentScript = nullptr;
   std::stringstream m_scriptStream;
   std::string m_originalHtml, m_generatedHtml;
+  osl_scop_p executeSequence(size_t &groupsExecuted);
 };
 
 #endif // CLINTSCOP_H

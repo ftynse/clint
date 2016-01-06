@@ -47,6 +47,13 @@ void ClintProjectionOverview::updateAllProjections() {
   }
 }
 
+void ClintProjectionOverview::reflectBetaTransformations(ClintScop *cscop, const TransformationGroup &group) {
+  for (auto element : m_allProjections) {
+    VizProjection *projection = element.second;
+    projection->reflectBetaTransformations(cscop, group);
+  }
+}
+
 void ClintProjectionOverview::updateRowColumn(int horizontalDim, int verticalDim) {
   for (auto element : m_allProjections) {
     int h, v;

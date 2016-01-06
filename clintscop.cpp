@@ -299,6 +299,80 @@ const std::set<int> &ClintScop::tilingDimensions(const std::vector<int> &beta) c
   return o->tilingDimensions();
 }
 
+void ClintScop::remapWithTransformationGroup(size_t index) {
+  const TransformationGroup &tg = m_transformationSeq.groups.at(index);
+  for (const Transformation &transformation : tg.transformations) {
+    // Remap betas when needed.  FIXME: ClintScop should not know which transformation may modify betas
+    // introduce bool Transformation::modifiesLoopStmtOrder() and use it.  Same for checking for ISS transformation.
+    if (transformation.kind() == Transformation::Kind::Fuse ||
+        transformation.kind() == Transformation::Kind::Split ||
+        transformation.kind() == Transformation::Kind::Reorder ||
+        transformation.kind() == Transformation::Kind::Tile ||
+        transformation.kind() == Transformation::Kind::Linearize ||
+        transformation.kind() == Transformation::Kind::Embed ||
+        transformation.kind() == Transformation::Kind::Unembed) {
+      emit groupAboutToExecute(index);
+      remapBetas(tg);
+      break;
+    }
+    // XXX: needs rethinking
+    // This weird move allows to workaround the 1-to-1 mapping condition imposed by the current implementation of remapBetas.
+    // The problem is primarily caused by the fact of ClintStmtOccurrence creation in executeTransformationSequence (thus
+    // apart from beta remapping) that happens in the undefined future; it is also not clear how to deal with multiple statements
+    // being created by a transformation (which beta to assign to the remapped statement and which to the one being created;
+    // is it important at all? occurrences will filter the scatterings they need, but not sure about dependence maps).
+    // As long as VizManipulationManager deals with the association of VizPolyhedron to ClintStmtOccurrrence after it was created,
+    // that part works fine.
+    if (transformation.kind() == Transformation::Kind::IndexSetSplitting ||
+        transformation.kind() == Transformation::Kind::Collapse) {
+      m_betaMapper->apply(nullptr, tg);
+      break;
+    }
+  }
+}
+
+
+void ClintScop::remapBetasFull() {
+  // Update all occurrences to their initial values.
+  std::map<std::vector<int>, std::vector<int>> mapping;
+  std::set<std::vector<int>> allOriginalBetas;
+  for (ClintStmt *stmt : statements()) {
+    for (ClintStmtOccurrence *occ : stmt->occurrences()) {
+      const std::vector<int> &currentBeta = occ->betaVector();
+      std::set<std::vector<int>> originalBetas = m_betaMapper->reverseMap(currentBeta);
+      CLINT_ASSERT(originalBetas.size() != 0, "could not perform reverse mapping");
+
+      // Recreate collapsed occurrences.
+      for (int i = 1; i < originalBetas.size(); i++) {
+        std::vector<int> temporaryBeta;
+        temporaryBeta.push_back(-i);
+        std::copy(std::begin(currentBeta), std::end(currentBeta), std::back_inserter(temporaryBeta));
+        occ->statement()->splitOccurrence(occ, temporaryBeta);
+        std::set<std::vector<int>>::iterator it = originalBetas.begin();
+        std::advance(it, i);
+        CLINT_ASSERT(allOriginalBetas.count(*it) == 0,
+                     "Occurrence both iss-ed and collapsed");
+        mapping.insert(std::make_pair(temporaryBeta, *it));
+      }
+
+      // Remove iss-ed occurrences.
+      if (allOriginalBetas.count(*originalBetas.begin()) != 0) {
+        occ->statement()->removeOccurrence(occ);
+      } else {
+        mapping.insert(std::make_pair(currentBeta, *originalBetas.begin()));
+        allOriginalBetas.insert(*originalBetas.begin());
+      }
+    }
+  }
+  updateBetas(mapping);
+
+  m_betaMapper->reset();
+
+  for (size_t i = 0; i < m_transformationSeq.groups.size(); ++i) {
+    remapWithTransformationGroup(i);
+  }
+}
+
 void ClintScop::remapBetas(const TransformationGroup &group) {
   // m_betaMapper keeps the mapping from the original beta-vectors to the current ones,
   // but we cannot find get a ClintStmtOccurrence by original beta-vector if their beta-vectors
@@ -408,6 +482,7 @@ void ClintScop::undoTransformation() {
   m_undoneTransformationSeq.groups.push_back(m_transformationSeq.groups.back());
   m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1);
   --m_groupsExecuted;
+  remapBetasFull();
   executeTransformationSequence();
 }
 
@@ -417,6 +492,7 @@ void ClintScop::redoTransformation() {
   m_transformationSeq.groups.push_back(m_undoneTransformationSeq.groups.back());
   m_undoneTransformationSeq.groups.erase(std::end(m_undoneTransformationSeq.groups) - 1);
   ++m_groupsExecuted;
+  remapBetasFull();
   executeTransformationSequence();
 }
 

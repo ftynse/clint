@@ -180,8 +180,10 @@ void ClintWindow::fileClose() {
 
   if (m_program) {
     ClintScop *vscop = (*m_program)[0];
-    if (vscop)
+    if (vscop) {
       disconnect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
+      disconnect(vscop, &ClintScop::groupAboutToExecute, this, &ClintWindow::groupExecuted);
+    }
   }
   m_fileBasename = QString();
 
@@ -283,6 +285,7 @@ void ClintWindow::openFileByName(QString fileName) {
   m_program = new ClintProgram(scop, originalCode, this);
   ClintScop *vscop = (*m_program)[0];
   connect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
+  connect(vscop, &ClintScop::groupAboutToExecute, this, &ClintWindow::groupExecuted);
 
   createProjections(vscop);
 
@@ -313,7 +316,9 @@ ClintScop *ClintWindow::regenerateScopWithSequence(osl_scop_p originalScop, cons
   try {
     newscop->executeTransformationSequence();
     connect(newscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
+    connect(newscop, &ClintScop::groupAboutToExecute, this, &ClintWindow::groupExecuted);
     disconnect(oldscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
+    disconnect(oldscop, &ClintScop::groupAboutToExecute, this, &ClintWindow::groupExecuted);
     return newscop;
   } catch (std::logic_error e) {
     QMessageBox::critical(this, "Could not apply sequence", e.what(), QMessageBox::Ok, QMessageBox::Ok);
@@ -502,6 +507,21 @@ void ClintWindow::scopTransformed() {
   }
   if (m_graphicalInterface == m_projectionOverview) {
     m_projectionOverview->updateAllProjections();
+  }
+}
+
+void ClintWindow::groupExecuted(size_t index) {
+  ClintScop *vscop = (*m_program)[0];
+  if (!vscop)
+    return;
+
+  TransformationGroup group = vscop->transformationSequence().groups[index];
+
+  if (m_projection) {
+    m_projection->reflectBetaTransformations(vscop, group);
+  }
+  if (m_projectionOverview) {
+    m_projectionOverview->reflectBetaTransformations(vscop, group);
   }
 }
 

@@ -288,6 +288,8 @@ public:
 
   void dump(std::ostream &out) const;
 
+  void reset();
+
   std::set<Identifier> forwardMap(const Identifier &identifier) const {
     return std::move(map(identifier, m_forwardMapping));
   }
