@@ -24,7 +24,8 @@ public:
     Densify,
     Collapse,
     Embed,
-    Unembed
+    Unembed,
+    Empty
   };
 
   Kind kind() const {
@@ -342,7 +343,7 @@ private:
   std::vector<int> m_parameters;
   std::vector<int> m_iterators;
 
-  Kind m_kind;
+  Kind m_kind = Kind::Empty;
 
   static void unwrapClayList(const std::vector<std::vector<int>> &list, Transformation &t) {
     CLINT_ASSERT(list.size() == 4, "List malformed");

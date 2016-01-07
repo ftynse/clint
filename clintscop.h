@@ -176,6 +176,7 @@ private:
   ClintOccurrenceDeps m_internalDeps;
 
   TransformationSequence m_transformationSeq;
+  TransformationSequence m_complementaryTransformationSeq;
   TransformationSequence m_undoneTransformationSeq;
   Transformer *m_transformer;
   Transformer *m_scriptGenerator;

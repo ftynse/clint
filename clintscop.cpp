@@ -301,6 +301,8 @@ const std::set<int> &ClintScop::tilingDimensions(const std::vector<int> &beta) c
 
 void ClintScop::remapWithTransformationGroup(size_t index) {
   const TransformationGroup &tg = m_transformationSeq.groups.at(index);
+
+  bool createdComplementary = false;
   for (const Transformation &transformation : tg.transformations) {
     // Remap betas when needed.  FIXME: ClintScop should not know which transformation may modify betas
     // introduce bool Transformation::modifiesLoopStmtOrder() and use it.  Same for checking for ISS transformation.
@@ -313,6 +315,7 @@ void ClintScop::remapWithTransformationGroup(size_t index) {
         transformation.kind() == Transformation::Kind::Unembed) {
       emit groupAboutToExecute(index);
       remapBetas(tg);
+      createdComplementary = true;
       break;
     }
     // XXX: needs rethinking
@@ -329,6 +332,8 @@ void ClintScop::remapWithTransformationGroup(size_t index) {
       break;
     }
   }
+  if (!createdComplementary)
+    m_complementaryTransformationSeq.groups.push_back(TransformationGroup());
 }
 
 
@@ -368,6 +373,7 @@ void ClintScop::remapBetasFull() {
 
   m_betaMapper->reset();
 
+  m_complementaryTransformationSeq.groups.clear();
   for (size_t i = 0; i < m_transformationSeq.groups.size(); ++i) {
     remapWithTransformationGroup(i);
   }
@@ -381,7 +387,8 @@ void ClintScop::remapBetas(const TransformationGroup &group) {
   // temporary mapper to map from current beta-vectors to the new ones as well as we update the
   // m_betaMapper to keep dependency maps consistent.
   ClayBetaMapper *mapper = new ClayBetaMapper(this);
-  mapper->apply(nullptr, group);
+  TransformationGroup complementary = mapper->apply(group);
+  m_complementaryTransformationSeq.groups.push_back(complementary);
   m_betaMapper->apply(nullptr, group);
 
   std::map<std::vector<int>, std::vector<int>> mapping;
@@ -480,19 +487,35 @@ void ClintScop::undoTransformation() {
   if (!hasUndo())
     return;
   m_undoneTransformationSeq.groups.push_back(m_transformationSeq.groups.back());
-  m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1);
-  --m_groupsExecuted;
-  remapBetasFull();
+//  m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1);
+//  --m_groupsExecuted;
+//  remapBetasFull();
+  if (m_complementaryTransformationSeq.groups.back().transformations.empty()) {
+  m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1, std::end(m_transformationSeq.groups));
+  m_complementaryTransformationSeq.groups.erase(std::end(m_complementaryTransformationSeq.groups) - 1,
+                                                std::end(m_complementaryTransformationSeq.groups));
   executeTransformationSequence();
+  m_groupsExecuted -= 1;
+
+  } else {
+  transform(m_complementaryTransformationSeq.groups.back());
+  executeTransformationSequence();
+  m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 2, std::end(m_transformationSeq.groups));
+  m_complementaryTransformationSeq.groups.erase(std::end(m_complementaryTransformationSeq.groups) - 2,
+                                                std::end(m_complementaryTransformationSeq.groups));
+  m_groupsExecuted -= 2;
+  }
+  // TODO: update visible sequence properly
 }
 
 void ClintScop::redoTransformation() {
   if (!hasRedo())
     return;
-  m_transformationSeq.groups.push_back(m_undoneTransformationSeq.groups.back());
+//  m_transformationSeq.groups.push_back(m_undoneTransformationSeq.groups.back());
+  transform(m_undoneTransformationSeq.groups.back());
   m_undoneTransformationSeq.groups.erase(std::end(m_undoneTransformationSeq.groups) - 1);
   ++m_groupsExecuted;
-  remapBetasFull();
+//  remapBetasFull();
   executeTransformationSequence();
 }
 

@@ -297,6 +297,9 @@ public:
   std::set<Identifier> reverseMap(const Identifier &identifier) const {
     return std::move(map(identifier, m_reverseMapping));
   }
+
+  Transformation apply(const Transformation &transformation);
+  TransformationGroup apply(const TransformationGroup &group);
 private:
   std::set<Identifier> map(const Identifier &identifier, const IdentifierMultiMap &mapping) const {
     typename IdentifierMultiMap::const_iterator beginIt, endIt;

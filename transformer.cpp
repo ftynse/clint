@@ -472,6 +472,64 @@ void ClayBetaMapper::apply(osl_scop_p scop, const TransformationSequence &sequen
   iterativeApply(sequence.groups);
 }
 
+Transformation ClayBetaMapper::apply(const Transformation &transformation) {
+  Transformation complementary;
+
+  if (transformation.kind() == Transformation::Kind::Fuse) {
+    std::vector<int> betaPrefix = transformation.target();
+    int lastBetaValue = INT_MIN;
+    for (auto it : m_forwardMapping) {
+      // use beta-vectors after with current transformation
+      if (BetaUtility::isPrefix(betaPrefix, it.second)) {
+        int betaValue = it.first.at(betaPrefix.size());
+        lastBetaValue = std::max(lastBetaValue, betaValue);
+      }
+    }
+    CLINT_ASSERT(lastBetaValue != INT_MIN, "Fusing with empty loop");
+
+    betaPrefix.push_back(lastBetaValue);
+    complementary = Transformation::splitAfter(betaPrefix);
+  } else if (transformation.kind() == Transformation::Kind::Split) {
+    std::vector<int> betaPrefix = transformation.target();
+    betaPrefix.resize(betaPrefix.size() - 1);
+    complementary = Transformation::fuseNext(betaPrefix);
+  } else if (transformation.kind() == Transformation::Kind::Reorder) {
+    std::vector<int> order = transformation.order();
+    std::vector<int> new_order;
+    new_order.resize(order.size());
+    for (int i = 0; i < order.size(); ++i) {
+      new_order[order[i]] = i;
+    }
+    complementary = Transformation::rawReorder(transformation.target(), new_order);
+#if 0
+  } else if (transformation.kind() == Transformation::Kind::Shift) {
+    std::vector<int> parameters;
+    const std::vector<int> &transformationParameters = transformation.parameters();
+    parameters.reserve(transformationParameters.size());
+    std::transform(std::begin(transformationParameters),
+                   std::end(transformationParameters),
+                   std::back_inserter(parameters),
+                   std::negate<int>());
+    complementary = Transformation::rawShift(
+          transformation.target(), transformation.depth(),
+          parameters, -transformation.constantAmount());
+#endif
+  }
+
+  apply(nullptr, transformation);
+  return complementary;
+}
+
+TransformationGroup ClayBetaMapper::apply(const TransformationGroup &group) {
+  TransformationGroup result;
+  for (const Transformation &t : group.transformations) {
+    Transformation complementary = apply(t);
+    if (complementary.kind() != Transformation::Kind::Empty)
+      result.transformations.push_back(complementary);
+  }
+  return result;
+}
+
 void ClayBetaMapper::dump(std::ostream &out) const {
   std::set<Identifier> uniqueKeys;
   for (auto it : m_forwardMapping) {
