@@ -166,6 +166,8 @@ public:
   void insertPolyhedronAfter(VizPolyhedron *inserted, VizPolyhedron *after);
   void removePolyhedron(VizPolyhedron *polyhedron);
   void updateAllPositions();
+  void setIgnorePolyhedraPositionUpdates(bool ignore = true);
+
   void deleteInnerDependences();
 
   void reorderPolyhedra(const Transformation &transformation);
@@ -207,6 +209,8 @@ private:
   QFont m_font;
   QString m_horizontalName;
   QString m_verticalName;
+
+  bool m_ignorePolyhedraPositionUpdates = false;
 
   void addAxisLabels(ClintStmtOccurrence *occurrence);
   void regenerateAxisLabels();

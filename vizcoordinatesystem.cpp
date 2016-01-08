@@ -183,7 +183,13 @@ std::vector<int> VizCoordinateSystem::betaPrefix() const {
   return beta;
 }
 
+void VizCoordinateSystem::setIgnorePolyhedraPositionUpdates(bool ignore) {
+  m_ignorePolyhedraPositionUpdates = ignore;
+}
+
 void VizCoordinateSystem::updatePolyhedraPositions() {
+  if (m_ignorePolyhedraPositionUpdates)
+    return;
   for (size_t i = 0, iend = m_polyhedra.size(); i < iend; i++) {
     VizPolyhedron *vph = m_polyhedra.at(i);
     setAnyPolyhedronPosition(vph, vph->localHorizontalMin(), vph->localVerticalMin(), i);
@@ -287,6 +293,7 @@ void VizCoordinateSystem::reparentPolyhedron(VizPolyhedron *polyhedron) {
   if (oldCS == this)
     return;
   oldCS->removePolyhedron(polyhedron);
+  polyhedron->setParentItem(oldCS);
   m_polyhedra.push_back(polyhedron);
   addAxisLabels(polyhedron->occurrence());
   polyhedron->reparent(this);

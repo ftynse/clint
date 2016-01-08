@@ -132,6 +132,7 @@ signals:
 public slots:
   void updateProjection();
   void selectProjection();
+  void updateSceneLayout();
   void finalizeOccurrenceChange();
 
 private:
@@ -152,7 +153,7 @@ private:
   int m_skipBetaGroups = 0;
 
   void appendCoordinateSystem(int dimensionality);
-  void updateSceneLayout();
+  VizCoordinateSystem *createCoordinateSystem(VizCoordinateSystem *oldVCS);
 };
 
 template <typename Element>
@@ -168,6 +169,7 @@ std::vector<Element> reflectReorder(const std::vector<Element> &container,
       ordering.insert(std::make_pair(foundPrefix ? -1 : INT_MAX, idx));
     } else {
       foundPrefix = true;
+      CLINT_ASSERT(beta.size() > dimension, "dimension/prefix mismatch");
       ordering.insert(std::make_pair(beta.at(dimension), idx));
     }
   }

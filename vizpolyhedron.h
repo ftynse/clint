@@ -80,14 +80,7 @@ public:
   void setInternalDependences(std::vector<std::vector<int>> &&dependences);
   void resetPointPositions();
 
-  void reparent(VizCoordinateSystem *vcs) {
-    if (vcs == m_coordinateSystem)
-      return;
-    m_coordinateSystem = vcs;
-    QPointF scenePosition = scenePos();
-    setParentItem(vcs);
-    setPos(vcs->mapFromScene(scenePosition));
-  }
+  void reparent(VizCoordinateSystem *vcs);
 
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
   QRectF boundingRect() const;
@@ -170,6 +163,7 @@ public slots:
   void handleHasMoved(const VizHandle *const handle, QPointF displacement);
 
   void occurrenceDeleted();
+  void betaTransitionAnimationFinished();
 
 private slots:
   void updateHandlePositions();

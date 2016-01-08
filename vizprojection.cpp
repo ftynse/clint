@@ -149,7 +149,7 @@ VizCoordinateSystem *VizProjection::insertPile(IsCsResult csAt, int dimensionali
   VizCoordinateSystem *vcs = createCoordinateSystem(dimensionality);
   m_coordinateSystems.insert(std::next(std::begin(m_coordinateSystems), csAt.pileIdx()),
                              std::vector<VizCoordinateSystem *> {vcs});
-  updateProjection();
+  updateSceneLayout();
   return vcs;
 }
 
@@ -158,7 +158,7 @@ VizCoordinateSystem *VizProjection::insertCs(IsCsResult csAt, int dimensionality
   VizCoordinateSystem *vcs = createCoordinateSystem(dimensionality);
   std::vector<VizCoordinateSystem *> &pile = m_coordinateSystems.at(csAt.pileIdx());
   pile.insert(std::next(std::begin(pile), csAt.coordinateSystemIdx()), vcs);
-  updateProjection();
+  updateSceneLayout();
   return vcs;
 }
 
@@ -461,6 +461,21 @@ std::vector<int> pileFirstPolyhedronBetaVector(const std::vector<VizCoordinateSy
   return csFirstPolyhedronBetaVector(vcs);
 }
 
+VizCoordinateSystem * VizProjection::createCoordinateSystem(VizCoordinateSystem *oldVCS) {
+  // Use this to create the coordiante system with axes disabled.  Since we
+  // do not know the dimensionality as this point, we set it to the vertical
+  // dimension index or horizontal dimension index if vertical is invisible.
+  int fakeDimensionality = 0;
+  if (oldVCS->verticalDimensionIdx() != VizProperties::NO_DIMENSION) {
+    fakeDimensionality = oldVCS->verticalDimensionIdx() + 1;
+  } else if (oldVCS->horizontalDimensionIdx() != VizProperties::NO_DIMENSION) {
+    fakeDimensionality = oldVCS->horizontalDimensionIdx() + 1;
+  }
+  VizCoordinateSystem *newCS = createCoordinateSystem(fakeDimensionality);
+
+  return newCS;
+}
+
 void VizProjection::reflectBetaTransformations(ClintScop *scop, const TransformationGroup &group) {
   // When this function is called, betas in the occurrences are not updated yet.
   if (m_skipBetaGroups != 0) {
@@ -486,13 +501,19 @@ void VizProjection::reflectBetaTransformations(ClintScop *scop, const Transforma
         // move CSs into the new pile
         CLINT_ASSERT(m_coordinateSystems[pileIdx].size() > csIdx + 1,
                      "No CSs to split away");
+
+        // Recreate coordinate systems instead of just moving the existing ones in order
+        // to reuse animated polyhedron reparenting functionality.
         m_coordinateSystems.insert(std::begin(m_coordinateSystems) + pileIdx + 1, std::vector<VizCoordinateSystem *>());
-        std::copy(std::begin(m_coordinateSystems[pileIdx]) + csIdx + 1,
-                  std::end(m_coordinateSystems[pileIdx]),
-                  std::back_inserter(m_coordinateSystems[pileIdx + 1]));
-        m_coordinateSystems[pileIdx].erase(
-                  std::begin(m_coordinateSystems[pileIdx]) + csIdx + 1,
-                  std::end(m_coordinateSystems[pileIdx]));
+        for (size_t i = csIdx + 1; i < m_coordinateSystems[pileIdx].size(); ++i) {
+          VizCoordinateSystem *oldVCS = m_coordinateSystems[pileIdx][i];
+          VizCoordinateSystem *newVCS = createCoordinateSystem(oldVCS);
+          m_coordinateSystems[pileIdx + 1].push_back(newVCS);
+          for (VizPolyhedron *vph : oldVCS->polyhedra()) {
+            newVCS->reparentPolyhedron(vph);
+          }
+          deleteCoordinateSystem(oldVCS);
+        }
       } else if (dimension >= m_verticalDimensionIdx ||
                  (dimension >= m_horizontalDimensionIdx &&
                   occurrence->dimensionality() < m_verticalDimensionIdx)) {
@@ -527,10 +548,18 @@ void VizProjection::reflectBetaTransformations(ClintScop *scop, const Transforma
         // add contents of next pile to the current pile
         CLINT_ASSERT(m_coordinateSystems.size() > pileIdx + 1,
                      "No pile to fuse");
-        std::copy(std::begin(m_coordinateSystems[pileIdx + 1]),
-                  std::end(m_coordinateSystems[pileIdx + 1]),
-                  std::back_inserter(m_coordinateSystems[pileIdx]));
-        m_coordinateSystems.erase(std::begin(m_coordinateSystems) + pileIdx + 1);
+
+        // Recreate coordinate systems instead of just moving the existing ones in order
+        // to reuse animated polyhedron reparenting functionality.
+        while (!m_coordinateSystems[pileIdx + 1].empty()) {
+          VizCoordinateSystem *oldVCS = m_coordinateSystems[pileIdx + 1].front();
+          VizCoordinateSystem *newVCS = createCoordinateSystem(oldVCS);
+          m_coordinateSystems[pileIdx].push_back(newVCS);
+          for (VizPolyhedron *vph : oldVCS->polyhedra()) {
+            newVCS->reparentPolyhedron(vph);
+          }
+          deleteCoordinateSystem(oldVCS);
+        }
 
       } else if (dimension >= m_verticalDimensionIdx) {
         // add contents of the next coordinate system to the current

@@ -1254,3 +1254,32 @@ VizHandle::Kind VizPolyhedron::maxDisplacementHandleKind() {
   }
   return h;
 }
+
+void VizPolyhedron::reparent(VizCoordinateSystem *vcs) {
+  if (vcs == m_coordinateSystem)
+    return;
+  m_coordinateSystem = vcs;
+  QPointF scenePosition = scenePos();
+  setParentItem(vcs);
+  vcs->setIgnorePolyhedraPositionUpdates();
+  coordinateSystem()->projection()->updateSceneLayout();
+  setPos(vcs->mapFromScene(scenePosition));
+
+  const std::vector<VizPolyhedron *> polyhedra = coordinateSystem()->polyhedra();
+  auto it = std::find(std::begin(polyhedra), std::end(polyhedra), this);
+  size_t index = std::distance(std::begin(polyhedra), it);
+  double offset = coordinateSystem()->projection()->vizProperties()->polyhedronOffset() * index;
+
+  QPropertyAnimation *anim = new QPropertyAnimation(this, "pos", this);
+  anim->setDuration(1000);
+  anim->setEndValue(QPointF(offset, -offset));
+  anim->start();
+  m_transitionAnimation = anim;
+  connect(m_transitionAnimation, &QAbstractAnimation::finished, this, &VizPolyhedron::betaTransitionAnimationFinished);
+}
+
+void VizPolyhedron::betaTransitionAnimationFinished() {
+  m_coordinateSystem->setIgnorePolyhedraPositionUpdates(false);
+  disconnect(m_transitionAnimation, &QAbstractAnimation::finished,
+             this, &VizPolyhedron::betaTransitionAnimationFinished);
+}
