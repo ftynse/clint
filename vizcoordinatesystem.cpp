@@ -46,6 +46,7 @@ void VizCoordinateSystem::setHorizontalDimensionIdx(size_t horizontalDimensionId
 }
 
 void VizCoordinateSystem::addAxisLabels(ClintStmtOccurrence *occurrence) {
+  prepareGeometryChange();
   if (m_horizontalAxisState == AxisState::Visible ||
       m_horizontalAxisState == AxisState::WillDisappear) {
     const char *horizontalName = occurrence->statement()->dimensionName(m_horizontalDimensionIdx).c_str();
@@ -67,6 +68,7 @@ void VizCoordinateSystem::addAxisLabels(ClintStmtOccurrence *occurrence) {
 }
 
 void VizCoordinateSystem::regenerateAxisLabels() {
+  prepareGeometryChange();
   m_horizontalName.clear();
   m_verticalName.clear();
   for (VizPolyhedron *vp : m_polyhedra) {
@@ -188,6 +190,7 @@ void VizCoordinateSystem::setIgnorePolyhedraPositionUpdates(bool ignore) {
 }
 
 void VizCoordinateSystem::updatePolyhedraPositions() {
+  prepareGeometryChange();
   if (m_ignorePolyhedraPositionUpdates)
     return;
   for (size_t i = 0, iend = m_polyhedra.size(); i < iend; i++) {
@@ -199,6 +202,7 @@ void VizCoordinateSystem::updatePolyhedraPositions() {
 
 void VizCoordinateSystem::updateAllPositions() {
   // This does not update arrows since they are attached to the polyhedra by signal/slot
+  prepareGeometryChange();
   updatePolyhedraPositions();
   for (VizPolyhedron *vp : m_polyhedra) {
     vp->updateShape();
@@ -208,6 +212,7 @@ void VizCoordinateSystem::updateAllPositions() {
 void VizCoordinateSystem::setAnyPolyhedronPosition(VizPolyhedron *polyhedron, int horizontal,
                                                    int vertical, ssize_t idx,
                                                    bool ignoreHorizontal, bool ignoreVertical) {
+  prepareGeometryChange();
   double offset = m_projection->vizProperties()->polyhedronOffset() * idx;
   QPointF position = polyhedron->pos();
   double hpos = ignoreHorizontal ?
@@ -243,6 +248,7 @@ void VizCoordinateSystem::createPolyhedronShadow(VizPolyhedron *polyhedron) {
                "Polyhedron updated does not belong to the coordinate system");
   ssize_t index = std::distance(std::begin(m_polyhedra), it);
 
+  prepareGeometryChange();
   VizPolyhedron *shadow = m_polyhedra[index]->createShadow();
   setAnyPolyhedronPosition(shadow, shadow->localHorizontalMin(), shadow->localVerticalMin(), index);
   shadow->setZValue(index);
@@ -253,6 +259,7 @@ void VizCoordinateSystem::createPolyhedronAnimationTarget(VizPolyhedron *polyhed
   auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);
   CLINT_ASSERT(it != std::end(m_polyhedra),
                "Polyhedron updated does not belong to the coordinate system");
+  prepareGeometryChange();
   ssize_t index = std::distance(std::begin(m_polyhedra), it);
   VizPolyhedron *shadow = polyhedron->createShadow(false);
   setAnyPolyhedronPosition(shadow, shadow->localHorizontalMin(), shadow->localVerticalMin(), index);
@@ -260,6 +267,7 @@ void VizCoordinateSystem::createPolyhedronAnimationTarget(VizPolyhedron *polyhed
 }
 
 void VizCoordinateSystem::clearPolyhedronShadows() {
+  prepareGeometryChange();
   for (auto p : m_polyhedronShadows) {
     VizPolyhedron *shadow = p.second;
     shadow->setVisible(false);
@@ -271,6 +279,7 @@ void VizCoordinateSystem::clearPolyhedronShadows() {
 }
 
 void VizCoordinateSystem::clearPolyhedronAnimationTargets() {
+  prepareGeometryChange();
   for (auto p : m_polyhedronAnimationTargets) {
     VizPolyhedron *shadow = p.second;
     shadow->setVisible(false);
@@ -282,6 +291,7 @@ void VizCoordinateSystem::clearPolyhedronAnimationTargets() {
 }
 
 void VizCoordinateSystem::finalizeOccurrenceChange() {
+  prepareGeometryChange();
   for (auto p : m_polyhedronShadows) {
     size_t index = p.first;
     m_polyhedra[index]->finalizeOccurrenceChange();
@@ -292,6 +302,10 @@ void VizCoordinateSystem::reparentPolyhedron(VizPolyhedron *polyhedron) {
   VizCoordinateSystem *oldCS = polyhedron->coordinateSystem();
   if (oldCS == this)
     return;
+
+  prepareGeometryChange();
+  oldCS->prepareGeometryChange();
+
   oldCS->removePolyhedron(polyhedron);
   polyhedron->setParentItem(oldCS);
   prepareGeometryChange();
@@ -319,6 +333,7 @@ void VizCoordinateSystem::removePolyhedron(VizPolyhedron *polyhedron) {
   auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);
   CLINT_ASSERT(it != std::end(m_polyhedra),
                "Trying to remove the polyhedron that is not present in the CS.");
+  prepareGeometryChange();
   m_polyhedra.erase(it);
   polyhedron->setParentItem(nullptr);
   regenerateAxisLabels();
@@ -327,6 +342,7 @@ void VizCoordinateSystem::removePolyhedron(VizPolyhedron *polyhedron) {
 
 void VizCoordinateSystem::polyhedronUpdated(VizPolyhedron *polyhedron) {
   const double pointDistance = m_projection->vizProperties()->pointDistance();
+  prepareGeometryChange();
   auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);
   if (it == std::end(m_polyhedra))
     return;
@@ -344,26 +360,26 @@ void VizCoordinateSystem::polyhedronUpdated(VizPolyhedron *polyhedron) {
 
 void VizCoordinateSystem::setMinMax(int horizontalMinimum, int horizontalMaximum,
                                     int verticalMinimum, int verticalMaximum) {
+  prepareGeometryChange();
   m_horizontalMin = horizontalMinimum;
   m_horizontalMax = horizontalMaximum;
   m_verticalMin   = verticalMinimum;
   m_verticalMax   = verticalMaximum;
   updatePolyhedraPositions();
-  prepareGeometryChange();
 }
 
 void VizCoordinateSystem::setHorizontalMinMax(int horizontalMinimum, int horizontalMaximum) {
+  prepareGeometryChange();
   m_horizontalMin = horizontalMinimum;
   m_horizontalMax = horizontalMaximum;
   updatePolyhedraPositions();
-  prepareGeometryChange();
 }
 
 void VizCoordinateSystem::setVerticalMinMax(int verticalMinimum, int verticalMaximum) {
+  prepareGeometryChange();
   m_verticalMin   = verticalMinimum;
   m_verticalMax   = verticalMaximum;
   updatePolyhedraPositions();
-  prepareGeometryChange();
 }
 
 QPolygonF VizCoordinateSystem::leftArrow(int length, const double pointRadius)
@@ -542,6 +558,14 @@ QRectF VizCoordinateSystem::boundingRect() const {
   // Let's imitate childrenBoundingRect
   QRectF polyhedraBoundingRect;
   for (VizPolyhedron *vph : m_polyhedra) {
+    polyhedraBoundingRect = polyhedraBoundingRect | vph->boundingRect();
+  }
+  for (auto it : m_polyhedronAnimationTargets) {
+    VizPolyhedron *vph = it.second;
+    polyhedraBoundingRect = polyhedraBoundingRect | vph->boundingRect();
+  }
+  for (auto it : m_polyhedronShadows) {
+    VizPolyhedron *vph = it.second;
     polyhedraBoundingRect = polyhedraBoundingRect | vph->boundingRect();
   }
 
