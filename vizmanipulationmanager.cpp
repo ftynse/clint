@@ -64,11 +64,12 @@ void VizManipulationManager::polyhedronAboutToDetach(VizPolyhedron *polyhedron) 
   m_polyhedron = polyhedron;
   ensureTargetConsistency();
 
-  CLINT_ASSERT(m_polyhedron->coordinateSystem()->coordinateSystemRect().contains(polyhedron->pos()),
+  QPointF polyhedronPos = polyhedron->mapToParent(polyhedron->boundingRect().bottomLeft());// + polyhedron->pos();
+  CLINT_ASSERT(m_polyhedron->coordinateSystem()->coordinateSystemRect().contains(polyhedronPos),
                "Coordinate system rectangle does not contain the polyhedron");
   m_detached = false;
 
-  QPointF position = polyhedron->coordinateSystem()->mapToParent(polyhedron->pos());
+  QPointF position = polyhedron->coordinateSystem()->mapToScene(polyhedronPos);
   VizProjection::IsCsResult r = polyhedron->coordinateSystem()->projection()->isCoordinateSystem(position);
   CLINT_ASSERT(r.action() == VizProjection::IsCsAction::Found && r.coordinateSystem() == polyhedron->coordinateSystem(),
                "Polyhedron position is not found in the coordinate system it actually belongs to");
@@ -78,6 +79,19 @@ void VizManipulationManager::polyhedronDetaching(QPointF position) {
   QRectF mainRect = m_polyhedron->coordinateSystem()->coordinateSystemRect();
   if (!mainRect.contains(position)) {
     m_detached = true;
+  }
+
+  if (m_detached) {
+     QPointF polyhedronPos = m_polyhedron->mapToParent(m_polyhedron->boundingRect().bottomLeft());// + m_polyhedron->pos();
+     QPointF position = m_polyhedron->coordinateSystem()->mapToScene(polyhedronPos);
+     VizProjection::IsCsResult r = m_polyhedron->coordinateSystem()->projection()->isCoordinateSystem(position);
+     if (m_betaTransformationTargetCS) {
+       m_betaTransformationTargetCS->setHighlightTarget(false);
+     }
+     if (r.action() == VizProjection::IsCsAction::Found) {
+       r.coordinateSystem()->setHighlightTarget();
+       m_betaTransformationTargetCS = r.coordinateSystem();
+     }
   }
 }
 
@@ -138,7 +152,13 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
   CLINT_ASSERT(std::find(std::begin(selectedPolyhedra), std::end(selectedPolyhedra), polyhedron) != std::end(selectedPolyhedra),
                "The active polyhedra is not selected");
   if (m_detached) {
-    QPointF position = polyhedron->coordinateSystem()->mapToParent(polyhedron->pos());
+    if (m_betaTransformationTargetCS) {
+      m_betaTransformationTargetCS->setHighlightTarget(false);
+      m_betaTransformationTargetCS = nullptr;
+    }
+
+    QPointF polyhedronPos = polyhedron->mapToParent(polyhedron->boundingRect().bottomLeft());// + polyhedron->pos();
+    QPointF position = polyhedron->coordinateSystem()->mapToScene(polyhedronPos);
     VizProjection::IsCsResult r = polyhedron->coordinateSystem()->projection()->isCoordinateSystem(position);
     int dimensionality = -1;
     for (VizPolyhedron *vp : selectedPolyhedra) {

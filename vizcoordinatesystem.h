@@ -107,6 +107,14 @@ public:
   void setHorizontalMinMax(int horizontalMinimum, int horizontalMaximum);
   void setVerticalMinMax(int verticalMinimum, int verticalMaximum);
 
+
+  std::pair<int, int> horizontalMinMax() const {
+    return std::make_pair(m_horizontalMin, m_horizontalMax);
+  }
+  std::pair<int, int> verticalMinMax() const {
+    return std::make_pair(m_verticalMin, m_verticalMax);
+  }
+
   void setMinMax(const std::pair<int, int> &horizontal,
                  const std::pair<int, int> &vertical) {
     setMinMax(horizontal.first, horizontal.second,
@@ -168,6 +176,11 @@ public:
   void updateAllPositions();
   void setIgnorePolyhedraPositionUpdates(bool ignore = true);
 
+  void setHighlightTarget(bool value = true) {
+    m_isHighlightedTarget = value;
+    update();
+  }
+
   void deleteInnerDependences();
 
   void reorderPolyhedra(const Transformation &transformation);
@@ -211,6 +224,7 @@ private:
   QString m_verticalName;
 
   bool m_ignorePolyhedraPositionUpdates = false;
+  bool m_isHighlightedTarget = false;
 
   void addAxisLabels(ClintStmtOccurrence *occurrence);
   void regenerateAxisLabels();

@@ -54,7 +54,8 @@ VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
   for (size_t i = 0, ei = m_coordinateSystems.size(); i < ei; i++) {
     const std::vector<VizCoordinateSystem *> &pile = m_coordinateSystems.at(i);
     VizCoordinateSystem *coordinateSystem = pile.front();
-    if (point.x() < coordinateSystem->pos().x()) {
+    double csLeft = coordinateSystem->pos().x() + coordinateSystem->coordinateSystemRect().left();
+    if (point.x() < csLeft) {
       found = true;
       // hypothetical pile found
       if (i == 0) {
@@ -65,7 +66,7 @@ VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
       } else {
         VizCoordinateSystem *previousCS = m_coordinateSystems.at(i - 1).front();
         QRectF csRect = previousCS->coordinateSystemRect();
-        double csRight = previousCS->pos().x() + csRect.width();
+        double csRight = previousCS->pos().x() + csRect.right();
         if (point.x() < csRight) {
           // within pile (i - 1)
           pileIndex = i - 1;
@@ -83,7 +84,7 @@ VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
   if (!found) {
     VizCoordinateSystem *coordinateSystem = m_coordinateSystems.back().front();
     QRectF csRect = coordinateSystem->coordinateSystemRect();
-    double csRight = coordinateSystem->pos().x() + csRect.width();
+    double csRight = coordinateSystem->pos().x() + csRect.right();
     if (point.x() < csRight) {
       // within last pile
       pileIndex = m_coordinateSystems.size() - 1;
@@ -102,7 +103,8 @@ VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
   std::vector<VizCoordinateSystem *> pile = m_coordinateSystems.at(pileIndex);
   for (size_t i = 0, ei = pile.size(); i < ei; i++) {
     VizCoordinateSystem *coordinateSystem = pile.at(i);
-    if (point.y() > coordinateSystem->pos().y()) {
+    double csBottom = coordinateSystem->pos().y() + coordinateSystem->coordinateSystemRect().bottom();
+    if (point.y() > csBottom) {
       if (i == 0) {
         // add before first cs
         result.m_action = IsCsAction::InsertCS;
@@ -111,7 +113,7 @@ VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
       } else {
         VizCoordinateSystem *previousCS = pile.at(i - 1);
         QRectF csRect = previousCS->coordinateSystemRect();
-        double csTop = previousCS->pos().y() - csRect.height();
+        double csTop = previousCS->pos().y() + csRect.top();
         if (point.y() > csTop) {
           // within cs (i - 1)
           result.m_action = IsCsAction::Found;
@@ -131,7 +133,7 @@ VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
 
   VizCoordinateSystem *coordinateSystem = pile.back();
   QRectF csRect = coordinateSystem->coordinateSystemRect();
-  double csTop = coordinateSystem->pos().y() - csRect.height();
+  double csTop = coordinateSystem->pos().y() + csRect.top();
   if (point.y() > csTop) {
     // within last cs
     result.m_action = IsCsAction::Found;
@@ -698,10 +700,17 @@ void VizProjection::updateSceneLayout() {
   for (size_t col = 0, col_end = m_coordinateSystems.size(); col < col_end; col++) {
     double verticalOffset = 0.0;
     double maximumWidth = 0.0;
+    double left = HUGE_VAL;
     for (size_t row = 0, row_end = m_coordinateSystems[col].size(); row < row_end; row++) {
       VizCoordinateSystem *vcs = m_coordinateSystems[col][row];
       QRectF bounding = vcs->boundingRect();
-      vcs->setPos(horizontalOffset, -verticalOffset);
+      left = std::min(left, bounding.left());
+    }
+
+    for (size_t row = 0, row_end = m_coordinateSystems[col].size(); row < row_end; row++) {
+      VizCoordinateSystem *vcs = m_coordinateSystems[col][row];
+      QRectF bounding = vcs->boundingRect();
+      vcs->setPos(horizontalOffset - left, -verticalOffset - bounding.bottom());
       verticalOffset += bounding.height() + m_vizProperties->coordinateSystemMargin();
       maximumWidth = std::max(maximumWidth, bounding.width());
     }

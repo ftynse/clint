@@ -87,6 +87,7 @@ private:
   boost::optional<std::pair<TransformationGroup, TransformationGroup>> m_replacedAnimationGroup = boost::none;
 
   QPointF m_previousDisplacement;
+  VizCoordinateSystem *m_betaTransformationTargetCS = nullptr;
 
   int m_horzOffset, m_vertOffset;
   bool m_detached;

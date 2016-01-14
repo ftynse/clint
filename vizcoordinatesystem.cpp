@@ -401,6 +401,10 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
   painter->setRenderHint(QPainter::Antialiasing);
   painter->setRenderHint(QPainter::TextAntialiasing);
 
+
+  if (m_isHighlightedTarget) {
+    painter->fillRect(coordinateSystemRect(), QBrush(Qt::lightGray, Qt::DiagCrossPattern));
+  }
   QTransform transform = QTransform::fromTranslate(
          (m_horizontalMin - 1) * pointDistance,
         -(m_verticalMin - 1) * pointDistance);
@@ -518,10 +522,11 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
 }
 
 QRectF VizCoordinateSystem::boundingRect() const {
+  double pointDistance = m_projection->vizProperties()->pointDistance();
   int width  = horizontalAxisLength();
   int height = verticalAxisLength();
-  int left   = 0;
-  int top    = -height;
+  int left   = m_horizontalMin * pointDistance;
+  int top    = -m_verticalMax * pointDistance;
 
   QFontMetrics fm(m_font);
   int ticWidth = 0;
