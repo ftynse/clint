@@ -73,6 +73,17 @@ public:
       m_vcs = cs;
     }
 
+    bool operator ==(const IsCsResult &r) {
+      return m_pile == r.m_pile &&
+             m_coordinateSystem == r.m_coordinateSystem &&
+             m_vcs == r.m_vcs &&
+             m_action == r.m_action;
+    }
+
+    bool operator !=(const IsCsResult &r) {
+      return !operator ==(r);
+    }
+
   private:
     size_t m_pile;   // in case InsertPile, insert before this index; if index >= size, insert after the last; in case InsertCS, index of the pile to insert to
     size_t m_coordinateSystem;
@@ -126,6 +137,9 @@ public:
   VizPolyhedron *polyhedron(ClintStmtOccurrence *occurrence) const;
   void reflectBetaTransformations(ClintScop *scop, const TransformationGroup &group);
 
+  void showInsertionShadow(IsCsResult r);
+  IsCsResult emptyIsCsResult() const;
+
 signals:
   void selected(int horizontal, int vertical);
 
@@ -146,6 +160,8 @@ private:
   std::vector<std::vector<VizCoordinateSystem *>> m_coordinateSystems;
   int m_horizontalDimensionIdx;
   int m_verticalDimensionIdx;
+  QGraphicsItem *m_insertionShadow = nullptr;
+  IsCsResult m_previousIsCsResult = emptyIsCsResult();
 
   VizSelectionManager *m_selectionManager;
   VizManipulationManager *m_manipulationManager;

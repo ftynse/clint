@@ -538,23 +538,6 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
 }
 
 QRectF VizCoordinateSystem::boundingRect() const {
-  double pointDistance = m_projection->vizProperties()->pointDistance();
-  int width  = horizontalAxisLength();
-  int height = verticalAxisLength();
-  int left   = m_horizontalMin * pointDistance;
-  int top    = -m_verticalMax * pointDistance;
-
-  QFontMetrics fm(m_font);
-  int ticWidth = 0;
-  for (int i = m_verticalMin; i <= m_verticalMax; i++) {
-    ticWidth = std::max(ticWidth, fm.width(QString("%1").arg(i)));
-  }
-  ticWidth += ticMargin();
-
-  width += ticWidth;
-  left -= ticWidth;
-  height += ticMargin() + fm.height();
-
   // Let's imitate childrenBoundingRect
   QRectF polyhedraBoundingRect;
   for (VizPolyhedron *vph : m_polyhedra) {
@@ -569,7 +552,28 @@ QRectF VizCoordinateSystem::boundingRect() const {
     polyhedraBoundingRect = polyhedraBoundingRect | vph->boundingRect();
   }
 
-  return QRectF(left, top, width, height) | polyhedraBoundingRect;
+  return outerRect() | polyhedraBoundingRect;
+}
+
+QRectF VizCoordinateSystem::outerRect() const {
+  QRectF internals = coordinateSystemRect();
+  double left = internals.left();
+  double top = internals.top();
+  double width = internals.width();
+  double height = internals.height();
+
+  QFontMetrics fm(m_font);
+  int ticWidth = 0;
+  for (int i = m_verticalMin; i <= m_verticalMax; i++) {
+    ticWidth = std::max(ticWidth, fm.width(QString("%1").arg(i)));
+  }
+  ticWidth += ticMargin();
+
+  width += ticWidth;
+  left -= ticWidth;
+  height += ticMargin() + fm.height();
+
+  return QRectF(left, top, width, height);
 }
 
 QRectF VizCoordinateSystem::coordinateSystemRect() const {

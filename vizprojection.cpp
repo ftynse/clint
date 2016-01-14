@@ -719,3 +719,70 @@ void VizProjection::updateSceneLayout() {
 void VizProjection::selectProjection() {
   emit selected(m_horizontalDimensionIdx, m_verticalDimensionIdx);
 }
+
+VizProjection::IsCsResult VizProjection::emptyIsCsResult() const {
+  IsCsResult r;
+  r.m_action = IsCsAction::Found;
+  r.m_coordinateSystem = static_cast<size_t>(-1);
+  r.m_pile = static_cast<size_t>(-1);
+  r.m_vcs = nullptr;
+  return r;
+}
+
+void VizProjection::showInsertionShadow(IsCsResult r) {
+  const double csMargin = vizProperties()->coordinateSystemMargin();
+  if (m_previousIsCsResult != r) {
+    if (m_insertionShadow) {
+      m_scene->removeItem(m_insertionShadow);
+      delete m_insertionShadow;
+      m_insertionShadow = nullptr;
+    }
+    m_previousIsCsResult = r;
+  } else {
+    return;
+  }
+
+  if (r.action() == IsCsAction::InsertCS) {
+    double top = 0.0;
+    double left = 0.0;
+    double width = 0.0;
+    size_t pileIdx = r.pileIdx();
+    VizCoordinateSystem *vcs;
+    if (r.coordinateSystemIdx() == m_coordinateSystems[pileIdx].size()) {
+      vcs = m_coordinateSystems[pileIdx].back();
+      top = vcs->pos().y() + vcs->outerRect().top() - csMargin;
+    } else {
+      vcs = m_coordinateSystems[pileIdx][r.coordinateSystemIdx()];
+      top = vcs->pos().y() + vcs->outerRect().bottom();
+    }
+    QRectF csRect = vcs->outerRect();
+    left = vcs->pos().x() + csRect.left();
+    width = csRect.width();
+    QGraphicsRectItem *rect = new QGraphicsRectItem(left, top, width, csMargin);
+    rect->setBrush(QBrush(Qt::lightGray, Qt::DiagCrossPattern));
+    rect->setPen(QPen(Qt::white));
+    m_insertionShadow = rect;
+    m_scene->addItem(rect);
+
+  } else if (r.action() == IsCsAction::InsertPile) {
+    double left;
+    double top;
+    double height;
+    VizCoordinateSystem *vcs;
+    if (r.pileIdx() == m_coordinateSystems.size()) {
+      vcs = m_coordinateSystems.back().front();
+      left = vcs->pos().x() + vcs->outerRect().right();
+    } else {
+      vcs = m_coordinateSystems[r.pileIdx()].front();
+      left = vcs->pos().x() + vcs->outerRect().left() - csMargin;
+    }
+    QRectF csRect = vcs->outerRect();
+    top = vcs->pos().y() + csRect.top();
+    height = csRect.height();
+    QGraphicsRectItem *rect = new QGraphicsRectItem(left, top, csMargin, height);
+    rect->setBrush(QBrush(Qt::lightGray, Qt::DiagCrossPattern));
+    rect->setPen(QPen(Qt::white));
+    m_insertionShadow = rect;
+    m_scene->addItem(rect);
+  }
+}

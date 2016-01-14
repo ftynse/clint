@@ -86,6 +86,7 @@ public:
   void setVerticalDimensionIdx(size_t dimIdx);
 
   QRectF coordinateSystemRect() const;
+  QRectF outerRect() const;
 
   bool projectStatementOccurrence(ClintStmtOccurrence *occurrence);
   void updateInnerDependences();

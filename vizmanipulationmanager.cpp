@@ -92,6 +92,7 @@ void VizManipulationManager::polyhedronDetaching(QPointF position) {
        r.coordinateSystem()->setHighlightTarget();
        m_betaTransformationTargetCS = r.coordinateSystem();
      }
+     m_polyhedron->coordinateSystem()->projection()->showInsertionShadow(r);
   }
 }
 
@@ -156,6 +157,8 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       m_betaTransformationTargetCS->setHighlightTarget(false);
       m_betaTransformationTargetCS = nullptr;
     }
+    polyhedron->coordinateSystem()->projection()->showInsertionShadow(
+          polyhedron->coordinateSystem()->projection()->emptyIsCsResult());
 
     QPointF polyhedronPos = polyhedron->mapToParent(polyhedron->boundingRect().bottomLeft());// + polyhedron->pos();
     QPointF position = polyhedron->coordinateSystem()->mapToScene(polyhedronPos);
