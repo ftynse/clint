@@ -232,11 +232,16 @@ void VizProjection::deleteCoordinateSystem(VizCoordinateSystem *vcs) {
   std::tie(pileIdx, csIdx) = csIndices(vcs);
   CLINT_ASSERT(pileIdx != static_cast<size_t>(-1),
                "Coordinate sytem does not belong to the projection it is being removed from");
-  vcs->setParentItem(nullptr);
+//  vcs->setParentItem(nullptr);
   m_coordinateSystems[pileIdx].erase(std::begin(m_coordinateSystems[pileIdx]) + csIdx);
   if (m_coordinateSystems[pileIdx].empty()) {
     m_coordinateSystems.erase(std::begin(m_coordinateSystems) + pileIdx);
   }
+  vcs->setVisible(false);
+  vcs->setParentItem(nullptr);
+  m_scene->removeItem(vcs);
+
+//  vcs->deleteLater();
   delete vcs; // No parent now, so delete.
   updateSceneLayout();
 }

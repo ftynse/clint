@@ -691,6 +691,7 @@ VizPolyhedron::buildPolygonPoints(std::vector<VizPoint *> points,
 void VizPolyhedron::recomputeShape() {
   // Use pointScatteredCoordsReal * pointDistance for non-visual polygon
   recomputeSmoothShapeImpl(vizPointPos);
+  prepareGeometryChange();
 }
 
 void VizPolyhedron::recomputeSmoothShapeImpl(std::function<QPointF (const VizPoint *)> coordinates) {
@@ -738,7 +739,6 @@ void VizPolyhedron::recomputeSmoothShapeImpl(std::function<QPointF (const VizPoi
       length += 360;
     m_polyhedronShape.arcTo(arcRect, angle, length);
   }
-  prepareGeometryChange();
 }
 
 void VizPolyhedron::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {

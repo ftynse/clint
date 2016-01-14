@@ -294,9 +294,12 @@ void VizCoordinateSystem::reparentPolyhedron(VizPolyhedron *polyhedron) {
     return;
   oldCS->removePolyhedron(polyhedron);
   polyhedron->setParentItem(oldCS);
+  prepareGeometryChange();
   m_polyhedra.push_back(polyhedron);
   addAxisLabels(polyhedron->occurrence());
   polyhedron->reparent(this);
+  oldCS->prepareGeometryChange();
+  prepareGeometryChange();
 }
 
 void VizCoordinateSystem::insertPolyhedronAfter(VizPolyhedron *inserted, VizPolyhedron *after) {
@@ -319,6 +322,7 @@ void VizCoordinateSystem::removePolyhedron(VizPolyhedron *polyhedron) {
   m_polyhedra.erase(it);
   polyhedron->setParentItem(nullptr);
   regenerateAxisLabels();
+  prepareGeometryChange();
 }
 
 void VizCoordinateSystem::polyhedronUpdated(VizPolyhedron *polyhedron) {
@@ -345,18 +349,21 @@ void VizCoordinateSystem::setMinMax(int horizontalMinimum, int horizontalMaximum
   m_verticalMin   = verticalMinimum;
   m_verticalMax   = verticalMaximum;
   updatePolyhedraPositions();
+  prepareGeometryChange();
 }
 
 void VizCoordinateSystem::setHorizontalMinMax(int horizontalMinimum, int horizontalMaximum) {
   m_horizontalMin = horizontalMinimum;
   m_horizontalMax = horizontalMaximum;
   updatePolyhedraPositions();
+  prepareGeometryChange();
 }
 
 void VizCoordinateSystem::setVerticalMinMax(int verticalMinimum, int verticalMaximum) {
   m_verticalMin   = verticalMinimum;
   m_verticalMax   = verticalMaximum;
   updatePolyhedraPositions();
+  prepareGeometryChange();
 }
 
 QPolygonF VizCoordinateSystem::leftArrow(int length, const double pointRadius)
@@ -526,13 +533,23 @@ QRectF VizCoordinateSystem::boundingRect() const {
   width += ticWidth;
   left -= ticWidth;
   height += ticMargin() + fm.height();
-  return QRectF(left, top, width, height) | childrenBoundingRect();
+
+  // Let's imitate childrenBoundingRect
+  QRectF polyhedraBoundingRect;
+  for (VizPolyhedron *vph : m_polyhedra) {
+    polyhedraBoundingRect = polyhedraBoundingRect | vph->boundingRect();
+  }
+
+  return QRectF(left, top, width, height) | polyhedraBoundingRect;
 }
 
 QRectF VizCoordinateSystem::coordinateSystemRect() const {
+  double pointDistance = m_projection->vizProperties()->pointDistance();
   int width  = horizontalAxisLength();
   int height = verticalAxisLength();
-  return QRectF(0, -height, width, height);
+  int left   = (m_horizontalMin - 1) * pointDistance;
+  int top    = -(m_verticalMax + 2) * pointDistance;
+  return QRectF(left, top, width, height);
 }
 
 int VizCoordinateSystem::horizontalAxisLength() const {
