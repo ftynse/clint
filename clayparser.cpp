@@ -270,8 +270,8 @@ Transformation wrappedIss(const std::vector<int> &beta, const clay_parser::clay_
   return Transformation::rawIss(beta, wrapClayParserList(std::forward<const clay_parser::clay_parser_list>(list)));
 }
 
-TransformationGroup create_group(const std::vector<clay_parser::clay_parser_command> &commands) {
-  TransformationGroup group;
+TransformationSequence create_sequence(const std::vector<clay_parser::clay_parser_command> &commands) {
+  TransformationSequence sequence;
 
   std::unordered_map<std::string, std::function<Transformation (const clay_parser::clay_parser_command &)>> mapping;
   mapping["split"]       = unwrap<std::vector<int>, int>                               (Transformation::rawSplit);
@@ -295,9 +295,11 @@ TransformationGroup create_group(const std::vector<clay_parser::clay_parser_comm
 
 
   for (const clay_parser::clay_parser_command &cmd : commands) {
+    TransformationGroup group;
     group.transformations.push_back(create_transformation(cmd, mapping));
+    sequence.groups.push_back(group);
   }
-  return std::move(group);
+  return std::move(sequence);
 }
 
 void print_parser_command(std::vector<clay_parser::clay_parser_command> parser_command_list) {
@@ -360,7 +362,7 @@ TransformationSequence ClayParser::parse(const std::string &text) {
           boost::spirit::ascii::space,
           parsed);
     if (result && iter == end) {
-      sequence.groups.push_back(create_group(parsed));
+      sequence = create_sequence(parsed);
     } else {
       throw clay_parser::syntax_error("Input text is not a clay transformation sequence");
     }
