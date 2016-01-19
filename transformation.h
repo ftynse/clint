@@ -223,9 +223,11 @@ public:
     return t;
   }
 
-  static Transformation interchange(const std::vector<int> &beta, int dimension1, int dimension2) {
+  static Transformation interchange(const std::vector<int> &beta, int dimension1, int dimension2,
+                                    int pretty = 0) {
     CLINT_ASSERT(beta.size() >= std::max(dimension1, dimension2),
                  "Beta too short");
+    (void) pretty;
     Transformation t;
     t.m_kind       = Kind::Interchange;
     t.m_targetBeta = beta;

@@ -282,7 +282,7 @@ TransformationGroup create_group(const std::vector<clay_parser::clay_parser_comm
   mapping["shift"]       = unwrap<std::vector<int>, int, std::vector<int>, int>        (Transformation::rawShift);
   mapping["skew"]        = unwrap<std::vector<int>, int, int, int>                     (Transformation::skew);
   mapping["grain"]       = unwrap<std::vector<int>, int, int>                          (Transformation::grain);
-  mapping["interchange"] = unwrap<std::vector<int>, int, int>                          (Transformation::interchange);
+  mapping["interchange"] = unwrap<std::vector<int>, int, int, int>                     (Transformation::interchange);
   mapping["reverse"]     = unwrap<std::vector<int>, int>                               (Transformation::reverse);
   mapping["tile"]        = unwrap<std::vector<int>, int, int, int, int>                (Transformation::rawTile);
   mapping["iss"]         = unwrap<std::vector<int>, clay_parser::clay_parser_list>     (wrappedIss);
