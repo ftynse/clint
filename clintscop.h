@@ -29,6 +29,8 @@ public:
   explicit ClintScop(osl_scop_p scop, int parameterValue, char *originalCode = nullptr, ClintProgram *parent = nullptr);
   ~ClintScop();
 
+  const char *compareTo(osl_scop_p scop);
+
   // Accessors
   ClintProgram *program() const {
     return m_program;

@@ -61,6 +61,8 @@ ClintWindow::ClintWindow(QWidget *parent) :
     }
   }
 
+  setMinimumSize(800, 600);
+
   QFont monospacefont("PT Mono");
   m_scriptEditor = new QTextEdit;
   m_codeEditor = new QTextEdit;
@@ -94,6 +96,7 @@ ClintWindow::~ClintWindow() {
 
 void ClintWindow::setupActions() {
   m_actionFileOpen = new QAction(QIcon::fromTheme("document-open"), "Open...", this);
+  m_actionFileCompareTo = new QAction("Compare to...", this);
   m_actionFileClose = new QAction("Close", this);
   m_actionFileSaveSvg = new QAction("Save as SVG", this);
   m_actionFileQuit = new QAction(QIcon::fromTheme("application-exit"), "Quit", this);
@@ -103,9 +106,11 @@ void ClintWindow::setupActions() {
   m_actionFileQuit->setShortcut(QKeySequence::Quit);
 
   m_actionFileClose->setEnabled(false);
+  m_actionFileCompareTo->setEnabled(false);
 
   m_actionEditUndo = new QAction(QIcon::fromTheme("edit-undo"), "Undo", this);
   m_actionEditRedo = new QAction(QIcon::fromTheme("edit-redo"), "Redo", this);
+  m_actionEditReplay = new QAction("Replay transformations", this);
   m_actionEditVizProperties = new QAction("Visualization properties", this);
 
   m_actionEditUndo->setShortcut(QKeySequence::Undo);
@@ -113,6 +118,7 @@ void ClintWindow::setupActions() {
 
   m_actionEditUndo->setEnabled(false);
   m_actionEditRedo->setEnabled(false);
+  m_actionEditReplay->setEnabled(false);
 
   m_actionViewFreeze = new QAction("Keep original code", this);
   m_actionViewProjectionMatrix = new QAction("Projection matrix", this);
@@ -122,12 +128,14 @@ void ClintWindow::setupActions() {
   m_actionViewFreeze->setCheckable(true);
 
   connect(m_actionFileOpen, &QAction::triggered, this, &ClintWindow::fileOpen);
+  connect(m_actionFileCompareTo, &QAction::triggered, this, &ClintWindow::fileCompareTo);
   connect(m_actionFileClose, &QAction::triggered, this, &ClintWindow::fileClose);
   connect(m_actionFileSaveSvg, &QAction::triggered, this, &ClintWindow::fileSaveSvg);
   connect(m_actionFileQuit, &QAction::triggered, qApp, &QApplication::quit);
 
   connect(m_actionEditUndo, &QAction::triggered, this, &ClintWindow::editUndo);
   connect(m_actionEditRedo, &QAction::triggered, this, &ClintWindow::editRedo);
+  connect(m_actionEditReplay, &QAction::triggered, this, &ClintWindow::editReplay);
   connect(m_actionEditVizProperties, &QAction::triggered, this, &ClintWindow::editVizProperties);
 
   connect(m_actionViewFreeze, &QAction::toggled, this, &ClintWindow::viewFreezeToggled);
@@ -138,6 +146,7 @@ void ClintWindow::setupMenus() {
   m_menuBar = new QMenuBar(this);
   QMenu *fileMenu = new QMenu("File");
   fileMenu->addAction(m_actionFileOpen);
+  fileMenu->addAction(m_actionFileCompareTo);
   fileMenu->addAction(m_actionFileSaveSvg);
   fileMenu->addAction(m_actionFileClose);
   fileMenu->addSeparator();
@@ -146,6 +155,7 @@ void ClintWindow::setupMenus() {
   QMenu *editMenu = new QMenu("Edit");
   editMenu->addAction(m_actionEditUndo);
   editMenu->addAction(m_actionEditRedo);
+  editMenu->addAction(m_actionEditReplay);
   editMenu->addSeparator();
   editMenu->addAction(m_actionEditVizProperties);
 
@@ -199,6 +209,7 @@ void ClintWindow::fileClose() {
 
   m_fileOpen = false;
   m_actionFileClose->setEnabled(false);
+  m_actionFileCompareTo->setEnabled(false);
   m_actionViewProjectionMatrix->setEnabled(false);
 }
 
@@ -223,6 +234,62 @@ void ClintWindow::fileSaveSvg() {
   }
 
   delete generator;
+}
+
+void ClintWindow::fileCompareTo() {
+  if (!m_fileOpen)
+    return;
+
+  QString fileName = QFileDialog::getOpenFileName(this, "Compare to file", QString(),
+                                                  "OpenScop files (*.scop);;C/C++ sources (*.c *.cpp *.cxx)");
+  if (fileName.isNull())
+    return;
+
+  char *cFileName = strdup(QFile::encodeName(fileName).constData());
+  FILE *file = fopen(cFileName, "r");
+  free(cFileName);
+  if (!file) {
+    QMessageBox::critical(this, QString(), QString("Could not open %1 for reading").arg(fileName), QMessageBox::Ok, QMessageBox::Ok);
+    return;
+  }
+  osl_scop_p scop = nullptr;
+  if (fileName.endsWith(".scop")) {
+    scop = osl_scop_read(file);
+  } else if (fileName.endsWith(".c") ||
+             fileName.endsWith(".cpp") ||
+             fileName.endsWith(".cxx")) {
+    scop = oslFromCCode(file);
+  } else {
+    CLINT_UNREACHABLE;
+  }
+  fclose(file);
+  if (!scop) {
+    QMessageBox::warning(this, QString(), "No SCoP in the given file", QMessageBox::Ok, QMessageBox::Ok);
+    return;
+  }
+
+  ClintScop *cscop = (*m_program)[0];
+  const char *script = cscop->compareTo(scop);
+  osl_scop_free(scop);
+  if (script == nullptr) {
+    QMessageBox::warning(this, QString(), "No transformation script found between two SCoPs", QMessageBox::Ok, QMessageBox::Ok);
+    return;
+  }
+
+  ClayParser parser;
+  try {
+    TransformationSequence newSequence = parser.parse(std::string(script));
+    TransformationSequence inverted;
+    inverted.groups = std::vector<TransformationGroup>(newSequence.groups.rbegin(), newSequence.groups.rend());
+    prepareRedoReplay(inverted);
+  } catch (std::logic_error e) {
+    QMessageBox::critical(this, "Could not parse transformation", e.what(),
+                          QMessageBox::Ok, QMessageBox::Ok);
+  } catch (...) {
+    QMessageBox::critical(this, "Could not parse transformation", "Unidentified error",
+                          QMessageBox::Ok, QMessageBox::Ok);
+  }
+  updateUndoRedoActions();
 }
 
 void ClintWindow::changeParameter(int value) {
@@ -294,6 +361,7 @@ void ClintWindow::openFileByName(QString fileName) {
 
   m_fileOpen = true;
   m_actionFileClose->setEnabled(true);
+  m_actionFileCompareTo->setEnabled(true);
   m_actionViewProjectionMatrix->setChecked(true);
   m_actionViewProjectionMatrix->setEnabled(true);
 
@@ -303,12 +371,10 @@ void ClintWindow::openFileByName(QString fileName) {
 
 ClintScop *ClintWindow::regenerateScopWithSequence(osl_scop_p originalScop, const TransformationSequence &sequence) {
   ClintScop *oldscop = (*m_program)[0];
-
   ClintScop *newscop = new ClintScop(originalScop, m_parameterValue, nullptr, m_program); // FIXME: provide original code when coloring is done for it...
   (*m_program)[0] = newscop;
 
   createProjections(newscop);
-
   // Copy transformations.
   for (TransformationGroup g : sequence.groups) {
     newscop->transform(g);
@@ -326,6 +392,44 @@ ClintScop *ClintWindow::regenerateScopWithSequence(osl_scop_p originalScop, cons
   }
 }
 
+ClintScop *ClintWindow::prepareRedoReplay(const TransformationSequence &sequence) {
+  if (!m_program)
+    return nullptr;
+
+  ClintScop *oldscop = (*m_program)[0];
+
+  ClintScop *newscop = new ClintScop(oldscop->scopPart(), m_parameterValue, nullptr, m_program);
+  (*m_program)[0] = newscop;
+
+  createProjections(newscop);
+
+  disconnect(oldscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
+  disconnect(oldscop, &ClintScop::groupAboutToExecute, this, &ClintWindow::groupExecuted);
+  newscop->resetRedoSequence(sequence);
+  connect(newscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
+  connect(newscop, &ClintScop::groupAboutToExecute, this, &ClintWindow::groupExecuted);
+
+  updateUndoRedoActions();
+  oldscop->setParent(nullptr);
+  oldscop->deleteLater();
+  return newscop;
+}
+
+void ClintWindow::updateUndoRedoActions() {
+  if (m_program != nullptr) {
+    ClintScop *cscop = (*m_program)[0];
+    if (cscop != nullptr) {
+      m_actionEditRedo->setEnabled(cscop->hasRedo());
+      m_actionEditReplay->setEnabled(cscop->hasRedo());
+      m_actionEditUndo->setEnabled(cscop->hasUndo());
+      return;
+    }
+  }
+  m_actionEditRedo->setEnabled(false);
+  m_actionEditReplay->setEnabled(false);
+  m_actionEditUndo->setEnabled(false);
+}
+
 void ClintWindow::regenerateScop(osl_scop_p originalScop) {
   if (!m_program)
     return;
@@ -341,8 +445,7 @@ void ClintWindow::regenerateScop(osl_scop_p originalScop) {
 
   // Copy redo list after sequence execution since it cleans it.
   newscop->resetRedoSequence(oldscop->redoSequence());
-  m_actionEditRedo->setEnabled(newscop->hasRedo());
-  m_actionEditUndo->setEnabled(newscop->hasUndo());
+  updateUndoRedoActions();
 
   oldscop->setParent(nullptr);
   oldscop->deleteLater();
@@ -355,9 +458,10 @@ void ClintWindow::regenerateScop(const TransformationSequence &sequence) {
   ClintScop *oldscop = (*m_program)[0];
   CLINT_ASSERT(oldscop != nullptr, "regenerationg scop with no original provided");
 
-  regenerateScopWithSequence(oldscop->scopPart(), sequence);
-  m_actionEditRedo->setEnabled(false);
-  m_actionEditUndo->setEnabled(false);
+  ClintScop *newscop = regenerateScopWithSequence(oldscop->scopPart(), sequence);
+  if (newscop == NULL)
+    return;
+  updateUndoRedoActions();
 
   oldscop->setParent(nullptr);
   oldscop->deleteLater();
@@ -375,8 +479,7 @@ void ClintWindow::editUndo() {
   m_undoing = true;
   vscop->undoTransformation();
   m_undoing = false;
-  m_actionEditRedo->setEnabled(vscop->hasRedo());
-  m_actionEditUndo->setEnabled(vscop->hasUndo());
+  updateUndoRedoActions();
 //  regenerateScop();
 }
 
@@ -391,9 +494,20 @@ void ClintWindow::editRedo() {
   m_undoing = true;
   vscop->redoTransformation();
   m_undoing = false;
-  m_actionEditRedo->setEnabled(vscop->hasRedo());
-  m_actionEditUndo->setEnabled(vscop->hasUndo());
+  updateUndoRedoActions();
 //  regenerateScop();
+}
+
+void ClintWindow::editReplay() {
+  if (!m_program)
+    return;
+  ClintScop *vscop = (*m_program)[0];
+  if (!vscop)
+    return;
+  if (vscop->hasRedo()) {
+    editRedo();
+    QTimer::singleShot(1500, this, &ClintWindow::editReplay);
+  }
 }
 
 void ClintWindow::editVizProperties() {
@@ -484,6 +598,9 @@ void ClintWindow::reparseScript() {
     QMessageBox::critical(this, "Could not parse transformation", "Unidentified error",
                           QMessageBox::Ok, QMessageBox::Ok);
   }
+  m_actionEditUndo->setEnabled(false);
+  m_actionEditRedo->setEnabled(vscop->hasRedo());
+  m_actionEditReplay->setEnabled(vscop->hasRedo());
 }
 
 void ClintWindow::scopTransformed() {
@@ -501,6 +618,7 @@ void ClintWindow::scopTransformed() {
 
   m_actionEditUndo->setEnabled(vscop->hasUndo());
   m_actionEditRedo->setEnabled(false);
+  m_actionEditReplay->setEnabled(false);
 
   if (m_projection && m_graphicalInterface == m_projection->widget()) {
     m_projection->updateProjection();

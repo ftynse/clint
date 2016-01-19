@@ -4,6 +4,8 @@
 #include "clintscop.h"
 #include "clintstmt.h"
 #include "clintstmtoccurrence.h"
+#include "vizproperties.h"
+#include "dependenceanalyzer.h"
 
 #include <exception>
 #include <map>
@@ -12,10 +14,10 @@
 #include <tuple>
 #include <utility>
 
+#include <chlore/chlore.h>
+
 #include <QColor>
 #include <QString>
-#include "vizproperties.h"
-#include "dependenceanalyzer.h"
 
 void ClintScop::clearDependences() {
   for (auto it : m_dependenceMap) {
@@ -111,6 +113,16 @@ ClintScop::~ClintScop() {
   free(m_originalCode);
 
   appliedScopFlushCache();
+}
+
+const char *ClintScop::compareTo(osl_scop_p scop) {
+  osl_generic_remove(&m_scopPart->extension, OSL_URI_CLAY);
+  chlore_whiteboxing(m_scopPart, scop);
+
+  osl_clay_p extension = (osl_clay_p) osl_generic_lookup(m_scopPart->extension, OSL_URI_CLAY);
+  if (!extension)
+    return nullptr;
+  return extension->script;
 }
 
 osl_scop_p ClintScop::appliedScop() {

@@ -20,6 +20,7 @@ public:
 
   void regenerateScop(osl_scop_p originalScop = nullptr);
   void regenerateScop(const TransformationSequence &sequence);
+  ClintScop *prepareRedoReplay(const TransformationSequence &sequence);
   void createProjections(ClintScop *vscop);
   void paintTogether(QPainter *painter, QSvgGenerator *generator);
 
@@ -27,12 +28,14 @@ signals:
 
 public slots:
   void fileOpen();
+  void fileCompareTo();
   void fileClose();
   void fileSaveSvg();
   void openFileByName(QString fileName);
 
   void editUndo();
   void editRedo();
+  void editReplay();
   void editVizProperties();
 
   void viewFreezeToggled(bool value);
@@ -52,11 +55,13 @@ public slots:
 private:
   QAction *m_actionFileOpen;
   QAction *m_actionFileClose;
+  QAction *m_actionFileCompareTo;
   QAction *m_actionFileSaveSvg;
   QAction *m_actionFileQuit;
 
   QAction *m_actionEditUndo;
   QAction *m_actionEditRedo;
+  QAction *m_actionEditReplay;
   QAction *m_actionEditVizProperties;
 
   QAction *m_actionViewFreeze;
@@ -90,6 +95,7 @@ private:
   ClintScop *regenerateScopWithSequence(osl_scop_p originalScop, const TransformationSequence &sequence);
   void deleteProjectionOverview();
   void deleteProjection();
+  void updateUndoRedoActions();
 };
 
 #endif // CLINTWINDOW_H
