@@ -62,6 +62,24 @@ public:
 
   bool operator ==(const Transformation &other) const;
 
+  /*+********* characteristics *****************************/
+  bool modifiesBetas() const {
+    return (kind() == Kind::Fuse ||
+            kind() == Kind::Split ||
+            kind() == Kind::Reorder ||
+            kind() == Kind::Tile ||
+            kind() == Kind::Linearize ||
+            kind() == Kind::Embed ||
+            kind() == Kind::Unembed);
+  }
+
+  bool modifiesOccurrenceList() const {
+    return (kind() == Kind::IndexSetSplitting ||
+            kind() == Kind::Collapse) ;
+  }
+
+  /*+******** construction *********************************/
+
   static Transformation constantShift(const std::vector<int> &beta, int dimension, int amount) {
     CLINT_ASSERT(dimension <= beta.size(), "Dimension overflow");
     Transformation t;

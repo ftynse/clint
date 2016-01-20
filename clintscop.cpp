@@ -317,16 +317,8 @@ void ClintScop::remapWithTransformationGroup(size_t index) {
 
   for (size_t i = 0; i < tg.transformations.size(); ++i) {
     const Transformation &transformation = tg.transformations[i];
-    // Remap betas when needed.  FIXME: ClintScop should not know which transformation may modify betas
-    // introduce bool Transformation::modifiesLoopStmtOrder() and use it.  Same for checking for ISS transformation.
-    if (transformation.kind() == Transformation::Kind::Fuse ||
-        transformation.kind() == Transformation::Kind::Split ||
-        transformation.kind() == Transformation::Kind::Reorder ||
-        transformation.kind() == Transformation::Kind::Tile ||
-        transformation.kind() == Transformation::Kind::Linearize ||
-        transformation.kind() == Transformation::Kind::Embed ||
-        transformation.kind() == Transformation::Kind::Unembed) {
-
+    // Remap betas when needed.
+    if (transformation.modifiesBetas()) {
       emit aboutToChangeBeta(index, i);
       Transformation complementary = remapBetas(transformation);
       complementaryTG.transformations.insert(std::begin(complementaryTG.transformations), complementary);
@@ -339,8 +331,7 @@ void ClintScop::remapWithTransformationGroup(size_t index) {
     // is it important at all? occurrences will filter the scatterings they need, but not sure about dependence maps).
     // As long as VizManipulationManager deals with the association of VizPolyhedron to ClintStmtOccurrrence after it was created,
     // that part works fine.
-    if (transformation.kind() == Transformation::Kind::IndexSetSplitting ||
-        transformation.kind() == Transformation::Kind::Collapse) {
+    if (transformation.modifiesOccurrenceList()) {
       m_betaMapper->apply(nullptr, transformation);
     }
   }
