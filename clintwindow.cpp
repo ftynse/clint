@@ -192,7 +192,7 @@ void ClintWindow::fileClose() {
     ClintScop *vscop = (*m_program)[0];
     if (vscop) {
       disconnect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
-      disconnect(vscop, &ClintScop::groupAboutToExecute, this, &ClintWindow::groupExecuted);
+      disconnect(vscop, &ClintScop::aboutToChangeBeta, this, &ClintWindow::reflectBetaTransformations);
     }
   }
   m_fileBasename = QString();
@@ -352,7 +352,7 @@ void ClintWindow::openFileByName(QString fileName) {
   m_program = new ClintProgram(scop, originalCode, this);
   ClintScop *vscop = (*m_program)[0];
   connect(vscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
-  connect(vscop, &ClintScop::groupAboutToExecute, this, &ClintWindow::groupExecuted);
+  connect(vscop, &ClintScop::aboutToChangeBeta, this, &ClintWindow::reflectBetaTransformations);
 
   createProjections(vscop);
 
@@ -382,9 +382,9 @@ ClintScop *ClintWindow::regenerateScopWithSequence(osl_scop_p originalScop, cons
   try {
     newscop->executeTransformationSequence();
     connect(newscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
-    connect(newscop, &ClintScop::groupAboutToExecute, this, &ClintWindow::groupExecuted);
+    connect(newscop, &ClintScop::aboutToChangeBeta, this, &ClintWindow::reflectBetaTransformations);
     disconnect(oldscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
-    disconnect(oldscop, &ClintScop::groupAboutToExecute, this, &ClintWindow::groupExecuted);
+    disconnect(oldscop, &ClintScop::aboutToChangeBeta, this, &ClintWindow::reflectBetaTransformations);
     return newscop;
   } catch (std::logic_error e) {
     QMessageBox::critical(this, "Could not apply sequence", e.what(), QMessageBox::Ok, QMessageBox::Ok);
@@ -404,10 +404,10 @@ ClintScop *ClintWindow::prepareRedoReplay(const TransformationSequence &sequence
   createProjections(newscop);
 
   disconnect(oldscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
-  disconnect(oldscop, &ClintScop::groupAboutToExecute, this, &ClintWindow::groupExecuted);
+  disconnect(oldscop, &ClintScop::aboutToChangeBeta, this, &ClintWindow::reflectBetaTransformations);
   newscop->resetRedoSequence(sequence);
   connect(newscop, &ClintScop::transformExecuted, this, &ClintWindow::scopTransformed);
-  connect(newscop, &ClintScop::groupAboutToExecute, this, &ClintWindow::groupExecuted);
+  connect(newscop, &ClintScop::aboutToChangeBeta, this, &ClintWindow::reflectBetaTransformations);
 
   updateUndoRedoActions();
   oldscop->setParent(nullptr);
@@ -628,18 +628,19 @@ void ClintWindow::scopTransformed() {
   }
 }
 
-void ClintWindow::groupExecuted(size_t index) {
+void ClintWindow::reflectBetaTransformations(size_t groupIndex, size_t tsIndex) {
   ClintScop *vscop = (*m_program)[0];
   if (!vscop)
     return;
 
-  TransformationGroup group = vscop->transformationSequence().groups[index];
+  const TransformationGroup &group = vscop->transformationSequence().groups[groupIndex];
+  const Transformation &transformation = group.transformations[tsIndex];
 
   if (m_projection) {
-    m_projection->reflectBetaTransformations(vscop, group);
+    m_projection->reflectBetaTransformation(vscop, transformation);
   }
   if (m_projectionOverview) {
-    m_projectionOverview->reflectBetaTransformations(vscop, group);
+    m_projectionOverview->reflectBetaTransformation(vscop, transformation);
   }
 }
 

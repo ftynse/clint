@@ -520,15 +520,6 @@ Transformation ClayBetaMapper::apply(const Transformation &transformation) {
   return complementary;
 }
 
-TransformationGroup ClayBetaMapper::apply(const TransformationGroup &group) {
-  TransformationGroup result;
-  for (const Transformation &t : group.transformations) {
-    Transformation complementary = apply(t);
-    if (complementary.kind() != Transformation::Kind::Empty)
-      result.transformations.push_back(complementary);
-  }
-  return result;
-}
 
 void ClayBetaMapper::dump(std::ostream &out) const {
   std::set<Identifier> uniqueKeys;

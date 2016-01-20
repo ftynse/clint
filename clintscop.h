@@ -144,7 +144,7 @@ public:
 
 signals:
   void transformExecuted();
-  void groupAboutToExecute(size_t);
+  void aboutToChangeBeta(size_t, size_t);
   void dimensionalityChanged();
 
 public slots:
@@ -162,8 +162,7 @@ private:
   void updateDependences(osl_scop_p transformed);
   void resetOccurrences(osl_scop_p transformed);
 
-  void remapBetas(const TransformationGroup &tg);
-  void remapBetasFull();
+  Transformation remapBetas(const Transformation &transformation);
   void remapWithTransformationGroup(size_t index);
 
   osl_scop_p m_scopPart;

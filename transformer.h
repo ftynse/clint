@@ -299,7 +299,6 @@ public:
   }
 
   Transformation apply(const Transformation &transformation);
-  TransformationGroup apply(const TransformationGroup &group);
 private:
   std::set<Identifier> map(const Identifier &identifier, const IdentifierMultiMap &mapping) const {
     typename IdentifierMultiMap::const_iterator beginIt, endIt;

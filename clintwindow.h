@@ -42,7 +42,7 @@ public slots:
   void viewProjectionMatrixToggled(bool value);
 
   void scopTransformed();
-  void groupExecuted(size_t index);
+  void reflectBetaTransformations(size_t groupIndex, size_t tsIndex);
 
   void updateCodeEditor();
   void reparseCode();

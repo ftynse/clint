@@ -47,10 +47,10 @@ void ClintProjectionOverview::updateAllProjections() {
   }
 }
 
-void ClintProjectionOverview::reflectBetaTransformations(ClintScop *cscop, const TransformationGroup &group) {
+void ClintProjectionOverview::reflectBetaTransformation(ClintScop *cscop, const Transformation &transformation) {
   for (auto element : m_allProjections) {
     VizProjection *projection = element.second;
-    projection->reflectBetaTransformations(cscop, group);
+    projection->reflectBetaTransformation(cscop, transformation);
   }
 }
 

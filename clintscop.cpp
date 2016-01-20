@@ -313,9 +313,10 @@ const std::set<int> &ClintScop::tilingDimensions(const std::vector<int> &beta) c
 
 void ClintScop::remapWithTransformationGroup(size_t index) {
   const TransformationGroup &tg = m_transformationSeq.groups.at(index);
+  TransformationGroup complementaryTG;
 
-  bool createdComplementary = false;
-  for (const Transformation &transformation : tg.transformations) {
+  for (size_t i = 0; i < tg.transformations.size(); ++i) {
+    const Transformation &transformation = tg.transformations[i];
     // Remap betas when needed.  FIXME: ClintScop should not know which transformation may modify betas
     // introduce bool Transformation::modifiesLoopStmtOrder() and use it.  Same for checking for ISS transformation.
     if (transformation.kind() == Transformation::Kind::Fuse ||
@@ -325,10 +326,10 @@ void ClintScop::remapWithTransformationGroup(size_t index) {
         transformation.kind() == Transformation::Kind::Linearize ||
         transformation.kind() == Transformation::Kind::Embed ||
         transformation.kind() == Transformation::Kind::Unembed) {
-      emit groupAboutToExecute(index);
-      remapBetas(tg);
-      createdComplementary = true;
-      break;
+
+      emit aboutToChangeBeta(index, i);
+      Transformation complementary = remapBetas(transformation);
+      complementaryTG.transformations.insert(std::begin(complementaryTG.transformations), complementary);
     }
     // XXX: needs rethinking
     // This weird move allows to workaround the 1-to-1 mapping condition imposed by the current implementation of remapBetas.
@@ -340,58 +341,13 @@ void ClintScop::remapWithTransformationGroup(size_t index) {
     // that part works fine.
     if (transformation.kind() == Transformation::Kind::IndexSetSplitting ||
         transformation.kind() == Transformation::Kind::Collapse) {
-      m_betaMapper->apply(nullptr, tg);
-      break;
+      m_betaMapper->apply(nullptr, transformation);
     }
   }
-  if (!createdComplementary)
-    m_complementaryTransformationSeq.groups.push_back(TransformationGroup());
+  m_complementaryTransformationSeq.groups.push_back(complementaryTG);
 }
 
-
-void ClintScop::remapBetasFull() {
-  // Update all occurrences to their initial values.
-  std::map<std::vector<int>, std::vector<int>> mapping;
-  std::set<std::vector<int>> allOriginalBetas;
-  for (ClintStmt *stmt : statements()) {
-    for (ClintStmtOccurrence *occ : stmt->occurrences()) {
-      const std::vector<int> &currentBeta = occ->betaVector();
-      std::set<std::vector<int>> originalBetas = m_betaMapper->reverseMap(currentBeta);
-      CLINT_ASSERT(originalBetas.size() != 0, "could not perform reverse mapping");
-
-      // Recreate collapsed occurrences.
-      for (int i = 1; i < originalBetas.size(); i++) {
-        std::vector<int> temporaryBeta;
-        temporaryBeta.push_back(-i);
-        std::copy(std::begin(currentBeta), std::end(currentBeta), std::back_inserter(temporaryBeta));
-        occ->statement()->splitOccurrence(occ, temporaryBeta);
-        std::set<std::vector<int>>::iterator it = originalBetas.begin();
-        std::advance(it, i);
-        CLINT_ASSERT(allOriginalBetas.count(*it) == 0,
-                     "Occurrence both iss-ed and collapsed");
-        mapping.insert(std::make_pair(temporaryBeta, *it));
-      }
-
-      // Remove iss-ed occurrences.
-      if (allOriginalBetas.count(*originalBetas.begin()) != 0) {
-        occ->statement()->removeOccurrence(occ);
-      } else {
-        mapping.insert(std::make_pair(currentBeta, *originalBetas.begin()));
-        allOriginalBetas.insert(*originalBetas.begin());
-      }
-    }
-  }
-  updateBetas(mapping);
-
-  m_betaMapper->reset();
-
-  m_complementaryTransformationSeq.groups.clear();
-  for (size_t i = 0; i < m_transformationSeq.groups.size(); ++i) {
-    remapWithTransformationGroup(i);
-  }
-}
-
-void ClintScop::remapBetas(const TransformationGroup &group) {
+Transformation ClintScop::remapBetas(const Transformation &transformation) {
   // m_betaMapper keeps the mapping from the original beta-vectors to the current ones,
   // but we cannot find get a ClintStmtOccurrence by original beta-vector if their beta-vectors
   // were changed during transformation: some of them may have been created by ISS thus making
@@ -399,9 +355,9 @@ void ClintScop::remapBetas(const TransformationGroup &group) {
   // temporary mapper to map from current beta-vectors to the new ones as well as we update the
   // m_betaMapper to keep dependency maps consistent.
   ClayBetaMapper *mapper = new ClayBetaMapper(this);
-  TransformationGroup complementary = mapper->apply(group);
-  m_complementaryTransformationSeq.groups.push_back(complementary);
-  m_betaMapper->apply(nullptr, group);
+  Transformation complementary = mapper->apply(transformation);
+
+  m_betaMapper->apply(nullptr, transformation);
 
   std::map<std::vector<int>, std::vector<int>> mapping;
   for (ClintStmt *stmt : statements()) {
@@ -417,6 +373,7 @@ void ClintScop::remapBetas(const TransformationGroup &group) {
 
   delete mapper;
   updateBetas(mapping);
+  return complementary;
 }
 
 // old->new
@@ -501,7 +458,6 @@ void ClintScop::undoTransformation() {
   m_undoneTransformationSeq.groups.push_back(m_transformationSeq.groups.back());
 //  m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1);
 //  --m_groupsExecuted;
-//  remapBetasFull();
   if (m_complementaryTransformationSeq.groups.back().transformations.empty()) {
   m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1, std::end(m_transformationSeq.groups));
   m_complementaryTransformationSeq.groups.erase(std::end(m_complementaryTransformationSeq.groups) - 1,
@@ -527,7 +483,6 @@ void ClintScop::redoTransformation() {
   transform(m_undoneTransformationSeq.groups.back());
   m_undoneTransformationSeq.groups.erase(std::end(m_undoneTransformationSeq.groups) - 1);
   ++m_groupsExecuted;
-//  remapBetasFull();
   executeTransformationSequence();
 }
 

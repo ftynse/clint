@@ -407,7 +407,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       // Update betas after each polyhedron moved as we use them to determine beta-prefixes
       // of the coordinate systems.
       if (!iterGroup.transformations.empty()) {
-        polyhedron->coordinateSystem()->projection()->skipNextBetaGroup();
+        polyhedron->coordinateSystem()->projection()->skipNextBetaGroup(iterGroup.transformations.size());
         polyhedron->scop()->transform(iterGroup);
       }
 //      polyhedron->scop()->remapBetas(iterGroup);

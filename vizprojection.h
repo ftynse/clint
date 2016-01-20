@@ -130,12 +130,12 @@ public:
     return m_view && m_view->isActive();
   }
 
-  void skipNextBetaGroup() {
-    ++m_skipBetaGroups;
+  void skipNextBetaGroup(int groupSize) {
+    m_skipBetaTransformations += groupSize;
   }
 
   VizPolyhedron *polyhedron(ClintStmtOccurrence *occurrence) const;
-  void reflectBetaTransformations(ClintScop *scop, const TransformationGroup &group);
+  void reflectBetaTransformation(ClintScop *scop, const Transformation &transformation);
 
   void showInsertionShadow(IsCsResult r);
   IsCsResult emptyIsCsResult() const;
@@ -166,7 +166,7 @@ private:
   VizSelectionManager *m_selectionManager;
   VizManipulationManager *m_manipulationManager;
 
-  int m_skipBetaGroups = 0;
+  int m_skipBetaTransformations = 0;
 
   void appendCoordinateSystem(int dimensionality);
   VizCoordinateSystem *createCoordinateSystem(VizCoordinateSystem *oldVCS);
