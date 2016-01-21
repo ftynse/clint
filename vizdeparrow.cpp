@@ -31,6 +31,8 @@ VizDepArrow::VizDepArrow(VizPoint *source, VizPoint *target, VizPolyhedron *pare
 }
 
 void VizDepArrow::pointLinkCS(VizPoint *source, VizPoint *target) {
+//  QPointF sourcePoint = source->polyhedron()->mapToItem(source->polyhedron()->coordinateSystem(), source->pos());
+//  QPointF targetPoint = target->polyhedron()->mapToItem(target->polyhedron()->coordinateSystem(), target->pos());
   QPointF sourcePoint = source->parentItem()->mapToItem(m_coordinateSystemParent, source->pos());
   QPointF targetPoint = target->parentItem()->mapToItem(m_coordinateSystemParent, target->pos());
   pointLink(sourcePoint, targetPoint);

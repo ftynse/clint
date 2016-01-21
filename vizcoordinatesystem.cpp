@@ -119,7 +119,7 @@ void VizCoordinateSystem::deleteInnerDependences() {
   for (VizDepArrow *vda : m_depArrows) {
     vda->setParentItem(nullptr);
     vda->setVisible(false);
-//    delete vda;
+    vda->deleteLater();
   }
   m_depArrows.clear();
   prepareGeometryChange();
