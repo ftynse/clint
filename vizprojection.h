@@ -175,17 +175,23 @@ private:
 template <typename Element>
 std::vector<Element> reflectReorder(const std::vector<Element> &container,
                                     std::function<std::vector<int> (const Element &)> betaExtractor,
-                                    Transformation transformation,
-                                    int dimension) {
+                                    Transformation transformation) {
+  int dimension = transformation.target().size();
   std::multimap<int, size_t> ordering;
   bool foundPrefix = false;
   for (size_t idx = 0; idx < container.size(); ++idx) {
     std::vector<int> beta = betaExtractor(container[idx]);
     if (!BetaUtility::isPrefix(transformation.target(), beta)) {
-      ordering.insert(std::make_pair(foundPrefix ? -1 : INT_MAX, idx));
+      // Current ordering should reflect correct lexicographical order of beta-vectors.
+      // Therefore, before the target prefix found, all beta-vectors preceed it, and after it
+      // was fully processed, all beta-vectors succeed it (no interleaving possible).
+      // We keep the order of these vectors by collecting their previous indices with at
+      // keys -1 and INT_MAX respectively.
+      ordering.insert(std::make_pair(foundPrefix ? INT_MAX : -1, idx));
     } else {
       foundPrefix = true;
       CLINT_ASSERT(beta.size() > dimension, "dimension/prefix mismatch");
+      // Keep the order of beta-vectors with identical beta-values.
       ordering.insert(std::make_pair(beta.at(dimension), idx));
     }
   }
@@ -199,11 +205,13 @@ std::vector<Element> reflectReorder(const std::vector<Element> &container,
   std::vector<int> order = transformation.order();
   order.insert(std::begin(order), -1);
   order.push_back(INT_MAX);
-  for (int key : transformation.order()) {
+  updatedContainer.resize(container.size());
+  size_t index = 0;
+  for (int key : order) {
     std::multimap<int, size_t>::iterator it, eit;
     std::tie(it, eit) = ordering.equal_range(key);
     for ( ; it != eit; ++it) {
-      updatedContainer.push_back(container[it->second]);
+      updatedContainer[it->second] = container[index++];
     }
   }
 

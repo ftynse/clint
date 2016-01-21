@@ -499,9 +499,7 @@ void VizProjection::reflectBetaTransformation(ClintScop *scop, const Transformat
     std::tie(pileIdx, csIdx) = csIndices(vcs);
     int dimension = transformation.target().size() - 2;
 
-    if (dimension >= m_horizontalDimensionIdx &&
-        dimension < m_verticalDimensionIdx &&
-        occurrence->dimensionality() >= m_verticalDimensionIdx) {
+    if (dimension == m_horizontalDimensionIdx) { // TODO: 1-d occurrences are ok here?
       // move CSs into the new pile
       CLINT_ASSERT(m_coordinateSystems[pileIdx].size() > csIdx + 1,
                    "No CSs to split away");
@@ -518,10 +516,7 @@ void VizProjection::reflectBetaTransformation(ClintScop *scop, const Transformat
         }
         deleteCoordinateSystem(oldVCS);
       }
-    } else if (dimension >= m_verticalDimensionIdx ||
-               (dimension >= m_horizontalDimensionIdx &&
-                occurrence->dimensionality() < m_verticalDimensionIdx)) {
-
+    } else if (dimension == m_verticalDimensionIdx) {
       // move polyhedra into a new CS
       VizCoordinateSystem *cs = createCoordinateSystem(occurrence->dimensionality());
       m_coordinateSystems[pileIdx].insert(std::begin(m_coordinateSystems[pileIdx]) + csIdx + 1,
@@ -548,8 +543,7 @@ void VizProjection::reflectBetaTransformation(ClintScop *scop, const Transformat
     std::tie(pileIdx, csIdx) = csIndices(vcs);
     int dimension = transformation.target().size() - 1;
 
-    if (dimension >= m_horizontalDimensionIdx &&
-        dimension < m_verticalDimensionIdx) {
+    if (dimension == m_horizontalDimensionIdx) {
       // add contents of next pile to the current pile
       CLINT_ASSERT(m_coordinateSystems.size() > pileIdx + 1,
                    "No pile to fuse");
@@ -566,7 +560,7 @@ void VizProjection::reflectBetaTransformation(ClintScop *scop, const Transformat
         deleteCoordinateSystem(oldVCS);
       }
 
-    } else if (dimension >= m_verticalDimensionIdx) {
+    } else if (dimension == m_verticalDimensionIdx) {
       // add contents of the next coordinate system to the current
       CLINT_ASSERT(m_coordinateSystems[pileIdx].size() > csIdx + 1,
                    "No CS to fuse");
@@ -582,7 +576,7 @@ void VizProjection::reflectBetaTransformation(ClintScop *scop, const Transformat
       // reorder piles
       m_coordinateSystems = reflectReorder<std::vector<VizCoordinateSystem *>>(
             m_coordinateSystems, pileFirstPolyhedronBetaVector,
-            transformation, m_horizontalDimensionIdx);
+            transformation);
     } else if (dimension <= m_verticalDimensionIdx) {
       // reorder CSs
       for (size_t pileIdx = 0; pileIdx < m_coordinateSystems.size(); ++pileIdx) {
@@ -590,7 +584,7 @@ void VizProjection::reflectBetaTransformation(ClintScop *scop, const Transformat
                                   pileFirstPolyhedronBetaVector(m_coordinateSystems[pileIdx]))) {
           m_coordinateSystems[pileIdx] = reflectReorder<VizCoordinateSystem *>(
                 m_coordinateSystems[pileIdx], csFirstPolyhedronBetaVector,
-                transformation, m_verticalDimensionIdx);
+                transformation);
         }
       }
     } else {

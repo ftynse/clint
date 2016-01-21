@@ -658,6 +658,6 @@ static std::vector<int> polyhedronBeta(const VizPolyhedron *const &ph) {
 }
 
 void VizCoordinateSystem::reorderPolyhedra(const Transformation &transformation) {
-  m_polyhedra = reflectReorder<VizPolyhedron *>(m_polyhedra, polyhedronBeta, transformation, transformation.target().size());
+  m_polyhedra = reflectReorder<VizPolyhedron *>(m_polyhedra, polyhedronBeta, transformation);
   updatePolyhedraPositions();
 }
