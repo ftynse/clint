@@ -824,6 +824,7 @@ void VizManipulationManager::polyhedronHasCreatedDimension(VizPolyhedron *polyhe
 
   if (!group.transformations.empty()) {
     polyhedron->scop()->transform(group);
+    polyhedron->coordinateSystem()->projection()->skipNextBetaGroup(group.transformations.size());
     if (!unembed) {
       polyhedron->scop()->executeTransformationSequence();
     }
@@ -849,6 +850,7 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
 
   if (m_creatingDimension) {
     polyhedronHasCreatedDimension(polyhedron);
+    return;
   }
 
   if (!m_resizing) {

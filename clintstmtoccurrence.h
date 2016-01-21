@@ -53,10 +53,8 @@ public:
   }
 
   int visibleDimensionality() const {
-    // TODO: this should actually be a computation of explicitly-defined dimensions
-    // we make take it from chlore, but for now we assume the relation is well-defined, i.e.
-    // there are as many explicit defintions as input dimensions (global validity).
-    return m_oslScattering->nb_input_dims;
+    // All output dimensions except tiling dimensions.
+    return (m_oslScattering->nb_output_dims - 1) / 2 - m_tilingDimensions.size() / 2;
   }
 
   int inputDimensionality() const {

@@ -32,6 +32,7 @@ void VizCoordinateSystem::setVerticalDimensionIdx(size_t verticalDimensionIdx) {
   for (VizPolyhedron *vp : m_polyhedra) {
     vp->occurrenceChanged();
   }
+  prepareGeometryChange();
 }
 
 void VizCoordinateSystem::setHorizontalDimensionIdx(size_t horizontalDimensionIdx) {
@@ -43,6 +44,7 @@ void VizCoordinateSystem::setHorizontalDimensionIdx(size_t horizontalDimensionId
   for (VizPolyhedron *vp : m_polyhedra) {
     vp->occurrenceChanged();
   }
+  prepareGeometryChange();
 }
 
 void VizCoordinateSystem::addAxisLabels(ClintStmtOccurrence *occurrence) {

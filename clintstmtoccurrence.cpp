@@ -82,9 +82,6 @@ int ClintStmtOccurrence::ignoreTilingDim(int dim) const {
 }
 
 std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimIdx, int verticalDimIdx) const {
-  if (m_oslScattering == nullptr) {
-    std::cerr << "don't project" << std::endl;
-  }
   CLINT_ASSERT(m_oslStatement != nullptr && m_oslScattering != nullptr,
                "Trying to project a non-initialized statement");
 
@@ -92,13 +89,9 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
   // betaDims are found properly iff the dimensionalityChecker assertion holds.
   int horizontalScatDimIdx    = 1 + 2 * horizontalDimIdx;
   int verticalScatDimIdx      = 1 + 2 * verticalDimIdx;
-  int horizontalOrigDimIdx   = m_oslScattering->nb_output_dims + horizontalDimIdx;
-  int verticalOrigDimIdx     = m_oslScattering->nb_output_dims + verticalDimIdx;
 
   horizontalScatDimIdx  = ignoreTilingDim(horizontalScatDimIdx);
   verticalScatDimIdx    = ignoreTilingDim(verticalScatDimIdx);
-//  horizontalOrigDimIdx = ignoreTilingDim(horizontalOrigDimIdx);
-//  verticalOrigDimIdx   = ignoreTilingDim(verticalOrigDimIdx);
 
   // Checking if all the relations for the same beta have the same structure.
   // AZ: Not sure if it is theoretically possible: statements with the same beta-vector
@@ -128,11 +121,6 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
   CLINT_ASSERT(m_oslStatement->domain->nb_output_dims == m_oslScattering->nb_input_dims,
                "Scattering is not compatible with the domain");
 
-  bool horizontalOrigDimValid = horizontalOrigDimIdx < m_oslScattering->nb_output_dims
-      + m_oslStatement->domain->nb_output_dims;
-  bool verticalOrigDimValid = verticalOrigDimIdx < m_oslScattering->nb_output_dims
-      + m_oslStatement->domain->nb_output_dims;
-
   // Get original and scattered iterator values depending on the axis displayed.
   bool projectHorizontal = (horizontalDimIdx != -2) && (dimensionality() > horizontalDimIdx); // FIXME: -2 is in VizProperties::NO_DIMENSION, but should be in a different class since it has nothing to do with viz
   bool projectVertical   = (verticalDimIdx != -2) && (dimensionality() > verticalDimIdx);
@@ -148,10 +136,10 @@ std::vector<std::vector<int>> ClintStmtOccurrence::projectOn(int horizontalDimId
 
   std::vector<int> allDimensions;
   allDimensions.reserve(m_oslScattering->nb_output_dims + 2);
-  if (projectHorizontal && horizontalOrigDimValid) {
+  if (projectHorizontal) {
     allDimensions.push_back(horizontalScatDimIdx);
   }
-  if (projectVertical && verticalOrigDimValid) {
+  if (projectVertical) {
     allDimensions.push_back(verticalScatDimIdx);
   }
   for (int i = 0, e = m_oslScattering->nb_input_dims; i < e; ++i) {
