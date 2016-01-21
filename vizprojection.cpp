@@ -599,6 +599,41 @@ void VizProjection::reflectBetaTransformation(ClintScop *scop, const Transformat
         }
       }
     }
+  } else if (transformation.kind() == Transformation::Kind::Embed) {
+    std::vector<int> beta  = transformation.target();
+    std::unordered_set<ClintStmtOccurrence *> occs = scop->occurrences(beta);
+    CLINT_ASSERT(occs.size() != 0,
+                 "Coundn't find target occurrence");
+    ClintStmtOccurrence *occurrence = *occs.begin();
+    VizCoordinateSystem *vcs = polyhedron(occurrence)->coordinateSystem();
+    size_t pileIdx, csIdx;
+    std::tie(pileIdx, csIdx) = csIndices(vcs);
+    int dimension = transformation.target().size() - 1;
+    if (m_horizontalDimensionIdx == dimension &&
+        !vcs->isHorizontalAxisVisible()) {
+      vcs->setHorizontalAxisState(VizCoordinateSystem::AxisState::Visible);
+      vcs->update();
+    } else if (m_verticalDimensionIdx == dimension &&
+               !vcs->isVerticalAxisVisible()) {
+      vcs->setVerticalAxisState(VizCoordinateSystem::AxisState::Visible);
+    }
+  } else if (transformation.kind() == Transformation::Kind::Unembed) {
+    std::vector<int> beta  = transformation.target();
+    std::unordered_set<ClintStmtOccurrence *> occs = scop->occurrences(beta);
+    CLINT_ASSERT(occs.size() != 0,
+                 "Coundn't find target occurrence");
+    ClintStmtOccurrence *occurrence = *occs.begin();
+    VizCoordinateSystem *vcs = polyhedron(occurrence)->coordinateSystem();
+    size_t pileIdx, csIdx;
+    std::tie(pileIdx, csIdx) = csIndices(vcs);
+    int dimension = transformation.target().size() - 2;
+    if (m_horizontalDimensionIdx == dimension &&
+        vcs->isHorizontalAxisVisible()) {
+      vcs->setHorizontalAxisState(VizCoordinateSystem::AxisState::Invisible);
+    } else if (m_verticalDimensionIdx == dimension &&
+               vcs->isVerticalAxisVisible()) {
+      vcs->setVerticalAxisState(VizCoordinateSystem::AxisState::Invisible);
+    }
   }
 }
 
