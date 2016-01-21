@@ -68,12 +68,12 @@ void VizCoordinateSystem::addAxisLabels(ClintStmtOccurrence *occurrence) {
 }
 
 void VizCoordinateSystem::regenerateAxisLabels() {
-  prepareGeometryChange();
   m_horizontalName.clear();
   m_verticalName.clear();
   for (VizPolyhedron *vp : m_polyhedra) {
     addAxisLabels(vp->occurrence());
   }
+  prepareGeometryChange();
 }
 
 bool VizCoordinateSystem::projectStatementOccurrence(ClintStmtOccurrence *occurrence) {
@@ -122,6 +122,7 @@ void VizCoordinateSystem::deleteInnerDependences() {
 //    delete vda;
   }
   m_depArrows.clear();
+  prepareGeometryChange();
 }
 
 void VizCoordinateSystem::updateInnerDependences() {
@@ -146,6 +147,7 @@ void VizCoordinateSystem::updateInnerDependences() {
     }
   }
 
+  prepareGeometryChange();
   update();
 }
 
@@ -313,6 +315,8 @@ void VizCoordinateSystem::reparentPolyhedron(VizPolyhedron *polyhedron) {
   addAxisLabels(polyhedron->occurrence());
   polyhedron->reparent(this);
   oldCS->prepareGeometryChange();
+  updateInnerDependences();
+  updateInternalDependences();
   prepareGeometryChange();
 }
 

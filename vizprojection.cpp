@@ -706,6 +706,7 @@ void VizProjection::updateSceneLayout() {
     }
     horizontalOffset += maximumWidth + m_vizProperties->coordinateSystemMargin();
   }
+  updateOuterDependences();
 }
 
 void VizProjection::selectProjection() {

@@ -332,7 +332,7 @@ void VizPolyhedron::updateInternalDependences() {
   for (VizDepArrow *vda : m_deps) {
     // setting parent to nullptr led to segfault after delete.
     vda->setVisible(false);
-    delete vda;
+    vda->deleteLater();
   }
   m_deps.clear();
 
@@ -340,6 +340,7 @@ void VizPolyhedron::updateInternalDependences() {
     setInternalDependences(dependence->projectOn(coordinateSystem()->horizontalDimensionIdx(),
                                                  coordinateSystem()->verticalDimensionIdx()));
   }
+  prepareGeometryChange();
 }
 
 static std::pair<int, int> vizPointPosPair(const VizPoint *vp) {

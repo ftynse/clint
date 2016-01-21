@@ -48,6 +48,19 @@ VizDepArrow::VizDepArrow(VizPoint *source, VizPoint *target, VizCoordinateSystem
   connect(target->polyhedron(), &VizPolyhedron::positionChanged, this, &VizDepArrow::repoint);
 }
 
+void VizDepArrow::reparent(VizCoordinateSystem *parent) {
+  CLINT_ASSERT(m_coordinateSystemParent != nullptr,
+               "reparenting to a different entity type");
+  m_coordinateSystemParent = parent;
+  setParentItem(parent);
+}
+
+void VizDepArrow::reparent(VizPolyhedron *parent) {
+  CLINT_ASSERT(m_coordinateSystemParent == nullptr,
+               "reparenting to a different entity type");
+  setParentItem(parent);
+}
+
 void VizDepArrow::repoint() {
   if (!m_sourcePoint || !m_targetPoint)
     return;
@@ -57,6 +70,7 @@ void VizDepArrow::repoint() {
   } else {
     pointLink(m_sourcePoint->pos(), m_targetPoint->pos());
   }
+  prepareGeometryChange();
 }
 
 void VizDepArrow::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {

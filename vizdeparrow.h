@@ -22,6 +22,9 @@ public:
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
   QRectF boundingRect() const;
 
+  void reparent(VizCoordinateSystem *parent);
+  void reparent(VizPolyhedron *parent);
+
 private slots:
   void repoint();
 
