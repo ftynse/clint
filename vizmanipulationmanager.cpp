@@ -342,10 +342,10 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
         }
 
       } else if (r.action() == VizProjection::IsCsAction::InsertPile) {
-        if (oneDimensional)
-          createdBeta.push_back(424242);
         if (zeroDimensional) {
           createdBeta.push_back(424242);
+          createdBeta.push_back(424242);
+        } else if (oneDimensional) {
           createdBeta.push_back(424242);
         }
         qDebug() << "insert pile";
