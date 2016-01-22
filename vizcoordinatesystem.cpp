@@ -166,25 +166,16 @@ void VizCoordinateSystem::updateInternalDependences() {
 
 
 std::vector<int> VizCoordinateSystem::betaPrefix() const {
-//  // FIXME: this works only for the first two dimensions, betas should be set up in construction
-//  bool enabled = ((m_horizontalAxisVisible && m_horizontalDimensionIdx == 0) || !m_horizontalAxisVisible) &&
-//                 ((m_verticalAxisVisible && m_verticalDimensionIdx == 1) || !m_verticalAxisVisible);
-//  CLINT_ASSERT(enabled, "Cannot find a correct beta-prefix, for a projection not on <0,1>");
+  // Assumes beta prefixes are correct (beta remapping and reparenting already happened).
 
-//  std::pair<size_t, size_t> indices = m_projection->csIndices(this);
-//  std::vector<int> beta;
-//  if (m_horizontalAxisVisible)
-//    beta.push_back(indices.first);
-//  else
-//    return beta;
-//  if (m_verticalAxisVisible)
-//    beta.push_back(indices.second);
-//  return beta;
   CLINT_ASSERT(!isEmpty(), "Can't find a beta-prefix of an empty coordinate system");
   VizPolyhedron *vp = m_polyhedra.front();
   std::vector<int> beta = vp->occurrence()->betaVector();
-  if (vp->occurrence()->dimensionality() >= m_horizontalDimensionIdx) {
-    beta.erase(std::end(beta) - 1);
+
+  /*if (m_verticalDimensionIdx != VizProperties::NO_DIMENSION) {
+    beta.erase(std::begin(beta) + m_verticalDimensionIdx + 1, std::end(beta));
+  } else*/ if (m_horizontalDimensionIdx != VizProperties::NO_DIMENSION) {
+    beta.erase(std::begin(beta) + m_horizontalDimensionIdx + 1, std::end(beta));
   }
   return beta;
 }
@@ -431,6 +422,13 @@ void VizCoordinateSystem::paint(QPainter *painter, const QStyleOptionGraphicsIte
          (m_horizontalMin - 1) * pointDistance,
         -(m_verticalMin - 1) * pointDistance);
   painter->setTransform(transform, true);
+
+  if (!m_polyhedra.empty()) {
+    std::vector<int> bp = betaPrefix();
+    std::stringstream ss;
+    std::copy(bp.begin(), bp.end(), std::ostream_iterator<int>(ss, ","));
+    painter->drawText(0, 0, QString::fromStdString(ss.str()));
+  }
 
   if (m_horizontalAxisState == AxisState::Visible ||
       m_horizontalAxisState == AxisState::WillDisappear) {

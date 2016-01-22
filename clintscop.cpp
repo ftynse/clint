@@ -297,6 +297,25 @@ int ClintScop::lastValueInLoop(const std::vector<int> &loopBeta) const {
   return value;
 }
 
+// depth is relative
+size_t ClintScop::nbChildren(const std::vector<int> &beta, int depth) const {
+  std::set<std::vector<int>> children;
+  for (auto pair : m_vizBetaMap) {
+    const std::vector<int> &b = pair.first;
+    if (BetaUtility::isPrefix(beta, b)) {
+      std::vector<int>::const_iterator ending;
+      if (depth == -1 || beta.size() + depth > b.size())
+        ending = std::end(b);
+      else
+        ending = std::begin(b) + beta.size() + depth;
+      std::vector<int> remaining(std::begin(b) + beta.size(),
+                                 ending);
+      children.insert(remaining);
+    }
+  }
+  return children.size();
+}
+
 std::vector<int> ClintScop::untiledBetaVector(const std::vector<int> &beta) const {
   ClintStmtOccurrence *o = occurrence(beta);
   if (o == nullptr)

@@ -93,7 +93,7 @@ public:
     friend class VizProjection;
   };
 
-  VizProjection::IsCsResult isCoordinateSystem(QPointF point);
+  VizProjection::IsCsResult isCoordinateSystem(QPointF point, VizPolyhedron *polyhedron);
   VizCoordinateSystem *ensureCoordinateSystem(IsCsResult &csAt, int dimensionality);
   VizCoordinateSystem *createCoordinateSystem(int dimensionality);
   void deleteCoordinateSystem(VizCoordinateSystem *vcs);
@@ -170,6 +170,8 @@ private:
 
   void appendCoordinateSystem(int dimensionality);
   VizCoordinateSystem *createCoordinateSystem(VizCoordinateSystem *oldVCS);
+  IsCsResult findCoordinateSystem(QPointF point);
+  void correctIsCs(IsCsResult &result, VizPolyhedron *polyhedron);
 };
 
 template <typename Element>

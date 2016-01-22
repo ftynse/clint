@@ -119,6 +119,10 @@ public:
   typedef std::vector<int> Identifier;
   typedef std::multimap<Identifier, Identifier> IdentifierMultiMap;
 
+  static size_t depth(const Identifier &identifier) {
+    return identifier.size();
+  }
+
   static bool isPrefix(const Identifier &prefix, const Identifier &identifier) {
     if (prefix.size() >= identifier.size())
       return false;

@@ -77,6 +77,7 @@ public:
   std::unordered_set<ClintDependence *> dependencesBetween(ClintStmtOccurrence *occ1, ClintStmtOccurrence *occ2) const;
   std::vector<int> untiledBetaVector(const std::vector<int> &beta) const;
   const std::set<int> &tilingDimensions(const std::vector<int> &beta) const;
+  size_t nbChildren(const std::vector<int> &beta, int depth = -1) const;
 
   void updateBetas(std::map<std::vector<int>, std::vector<int> > &mapping);
 

@@ -70,7 +70,7 @@ void VizManipulationManager::polyhedronAboutToDetach(VizPolyhedron *polyhedron) 
   m_detached = false;
 
   QPointF position = polyhedron->coordinateSystem()->mapToScene(polyhedronPos);
-  VizProjection::IsCsResult r = polyhedron->coordinateSystem()->projection()->isCoordinateSystem(position);
+  VizProjection::IsCsResult r = polyhedron->coordinateSystem()->projection()->isCoordinateSystem(position, polyhedron);
   CLINT_ASSERT(r.action() == VizProjection::IsCsAction::Found && r.coordinateSystem() == polyhedron->coordinateSystem(),
                "Polyhedron position is not found in the coordinate system it actually belongs to");
 }
@@ -84,7 +84,7 @@ void VizManipulationManager::polyhedronDetaching(QPointF position) {
   if (m_detached) {
      QPointF polyhedronPos = m_polyhedron->mapToParent(m_polyhedron->boundingRect().bottomLeft());// + m_polyhedron->pos();
      QPointF position = m_polyhedron->coordinateSystem()->mapToScene(polyhedronPos);
-     VizProjection::IsCsResult r = m_polyhedron->coordinateSystem()->projection()->isCoordinateSystem(position);
+     VizProjection::IsCsResult r = m_polyhedron->coordinateSystem()->projection()->isCoordinateSystem(position, m_polyhedron);
      if (m_betaTransformationTargetCS) {
        m_betaTransformationTargetCS->setHighlightTarget(false);
      }
@@ -162,7 +162,7 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
 
     QPointF polyhedronPos = polyhedron->mapToParent(polyhedron->boundingRect().bottomLeft());// + polyhedron->pos();
     QPointF position = polyhedron->coordinateSystem()->mapToScene(polyhedronPos);
-    VizProjection::IsCsResult r = polyhedron->coordinateSystem()->projection()->isCoordinateSystem(position);
+    VizProjection::IsCsResult r = polyhedron->coordinateSystem()->projection()->isCoordinateSystem(position, polyhedron);
     int dimensionality = -1;
     for (VizPolyhedron *vp : selectedPolyhedra) {
       dimensionality = std::max(dimensionality, vp->occurrence()->dimensionality());
@@ -220,12 +220,21 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       CLINT_ASSERT(oneDimensional ? csDeleted : true, "In 1D cases, CS should be deleted");
       CLINT_ASSERT(zeroDimensional ? pileDeleted : true, "In 0D cases, pile should be deleted");
 
-      size_t pileNb = cs->projection()->pileNumber();
-
       // Constructing transformation group.
       const std::vector<int> &beta = vp->occurrence()->betaVector();
       std::vector<int> createdBeta(beta);
       bool splitHorizontal = false, splitVertical = false;
+
+      std::vector<int> csBeta = vp->coordinateSystem()->betaPrefix();
+      csBeta.erase(std::end(csBeta) - 1);
+//      if (zeroDimensional) {
+//        csBeta.erase(std::end(csBeta) - 1, std::end(csBeta));
+//      } else if (oneDimensional) {
+//        csBeta.erase(std::end(csBeta) - 1, std::end(csBeta));
+//      } else {
+//        csBeta.erase(std::end(csBeta) - 1);
+//      }
+      size_t pileNb = vp->occurrence()->scop()->nbChildren(csBeta, 1);
 
       bool actionWithinPile = (r.action() == VizProjection::IsCsAction::Found ||
                                r.action() == VizProjection::IsCsAction::InsertCS) && r.pileIdx() == oldPileIdx;
@@ -371,6 +380,10 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
           if (csDeleted && actionWithinPile && oldCsIdx < csIdx) {
             csIdx--;
           }
+          CLINT_ASSERT((!polyhedron->coordinateSystem()->isHorizontalAxisVisible() ||
+                        polyhedron->coordinateSystem()->horizontalDimensionIdx() == 0) &&
+                       (!polyhedron->coordinateSystem()->isVerticalAxisVisible() ||
+                        polyhedron->coordinateSystem()->verticalDimensionIdx() == 1), "fusion on projection other that (0x1) unimplemented");
           std::vector<int> fuseBeta { (int) pileIdx, (int) csIdx }; // <0,1> projection; otherwise first part of the beta-prefix ("projection" prefix) needed
 
           // First, rearrange and fuse on the outer level.  For fusion's sake, put the statement after the pile to fuse with.

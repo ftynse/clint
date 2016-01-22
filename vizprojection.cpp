@@ -47,7 +47,100 @@ void VizProjection::finalizeOccurrenceChange() {
   }
 }
 
-VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
+void VizProjection::correctIsCs(IsCsResult &result, VizPolyhedron *polyhedron) {
+  VizCoordinateSystem *referenceCS;
+  if (result.m_pile >= m_coordinateSystems.size()) {
+    referenceCS = m_coordinateSystems.back().front();
+  } else {
+    referenceCS = m_coordinateSystems.at(result.m_pile).front();
+  }
+  std::vector<int> referenceBeta = (*referenceCS->polyhedra().begin())->occurrence()->betaVector();
+  std::vector<int> beta = polyhedron->occurrence()->betaVector();
+
+  if (BetaUtility::partialMatch(referenceBeta, beta) < m_horizontalDimensionIdx) {
+    result.m_action = IsCsAction::InsertPile;
+    if (BetaUtility::follows(referenceBeta, beta)) {
+      // look at leftmost (go right)
+      bool retargeted = false;
+      for (size_t p = result.m_pile + 1; p < m_coordinateSystems.size(); ++p) {
+        referenceCS = m_coordinateSystems[p].front();
+        referenceBeta = (*referenceCS->polyhedra().begin())->occurrence()->betaVector();
+        if (BetaUtility::partialMatch(beta, referenceBeta) >= m_horizontalDimensionIdx) {
+          result.m_pile = p;
+          retargeted = true;
+          break;
+        }
+      }
+      CLINT_ASSERT(retargeted, "Couldn't correct pile insertion index");
+    } else if (BetaUtility::follows(beta, referenceBeta)) {
+      // look at rightmost (go left)
+      bool retargeted = false;
+      CLINT_ASSERT(result.m_pile != 0, "Couldn't correct pile insertion index");
+      for (size_t s = result.m_pile; s > 0; --s) {
+        size_t p = s - 1;
+        referenceCS = m_coordinateSystems[p].front();
+        referenceBeta = (*referenceCS->polyhedra().begin())->occurrence()->betaVector();
+        if (BetaUtility::partialMatch(referenceBeta, beta) >= m_horizontalDimensionIdx) {
+          result.m_pile = p + 1;
+          retargeted = true;
+          break;
+        }
+      }
+      CLINT_ASSERT(retargeted, "Couldn't correct pile insertion index");
+    } else {
+      CLINT_UNREACHABLE;
+    }
+  }
+
+  if (result.m_action == IsCsAction::InsertPile ||
+      !polyhedron->coordinateSystem()->isVerticalAxisVisible())
+    return;
+
+  const std::vector<VizCoordinateSystem *> &pile = m_coordinateSystems[result.m_pile];
+  if (result.m_coordinateSystem >= pile.size()) {
+    referenceCS = pile.back();
+  } else {
+    referenceCS = pile.at(result.m_coordinateSystem);
+  }
+  referenceBeta = (*referenceCS->polyhedra().begin())->occurrence()->betaVector();
+  if (BetaUtility::partialMatch(referenceBeta, beta) < m_verticalDimensionIdx) {
+    result.m_action = IsCsAction::InsertCS;
+    if (BetaUtility::follows(referenceBeta, beta)) {
+      bool retargeted = false;
+      for (size_t c = result.m_coordinateSystem + 1; c < pile.size(); ++c) {
+        referenceCS = pile[c];
+        referenceBeta = (*referenceCS->polyhedra().begin())->occurrence()->betaVector();
+        if (BetaUtility::partialMatch(beta, referenceBeta) >= m_verticalDimensionIdx) {
+          result.m_coordinateSystem = c;
+          retargeted = true;
+          break;
+        }
+      }
+      CLINT_ASSERT(retargeted, "Couldn't correct coordinate system insertion index");
+    } else if (BetaUtility::follows(beta, referenceBeta)) {
+      bool retargeted = false;
+      CLINT_ASSERT(result.m_coordinateSystem != 0 , "Couldn't correct coordinate system insertion index");
+      for (size_t s = result.m_coordinateSystem; s > 0; --s) {
+        size_t c = s - 1;
+        referenceCS = pile[c];
+        referenceBeta = (*referenceCS->polyhedra().begin())->occurrence()->betaVector();
+        if (BetaUtility::partialMatch(referenceBeta, beta) >= m_verticalDimensionIdx) {
+          result.m_coordinateSystem = c + 1;
+          retargeted = true;
+          break;
+        }
+      }
+      CLINT_ASSERT(retargeted, "Couldn't correct coordinate system insertion index");
+    } else {
+      CLINT_UNREACHABLE;
+    }
+  }
+
+  if (result.m_action == IsCsAction::InsertCS)
+    return;
+}
+
+VizProjection::IsCsResult VizProjection::findCoordinateSystem(QPointF point) {
   bool found = false;
   size_t pileIndex = static_cast<size_t>(-1);
   IsCsResult result;
@@ -144,6 +237,13 @@ VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point) {
     result.m_action = IsCsAction::InsertCS;
     result.m_coordinateSystem = pile.size();
   }
+
+  return result;
+}
+
+VizProjection::IsCsResult VizProjection::isCoordinateSystem(QPointF point, VizPolyhedron *polyhedron) {
+  IsCsResult result = findCoordinateSystem(point);
+  correctIsCs(result, polyhedron);
   return result;
 }
 
