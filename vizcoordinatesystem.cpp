@@ -172,9 +172,9 @@ std::vector<int> VizCoordinateSystem::betaPrefix() const {
   VizPolyhedron *vp = m_polyhedra.front();
   std::vector<int> beta = vp->occurrence()->betaVector();
 
-  /*if (m_verticalDimensionIdx != VizProperties::NO_DIMENSION) {
+  if (m_verticalDimensionIdx != VizProperties::NO_DIMENSION) {
     beta.erase(std::begin(beta) + m_verticalDimensionIdx + 1, std::end(beta));
-  } else*/ if (m_horizontalDimensionIdx != VizProperties::NO_DIMENSION) {
+  } else if (m_horizontalDimensionIdx != VizProperties::NO_DIMENSION) {
     beta.erase(std::begin(beta) + m_horizontalDimensionIdx + 1, std::end(beta));
   }
   return beta;

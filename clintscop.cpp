@@ -259,6 +259,68 @@ void ClintScop::executeTransformationSequence() {
   }
 }
 
+bool ClintScop::splitBetaAway(std::vector<int> &beta, size_t depth, TransformationGroup &group, bool extraChild) {
+  bool splitOnPreviousStep = extraChild;
+  for (size_t currentDepth = beta.size() - 1; currentDepth > depth; --currentDepth) {
+    std::vector<int> currentPrefix(std::begin(beta), std::begin(beta) + currentDepth);
+    size_t children = nbChildren(currentPrefix, 1);
+    CLINT_ASSERT(children != 0, "Should have at least one child (itself)");
+    if (splitOnPreviousStep) // beta remapping has not happened yet
+      ++children;
+
+    if (children == 1) {
+      splitOnPreviousStep = false;
+      continue;
+    }
+
+    if (beta[currentDepth] != children - 1) {
+      std::vector<int> reorderBeta(currentPrefix);
+      reorderBeta.push_back(beta[currentDepth]);
+      group.transformations.push_back(Transformation::putAfterLast(reorderBeta, children));
+    }
+    std::vector<int> splitBeta(currentPrefix);
+    splitBeta.push_back(children - 2);
+    group.transformations.push_back(Transformation::splitAfter(splitBeta));
+    beta[currentDepth] = 0;
+    beta[currentDepth - 1] += 1;
+    splitOnPreviousStep = true;
+  }
+
+  return splitOnPreviousStep;
+}
+
+bool ClintScop::fuseBetaTo(std::vector<int> &beta, const std::vector<int> &betaPrefix, TransformationGroup &group, bool extraChild) {
+  bool fuseOnPreviousStep = extraChild;
+  for (size_t currentDepth = 0; currentDepth < betaPrefix.size(); ++currentDepth) {
+    if (beta[currentDepth] == betaPrefix[currentDepth]) {
+      fuseOnPreviousStep = false;
+      continue;
+    }
+
+    std::vector<int> currentPrefix(std::begin(beta), std::begin(beta) + currentDepth);
+    size_t children = nbChildren(currentPrefix, 1);
+
+    if (fuseOnPreviousStep)
+      ++children;
+
+    bool condition = beta[currentDepth] < betaPrefix[currentDepth] && !fuseOnPreviousStep;
+    if (beta[currentDepth] != betaPrefix[currentDepth] + 1 &&
+        children != 1) {
+      std::vector<int> reorderBeta(currentPrefix);
+      reorderBeta.push_back(beta[currentDepth]);
+      group.transformations.push_back(Transformation::putAfter(reorderBeta, betaPrefix[currentDepth] + (beta[currentDepth] < betaPrefix[currentDepth]), children));
+    }
+    std::vector<int> fuseBeta(currentPrefix);
+    fuseBeta.push_back(betaPrefix[currentDepth] + (condition ? -1 : 0));
+    group.transformations.push_back(Transformation::fuseNext(fuseBeta));
+    beta[currentDepth + 1] = nbChildren(fuseBeta, 1);
+    beta[currentDepth] = betaPrefix[currentDepth];
+    fuseOnPreviousStep = true;
+  }
+
+  return fuseOnPreviousStep;
+}
+
 std::unordered_set<ClintStmt *> ClintScop::statements() const {
   std::unordered_set<ClintStmt *> stmts;
   for (auto value : m_vizBetaMap)
@@ -314,6 +376,26 @@ size_t ClintScop::nbChildren(const std::vector<int> &beta, int depth) const {
     }
   }
   return children.size();
+}
+
+/// Find the number of unique beta prefixes of the same size as betaPrefix, having equal values with
+/// betaPrefix until at least sharedDepth.
+size_t ClintScop::nbPreceedingPrefixes(const std::vector<int> &betaPrefix, size_t sharedDepth) const {
+  CLINT_ASSERT(sharedDepth < betaPrefix.size(), "Shared depth should be less than prefix length");
+  std::set<std::vector<int>> prefixes;
+
+  std::vector<int> parentPrefix(std::begin(betaPrefix), std::begin(betaPrefix) + sharedDepth);
+
+  for (auto pair: m_vizBetaMap) {
+    const std::vector<int> &b = pair.first;
+    std::vector<int>::const_iterator ending =
+        (b.size() <= betaPrefix.size() ? std::end(b) : std::begin(b) + betaPrefix.size());
+    std::vector<int> prefix(std::begin(b), ending);
+    if (BetaUtility::isPrefix(parentPrefix, prefix) && BetaUtility::follows(prefix, betaPrefix)) {
+      prefixes.insert(prefix);
+    }
+  }
+  return prefixes.size();
 }
 
 std::vector<int> ClintScop::untiledBetaVector(const std::vector<int> &beta) const {

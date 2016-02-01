@@ -96,7 +96,17 @@ void VizProjection::correctIsCs(IsCsResult &result, VizPolyhedron *polyhedron) {
       !polyhedron->coordinateSystem()->isVerticalAxisVisible())
     return;
 
+  // Now assume the polygon is already in the proper tile (and is at the end of it after fusion).
   const std::vector<VizCoordinateSystem *> &pile = m_coordinateSystems[result.m_pile];
+
+  // FIXME: this simulates beta-transformation, maybe use beta-mapper for it.
+  // The polygon is first split away until depth, than put last in pile. (technically, we cannot always put it last in pile).
+  beta[m_horizontalDimensionIdx] = result.m_pile;
+  beta[m_verticalDimensionIdx] = pile.size();
+  for (size_t d = m_verticalDimensionIdx + 1; d < beta.size(); ++d) {
+    beta[d] = 0;
+  }
+
   if (result.m_coordinateSystem >= pile.size()) {
     referenceCS = pile.back();
   } else {
@@ -341,9 +351,22 @@ void VizProjection::deleteCoordinateSystem(VizCoordinateSystem *vcs) {
   vcs->setVisible(false);
   vcs->setParentItem(nullptr);
 
+  CLINT_ASSERT(vcs->polyhedra().size() == 0, "deleting non-empty CS");
+
   vcs->deleteLater();
 //  delete vcs; // No parent now, so delete.
   updateSceneLayout();
+}
+
+VizCoordinateSystem *VizProjection::firstNonEmptyCoordinateSystem(size_t pileIdx) const {
+  if (pileIdx >= m_coordinateSystems.size())
+    return nullptr;
+
+  for (VizCoordinateSystem *vcs : m_coordinateSystems[pileIdx]) {
+    if (!vcs->polyhedra().empty())
+      return vcs;
+  }
+  return nullptr;
 }
 
 inline bool partialBetaEquals(const std::vector<int> &original, const std::vector<int> &beta,
