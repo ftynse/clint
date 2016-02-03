@@ -138,6 +138,8 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       size_t oldPileIdx, oldCsIdx;
       // FIXME: works for normalized scops only
       std::tie(oldPileIdx, oldCsIdx) = oldCS->projection()->csIndices(oldCS);
+      int horizontalDimensionIdx = vp->coordinateSystem()->projection()->horizontalDimensionIdx();
+      int verticalDimensionIdx = vp->coordinateSystem()->projection()->verticalDimensionIdx();
       bool oneDimensional = vp->occurrence()->dimensionality() < oldCS->verticalDimensionIdx();
       bool zeroDimensional = vp->occurrence()->dimensionality() < oldCS->horizontalDimensionIdx();
 
@@ -184,15 +186,15 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
         bool actionWithinPile = r.pileIdx() == oldPileIdx;
         if (actionWithinPile) {
           std::vector<int> beta = vp->occurrence()->betaVector();
-          bool extraChild = vp->occurrence()->scop()->splitBetaAway(beta, vp->coordinateSystem()->verticalDimensionIdx(), iterGroup);
+          bool extraChild = vp->occurrence()->scop()->splitBetaAway(beta, verticalDimensionIdx, iterGroup);
 
-          std::vector<int> parentBeta(std::begin(beta), std::begin(beta) + vp->coordinateSystem()->verticalDimensionIdx());
+          std::vector<int> parentBeta(std::begin(beta), std::begin(beta) + verticalDimensionIdx);
           size_t preceedingCSs = vp->occurrence()->scop()->nbPreceedingPrefixes(parentBeta,
-                                                                                vp->coordinateSystem()->verticalDimensionIdx());
+                                                                                verticalDimensionIdx);
           size_t children = vp->occurrence()->scop()->nbChildren(parentBeta, 1) + extraChild;
-          std::vector<int> reorderBeta(std::begin(beta), std::begin(beta) + vp->coordinateSystem()->verticalDimensionIdx() + 1);
-          bool precedes = r.coordinateSystemIdx() < reorderBeta.back();
-          bool correction = precedes || (!precedes && !extraChild && (r.coordinateSystemIdx() != reorderBeta.back()));
+          std::vector<int> reorderBeta(std::begin(beta), std::begin(beta) + verticalDimensionIdx + 1);
+          bool precedes = (r.coordinateSystemIdx() - preceedingCSs) < reorderBeta.back();
+          bool correction = precedes || (!precedes && !extraChild && ((r.coordinateSystemIdx() - preceedingCSs) != reorderBeta.back()));
           iterGroup.transformations.push_back(
                 Transformation::putAfter(reorderBeta, r.coordinateSystemIdx() - preceedingCSs - correction, children));
         } else {
@@ -204,36 +206,36 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
           VizCoordinateSystem *referenceCS = vp->coordinateSystem()->projection()->firstNonEmptyCoordinateSystem(correctedPileIdx, vp);
           CLINT_ASSERT(referenceCS, "Inserting CS into a pile with only empty CSs, which actually should be a pile insertion");
           std::vector<int> referencePrefix = referenceCS->betaPrefix();
-          CLINT_ASSERT(referencePrefix.size() >= vp->coordinateSystem()->verticalDimensionIdx() - 1, "using 1D CS as a reference for pile");
+          CLINT_ASSERT(referencePrefix.size() >= verticalDimensionIdx - 1, "using 1D CS as a reference for pile");
           std::vector<int> pilePrefix(std::begin(referencePrefix),
-                                      std::begin(referencePrefix) + vp->coordinateSystem()->verticalDimensionIdx());
+                                      std::begin(referencePrefix) + verticalDimensionIdx);
           extraChild = vp->occurrence()->scop()->fuseBetaTo(beta, pilePrefix, iterGroup, extraChild);
 
           // Reorder it to the target position
-          std::vector<int> parentBeta(std::begin(referencePrefix), std::begin(referencePrefix) + vp->coordinateSystem()->verticalDimensionIdx());
+          std::vector<int> parentBeta(std::begin(referencePrefix), std::begin(referencePrefix) + verticalDimensionIdx);
           size_t preceedingCSs = vp->occurrence()->scop()->nbPreceedingPrefixes(parentBeta,
-                                                                                vp->coordinateSystem()->verticalDimensionIdx());
+                                                                                verticalDimensionIdx);
           size_t children = vp->occurrence()->scop()->nbChildren(parentBeta, 1) + extraChild;
-          std::vector<int> reorderBeta(std::begin(beta), std::begin(beta) + vp->coordinateSystem()->verticalDimensionIdx() + 1);
-          bool precedes = r.coordinateSystemIdx() < reorderBeta.back();
-          bool correction = precedes || (!precedes && !extraChild && (r.coordinateSystemIdx() != reorderBeta.back()));
+          std::vector<int> reorderBeta(std::begin(beta), std::begin(beta) + verticalDimensionIdx + 1);
+          bool precedes = (r.coordinateSystemIdx() - preceedingCSs) < reorderBeta.back();
+          bool correction = precedes || (!precedes && !extraChild && ((r.coordinateSystemIdx() - preceedingCSs) != reorderBeta.back()));
           iterGroup.transformations.push_back(
                 Transformation::putAfter(reorderBeta, r.coordinateSystemIdx() - preceedingCSs - correction, children));
         }
 
       } else if (r.action() == VizProjection::IsCsAction::InsertPile) {
         std::vector<int> beta = vp->occurrence()->betaVector();
-        bool extraChild = vp->occurrence()->scop()->splitBetaAway(beta, vp->coordinateSystem()->horizontalDimensionIdx(), iterGroup);
+        bool extraChild = vp->occurrence()->scop()->splitBetaAway(beta, horizontalDimensionIdx, iterGroup);
 
-        std::vector<int> parentBeta(std::begin(beta), std::begin(beta) + vp->coordinateSystem()->horizontalDimensionIdx());
+        std::vector<int> parentBeta(std::begin(beta), std::begin(beta) + horizontalDimensionIdx);
         size_t preceedingPiles = vp->occurrence()->scop()->nbPreceedingPrefixes(parentBeta);
         size_t children = vp->occurrence()->scop()->nbChildren(parentBeta, 1) + extraChild;
-        std::vector<int> reorderBeta(std::begin(beta), std::begin(beta) + vp->coordinateSystem()->horizontalDimensionIdx() + 1);
+        std::vector<int> reorderBeta(std::begin(beta), std::begin(beta) + verticalDimensionIdx);
 
 
         // pileDeleted == !extraChild;
-        bool preceeds = r.pileIdx() < reorderBeta.back();
-        bool correction = preceeds || (!preceeds && !extraChild && (r.pileIdx() != reorderBeta.back()));
+        bool preceeds = (r.pileIdx() - preceedingPiles) < reorderBeta.back();
+        bool correction = preceeds || (!preceeds && !extraChild && ((r.pileIdx() - preceedingPiles) != reorderBeta.back()));
         if (reorderBeta.back() != r.pileIdx() - preceedingPiles - correction) {
           iterGroup.transformations.push_back(Transformation::putAfter(reorderBeta, r.pileIdx() - preceedingPiles - correction, children));
         }

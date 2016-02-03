@@ -295,7 +295,9 @@ bool ClintScop::fuseBetaTo(std::vector<int> &beta, std::vector<int> betaPrefix, 
   std::vector<int> unmodifiedBetaPrefix(betaPrefix);
 
   for (size_t currentDepth = 0; currentDepth < betaPrefix.size(); ++currentDepth) {
-    if (beta[currentDepth] == betaPrefix[currentDepth] /*+ (beta[currentDepth] <= betaPrefix[currentDepth])*/) {
+    if (beta[currentDepth] == betaPrefix[currentDepth]
+        + (fuseOnPreviousStep ? beta[currentDepth] <= betaPrefix[currentDepth]
+                              : beta[currentDepth] <  betaPrefix[currentDepth])) {
       fuseOnPreviousStep = false;
       continue;
     }
@@ -309,7 +311,7 @@ bool ClintScop::fuseBetaTo(std::vector<int> &beta, std::vector<int> betaPrefix, 
 
     bool precedes = (beta[currentDepth] <= betaPrefix[currentDepth]);
     bool fuseCorrection = !fuseOnPreviousStep && precedes;
-    bool reorderCorrection = fuseOnPreviousStep && (beta[currentDepth] < betaPrefix[currentDepth]);
+    bool reorderCorrection = fuseOnPreviousStep && (beta[currentDepth] <= betaPrefix[currentDepth]);
 
 //    if (beta[currentDepth] != betaPrefix[currentDepth] + 1 + reorderCorrection &&
       if (children != 1) {
