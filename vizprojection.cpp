@@ -358,13 +358,18 @@ void VizProjection::deleteCoordinateSystem(VizCoordinateSystem *vcs) {
   updateSceneLayout();
 }
 
-VizCoordinateSystem *VizProjection::firstNonEmptyCoordinateSystem(size_t pileIdx) const {
+/// Return first non-empty coordinate system in the pile that does not contain the given polyhedron.
+VizCoordinateSystem *VizProjection::firstNonEmptyCoordinateSystem(size_t pileIdx, VizPolyhedron *except) const {
   if (pileIdx >= m_coordinateSystems.size())
     return nullptr;
 
   for (VizCoordinateSystem *vcs : m_coordinateSystems[pileIdx]) {
-    if (!vcs->polyhedra().empty())
-      return vcs;
+    const std::vector<VizPolyhedron *> &polyhedra = vcs->polyhedra();
+    if (!polyhedra.empty()) {
+      if (std::find(std::begin(polyhedra), std::end(polyhedra), except) == std::end(polyhedra)) {
+        return vcs;
+      }
+    }
   }
   return nullptr;
 }
