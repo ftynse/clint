@@ -1271,6 +1271,7 @@ void VizPolyhedron::reparent(VizCoordinateSystem *vcs) {
   size_t index = std::distance(std::begin(polyhedra), it);
   double offset = coordinateSystem()->projection()->vizProperties()->polyhedronOffset() * index;
 
+  enlargeCoordinateSystem();
   QPropertyAnimation *anim = new QPropertyAnimation(this, "pos", this);
   anim->setDuration(1000);
   anim->setEndValue(QPointF(offset, -offset));

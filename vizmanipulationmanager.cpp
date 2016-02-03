@@ -121,8 +121,17 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       dimensionality = std::max(dimensionality, vp->occurrence()->dimensionality());
     }
     VizCoordinateSystem *cs = polyhedron->coordinateSystem()->projection()->ensureCoordinateSystem(r, dimensionality);
-    int hmin = INT_MAX, hmax = INT_MIN, vmin = INT_MAX, vmax = INT_MIN; // TODO: frequent functionality, should be extracted?
-    // FIXME: all these assumes only all polyhedra belong to the same coordiante system.
+
+    // All polyhedra must belong to the same coordiante system.
+#ifndef NDEBUG
+    if (selectedPolyhedra.size() != 0) {
+      for (VizPolyhedron *vp : selectedPolyhedra) {
+        CLINT_ASSERT(vp->coordinateSystem() == (*std::begin(selectedPolyhedra))->coordinateSystem(),
+                     "Not all of the selected polyhedra belong to the same coordinate system");
+      }
+    }
+#endif
+
     bool firstPolyhedron = true;
     for (VizPolyhedron *vp : selectedPolyhedra) {
       // Assume all selected polyhedra are moved to the same coordinate system.
@@ -136,7 +145,6 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
 
       VizCoordinateSystem *oldCS = vp->coordinateSystem();
       size_t oldPileIdx, oldCsIdx;
-      // FIXME: works for normalized scops only
       std::tie(oldPileIdx, oldCsIdx) = oldCS->projection()->csIndices(oldCS);
       int horizontalDimensionIdx = vp->coordinateSystem()->projection()->horizontalDimensionIdx();
       int verticalDimensionIdx = vp->coordinateSystem()->projection()->verticalDimensionIdx();
@@ -150,19 +158,12 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
         continue;
       }
 
-
       bool csDeleted = false;
       bool pileDeleted = false;
+      CLINT_ASSERT(oneDimensional ? csDeleted : true, "In 1D cases, CS should be deleted");
+      CLINT_ASSERT(zeroDimensional ? pileDeleted : true, "In 0D cases, pile should be deleted");
 
       cs->reparentPolyhedron(vp);
-      if (r.action() != VizProjection::IsCsAction::Found) {
-        cs->resetPolyhedronPos(polyhedron);
-      }
-      // TODO: otherwise, shift it to the position it ended up graphically (reparent does it visually, but we must create a shift Transformation)
-      hmin = std::min(hmin, vp->localHorizontalMin());
-      hmax = std::max(hmax, vp->localHorizontalMax());
-      vmin = std::min(vmin, vp->localVerticalMin());
-      vmax = std::max(vmax, vp->localVerticalMax());
       if (oldCS->isEmpty()) {
         csDeleted = true;
         if (oldCS->projection()->pileCSNumber(oldPileIdx) == 1) {
@@ -171,9 +172,6 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
 
         oldCS->projection()->deleteCoordinateSystem(oldCS);
       }
-
-      CLINT_ASSERT(oneDimensional ? csDeleted : true, "In 1D cases, CS should be deleted");
-      CLINT_ASSERT(zeroDimensional ? pileDeleted : true, "In 0D cases, pile should be deleted");
 
       // Constructing transformation group.
       if (r.action() == VizProjection::IsCsAction::Found) {
@@ -255,10 +253,6 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       std::copy(std::begin(iterGroup.transformations), std::end(iterGroup.transformations), std::back_inserter(group.transformations));
       iterGroup.transformations.clear();
     }
-
-    // TODO: provide functionality for both simultaneously with a single repaint (setMinMax?)
-    cs->projection()->ensureFitsHorizontally(cs, hmin, hmax);
-    cs->projection()->ensureFitsVertically(cs, vmin, vmax);
   } else {
     for (VizPolyhedron *vp : selectedPolyhedra) {
       vp->coordinateSystem()->resetPolyhedronPos(vp);

@@ -68,6 +68,8 @@ static inline void replaceNewlinesHtml(std::string &str) {
 
 ClintScop::ClintScop(osl_scop_p scop, int parameterValue, char *originalCode, ClintProgram *parent) :
   QObject(parent), m_scopPart(scop), m_program(parent), m_parameterValue(parameterValue) {
+  clay_beta_normalize(m_scopPart);
+
   oslListForeach(scop->statement, [this](osl_statement_p stmt) {
     ClintStmt *vizStmt = new ClintStmt(stmt, this);
     oslListForeach(stmt->scattering, [this,vizStmt](osl_relation_p scatter) {

@@ -81,6 +81,7 @@ public:
   void resetPointPositions();
 
   void reparent(VizCoordinateSystem *vcs);
+  void enlargeCoordinateSystem();
 
   void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
   QRectF boundingRect() const;
@@ -190,7 +191,6 @@ private:
   PointMap m_pts;
   PointMap m_pointOthers; /// Points with original coordinates different than those in m_pts, projected at the same position.
   void reprojectPoints();
-  void enlargeCoordinateSystem();
 
   std::unordered_set<VizDepArrow *> m_deps;
   int m_localHorizontalMin = 0;

@@ -22,5 +22,4 @@ void VizPolyhedronShapeAnimation::updateCurrentTime(int msecs) {
   Q_UNUSED(msecs);
   m_polyhedron->recomputeShape();
   m_polyhedron->update(m_polyhedron->m_polyhedronShape.boundingRect());
-  m_polyhedron->enlargeCoordinateSystem();
 }
