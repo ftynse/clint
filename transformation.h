@@ -147,31 +147,18 @@ public:
   static Transformation putAfterLast(const std::vector<int> &beta, int size) {
     CLINT_ASSERT(beta.size() >= 1, "Cannot operate on the whole program");
     return putAfter(beta, size - 1, size);
-//    Transformation t;
-//    t.m_kind = Kind::Reorder;
-//    t.m_targetBeta = std::vector<int>(std::begin(beta), std::end(beta) - 1);
-//    t.m_order.resize(size);
-//    for (int i = 0; i < size; i++) {
-//      if (i < beta.back())
-//        t.m_order[i] = i;
-//      else if (i == beta.back())
-//        t.m_order[i] = size - 1;
-//      else
-//        t.m_order[i] = i - 1;
-//    }
-//    return t;
   }
 
   static Transformation putAfter(const std::vector<int> &beta, int position, int size) {
     CLINT_ASSERT(beta.size() >= 1, "Cannot operate on the whole program");
     CLINT_ASSERT(size > position, "Position of the element to put after overflow");
-    if (beta.back() > position) {
-      std::vector<int> b(beta);
-      int tmp = position;
-      position = b.back();
-      b.back() = tmp;
-      return putAfter(b, position, size);
-    }
+//    if (beta.back() > position) {
+//      std::vector<int> b(beta);
+//      int tmp = position;
+//      position = b.back();
+//      b.back() = tmp;
+//      return putAfter(b, position, size);
+//    }
 //    if (beta.back() > position) {
 //      return putBefore(beta, position + 1, size);
 //    }
@@ -180,13 +167,24 @@ public:
     t.m_kind = Kind::Reorder;
     t.m_targetBeta = std::vector<int>(std::begin(beta), std::end(beta) - 1);
     t.m_order.resize(size);
-    for (int i = 0; i < size; i++) {
-      if (i > beta.back() && i <= position)
-        t.m_order[i] = i - 1;
-      else if (i == beta.back())
-        t.m_order[i] = position;
-      else
-        t.m_order[i] = i;
+    if (beta.back() > position) {
+      for (int i = 0; i < size; i++) {
+        if (i <= position || i > beta.back())
+          t.m_order[i] = i;
+        else if (i == beta.back())
+          t.m_order[i] = position + 1;
+        else
+          t.m_order[i] = i + 1;
+      }
+    } else {
+      for (int i = 0; i < size; i++) {
+        if (i > beta.back() && i <= position)
+          t.m_order[i] = i - 1;
+        else if (i == beta.back())
+          t.m_order[i] = position;
+        else
+          t.m_order[i] = i;
+      }
     }
     return t;
   }

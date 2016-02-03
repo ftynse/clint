@@ -70,6 +70,9 @@ public:
     return m_transformer->guessInverseTransformation(appliedScop(), transformation);
   }
 
+  bool splitBetaAway(std::vector<int> &beta, size_t depth, TransformationGroup &group, bool extraChild = false);
+  bool fuseBetaTo(std::vector<int> &beta, std::vector<int> betaPrefix, TransformationGroup &group, bool extraChild = false);
+
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
   std::unordered_set<ClintStmtOccurrence *> occurrences(const std::vector<int> &betaPrefix) const;
   int lastValueInLoop(const std::vector<int> &loopBeta) const;
@@ -78,6 +81,8 @@ public:
   std::vector<int> untiledBetaVector(const std::vector<int> &beta) const;
   const std::set<int> &tilingDimensions(const std::vector<int> &beta) const;
   size_t nbChildren(const std::vector<int> &beta, int depth = -1) const;
+  size_t nbPreceedingPrefixes(const std::vector<int> &betaPrefix,
+                              size_t sharedDepth = 0) const;
 
   void updateBetas(std::map<std::vector<int>, std::vector<int> > &mapping);
 

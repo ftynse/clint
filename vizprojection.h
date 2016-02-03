@@ -97,6 +97,7 @@ public:
   VizCoordinateSystem *ensureCoordinateSystem(IsCsResult &csAt, int dimensionality);
   VizCoordinateSystem *createCoordinateSystem(int dimensionality);
   void deleteCoordinateSystem(VizCoordinateSystem *vcs);
+  VizCoordinateSystem *firstNonEmptyCoordinateSystem(size_t pileIdx, VizPolyhedron *except = nullptr) const;
 
   void paintProjection(QPainter *painter) {
     m_scene->render(painter);
