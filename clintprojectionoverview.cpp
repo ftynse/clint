@@ -25,9 +25,8 @@ void ClintProjectionOverview::resetProjectionMatrix(ClintScop *cscop) {
   m_layout = new QGridLayout;
   for (int i = 0, e = cscop->dimensionality(); i < e - 1; i++) {
     for (int j = i + 1; j < e; j++) {
-      VizProjection *projection = new VizProjection(i, j, this);
+      VizProjection *projection = new VizProjection(i, j, cscop, this);
       projection->setViewActive(false);
-      projection->projectScop(cscop);
       connect(projection, &VizProjection::selected, this, &ClintProjectionOverview::projectionSelected);
       m_layout->addWidget(projection->widget(), j-1, i);
       m_allProjections[std::make_pair(i, j)] = projection;
@@ -47,10 +46,10 @@ void ClintProjectionOverview::updateAllProjections() {
   }
 }
 
-void ClintProjectionOverview::reflectBetaTransformation(ClintScop *cscop, const Transformation &transformation) {
+void ClintProjectionOverview::reflectBetaTransformation(const Transformation &transformation) {
   for (auto element : m_allProjections) {
     VizProjection *projection = element.second;
-    projection->reflectBetaTransformation(cscop, transformation);
+    projection->reflectBetaTransformation(transformation);
   }
 }
 

@@ -637,10 +637,10 @@ void ClintWindow::reflectBetaTransformations(size_t groupIndex, size_t tsIndex) 
   const Transformation &transformation = group.transformations[tsIndex];
 
   if (m_projection) {
-    m_projection->reflectBetaTransformation(vscop, transformation);
+    m_projection->reflectBetaTransformation(transformation);
   }
   if (m_projectionOverview) {
-    m_projectionOverview->reflectBetaTransformation(vscop, transformation);
+    m_projectionOverview->reflectBetaTransformation(transformation);
   }
 }
 
@@ -660,8 +660,7 @@ void ClintWindow::deleteProjection() {
 
 void ClintWindow::projectionSelectedInOverview(int horizontal, int vertical) {
   deleteProjection();
-  m_projection = new VizProjection(horizontal, vertical, this);
-  m_projection->projectScop((* m_program)[0]);
+  m_projection = new VizProjection(horizontal, vertical, (* m_program)[0], this);
   connect(m_projection, &VizProjection::selected, this, &ClintWindow::projectionSelectedAlone);
   resetCentralWidget(m_projection->widget());
 

@@ -1,4 +1,5 @@
 #include "clintstmtoccurrence.h"
+#include "clintscop.h"
 #include "oslutils.h"
 #include "projectionview.h"
 #include "vizcoordinatesystem.h"
@@ -11,8 +12,10 @@
 #include <map>
 #include <vector>
 
-VizProjection::VizProjection(int horizontalDimensionIdx, int verticalDimensionIdx, QObject *parent) :
-  QObject(parent), m_horizontalDimensionIdx(horizontalDimensionIdx), m_verticalDimensionIdx(verticalDimensionIdx) {
+VizProjection::VizProjection(int horizontalDimensionIdx, int verticalDimensionIdx, ClintScop *vscop, QObject *parent) :
+  QObject(parent), m_scop(vscop),
+  m_horizontalDimensionIdx(horizontalDimensionIdx),
+  m_verticalDimensionIdx(verticalDimensionIdx) {
 
   m_scene = new QGraphicsScene(this);
   m_view = new ProjectionView(m_scene);
@@ -27,6 +30,8 @@ VizProjection::VizProjection(int horizontalDimensionIdx, int verticalDimensionId
 
   m_selectionManager = new VizSelectionManager(this);
   m_manipulationManager = new VizManipulationManager(this);
+
+  projectScop();
 }
 
 void VizProjection::updateProjection() {
@@ -466,7 +471,7 @@ static int firstDifferentDimension(const std::vector<int> &beta1, const std::vec
   return difference;
 }
 
-void VizProjection::projectScop(ClintScop *vscop) {
+void VizProjection::projectScop() {
   m_selectionManager->clearSelection();
   for (int i = 0; i < m_coordinateSystems.size(); i++) {
     for (int j = 0; j < m_coordinateSystems[i].size(); j++) {
@@ -480,7 +485,7 @@ void VizProjection::projectScop(ClintScop *vscop) {
   // Therefore when operating with statements, any change in beta-vector equality
   // results in a new container creation.
   std::vector<ClintStmtOccurrence *> allOccurrences;
-  for (ClintStmt *vstmt : vscop->statements()) {
+  for (ClintStmt *vstmt : m_scop->statements()) {
     std::vector<ClintStmtOccurrence *> stmtOccurrences = vstmt->occurrences();
     allOccurrences.insert(std::end(allOccurrences),
                           std::make_move_iterator(std::begin(stmtOccurrences)),
@@ -609,7 +614,7 @@ VizCoordinateSystem * VizProjection::createCoordinateSystem(VizCoordinateSystem 
   return newCS;
 }
 
-void VizProjection::reflectBetaTransformation(ClintScop *scop, const Transformation &transformation) {
+void VizProjection::reflectBetaTransformation(const Transformation &transformation) {
   // When this function is called, betas in the occurrences are not updated yet.
   if (m_skipBetaTransformations != 0) {
     --m_skipBetaTransformations;
@@ -618,7 +623,7 @@ void VizProjection::reflectBetaTransformation(ClintScop *scop, const Transformat
 
   if (transformation.kind() == Transformation::Kind::Split) {
     std::vector<int> beta = transformation.target();
-    std::unordered_set<ClintStmtOccurrence *> occs = scop->occurrences(beta);
+    std::unordered_set<ClintStmtOccurrence *> occs = m_scop->occurrences(beta);
     CLINT_ASSERT(occs.size() != 0,
                  "Couldn't find occurrence from which to split away");
     ClintStmtOccurrence *occurrence = *occs.begin();
@@ -662,7 +667,7 @@ void VizProjection::reflectBetaTransformation(ClintScop *scop, const Transformat
 
   } else if (transformation.kind() == Transformation::Kind::Fuse) {
     std::vector<int> beta = transformation.target();
-    std::unordered_set<ClintStmtOccurrence *> occs = scop->occurrences(beta);
+    std::unordered_set<ClintStmtOccurrence *> occs = m_scop->occurrences(beta);
     CLINT_ASSERT(occs.size() != 0,
                  "Couldn't find a CS to fuse with");
     ClintStmtOccurrence *occurrence = *occs.begin();
@@ -729,7 +734,7 @@ void VizProjection::reflectBetaTransformation(ClintScop *scop, const Transformat
     }
   } else if (transformation.kind() == Transformation::Kind::Embed) {
     std::vector<int> beta  = transformation.target();
-    std::unordered_set<ClintStmtOccurrence *> occs = scop->occurrences(beta);
+    std::unordered_set<ClintStmtOccurrence *> occs = m_scop->occurrences(beta);
     CLINT_ASSERT(occs.size() != 0,
                  "Coundn't find target occurrence");
     ClintStmtOccurrence *occurrence = *occs.begin();
@@ -747,7 +752,7 @@ void VizProjection::reflectBetaTransformation(ClintScop *scop, const Transformat
     }
   } else if (transformation.kind() == Transformation::Kind::Unembed) {
     std::vector<int> beta  = transformation.target();
-    std::unordered_set<ClintStmtOccurrence *> occs = scop->occurrences(beta);
+    std::unordered_set<ClintStmtOccurrence *> occs = m_scop->occurrences(beta);
     CLINT_ASSERT(occs.size() != 0,
                  "Coundn't find target occurrence");
     ClintStmtOccurrence *occurrence = *occs.begin();

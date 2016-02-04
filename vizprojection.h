@@ -13,16 +13,13 @@
 #include "vizproperties.h"
 #include "vizselectionmanager.h"
 
-class VizProjection : public QObject
-{
+class VizProjection : public QObject {
   Q_OBJECT
 public:
-  VizProjection(int horizontalDimensionIdx, int verticalDimensionIdx, QObject *parent = 0);
+  VizProjection(int horizontalDimensionIdx, int verticalDimensionIdx, ClintScop *vscop, QObject *parent = nullptr);
   QWidget *widget() {
     return m_view;
   }
-
-  void projectScop(ClintScop *vscop);
 
   /*inline*/ VizProperties *vizProperties() const {
     return m_vizProperties;
@@ -34,6 +31,10 @@ public:
 
   /*inline*/ VizManipulationManager *manipulationManager() const {
     return m_manipulationManager;
+  }
+
+  /*inline*/ ClintScop *scop() const {
+    return m_scop;
   }
 
   void updateColumnHorizontalMinMax(VizCoordinateSystem *coordinateSystem, int minOffset, int maxOffset);
@@ -136,7 +137,7 @@ public:
   }
 
   VizPolyhedron *polyhedron(ClintStmtOccurrence *occurrence) const;
-  void reflectBetaTransformation(ClintScop *scop, const Transformation &transformation);
+  void reflectBetaTransformation(const Transformation &transformation);
 
   void showInsertionShadow(IsCsResult r);
   IsCsResult emptyIsCsResult() const;
@@ -151,9 +152,10 @@ public slots:
   void finalizeOccurrenceChange();
 
 private:
-  ProjectionView *m_view;
-  QGraphicsScene *m_scene;
-  VizProperties *m_vizProperties;
+  ProjectionView *m_view         = nullptr;
+  QGraphicsScene *m_scene        = nullptr;
+  VizProperties *m_vizProperties = nullptr;
+  ClintScop *m_scop              = nullptr;
 
   // Outer index = column index;
   // Inner index = row index within the given column
@@ -169,6 +171,7 @@ private:
 
   int m_skipBetaTransformations = 0;
 
+  void projectScop();
   void appendCoordinateSystem(int dimensionality);
   VizCoordinateSystem *createCoordinateSystem(VizCoordinateSystem *oldVCS);
   IsCsResult findCoordinateSystem(QPointF point);
