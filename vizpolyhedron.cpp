@@ -123,7 +123,6 @@ void VizPolyhedron::reprojectPoints() {
   m_pointOthers.clear();
   m_pointOthers = extraPoints;
 }
-}
 
 void VizPolyhedron::occurrenceChanged() {
   int horizontalDim = coordinateSystem()->horizontalDimensionIdx();
