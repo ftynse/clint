@@ -26,6 +26,7 @@ git submodule update
 Build each submodule separately and install them (you might want to install
 them into a separate directory so that they do not interfere with system
 versions, isl and CLooG may be installed system-wide together with GCC or LLVM).
+Do *not* recursively initialize submodules for the libraries.
 
 
 Build Clint with CMake

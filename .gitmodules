@@ -1,0 +1,21 @@
+[submodule "openscop"]
+	path = openscop
+	url = https://github.com/ftynse/openscop
+[submodule "clan"]
+	path = clan
+	url = https://github.com/ftynse/clan
+[submodule "cloog"]
+	path = cloog
+	url = https://github.com/ftynse/cloog
+[submodule "candl"]
+	path = candl
+	url = https://github.com/ftynse/candl
+[submodule "clay"]
+	path = clay
+	url = https://github.com/ftynse/clay
+[submodule "chlore"]
+	path = chlore
+	url = https://github.com/ftynse/chlore
+[submodule "isl"]
+	path = isl
+	url = http://repo.or.cz/isl.git
