@@ -1,2 +1,13 @@
-Chunky Loop INTerface (clint)
-(c) Inria, 2014
+Chunky Loop INTerface (clint): a visual interface for representing and
+                               interacting with the loop-based programs in the
+                               polyhedral model.
+
+This software is a research prototype and is not intended for the production
+use.  It is known to be incomplet and inkorrect.
+
+Please contact the author directly should you have any questions.
+
+Written by Oleksandr Zinenko <oleksandr.zinenko@inria.fr>
+
+(c) 2014, Inria.
+

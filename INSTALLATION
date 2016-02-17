@@ -1,0 +1,48 @@
+Clint should build on most modern POSIX and BSD systems with windowing
+interfaces.  It requires the following widely available libraries to be
+installed and visible in respective pathes:
+* Qt (version 5.4+)
+* Boost (version 1.59+)
+* GMP (version 6.0+)
+
+It must be compiled with C++14 support (use clang-3.5+ or GCC 4.9+).
+
+It also requires *development* versions of the following polyhedral framework
+libraries:
+* isl
+* OpenScop
+* CLooG
+* Clan
+* Candl
+* Clay
+* Chlore
+
+
+Please only use the versions provided via Git submodules mechanism.  Call
+
+git submodule init
+git submodule update
+
+Build each submodule separately and install them (you might want to install
+them into a separate directory so that they do not interfere with system
+versions, isl and CLooG may be installed system-wide together with GCC or LLVM).
+
+
+Build Clint with CMake
+
+mkdir build
+cd build
+cmake ..
+make
+
+Make sure all libraries are visible to CMake, e.g. by using
+-DCMAKE_PREFIX_PATH=... option.
+
+Clint compiles to a single executable file.  Ensure dynamic library loader path
+points to the just installed development versions of the polyhedral libraries
+before running it.
+
+
+This procedure is intentionally long for the development version of Clint and
+will be automated for the stable release version.
+
