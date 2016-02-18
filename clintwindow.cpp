@@ -108,6 +108,11 @@ void ClintWindow::setupActions() {
   m_actionFileClose->setEnabled(false);
   m_actionFileCompareTo->setEnabled(false);
 
+  addAction(m_actionFileOpen);
+  addAction(m_actionFileCompareTo);
+  addAction(m_actionFileClose);
+  addAction(m_actionFileQuit);
+
   m_actionEditUndo = new QAction(QIcon::fromTheme("edit-undo"), "Undo", this);
   m_actionEditRedo = new QAction(QIcon::fromTheme("edit-redo"), "Redo", this);
   m_actionEditReplay = new QAction("Replay transformations", this);
