@@ -566,20 +566,21 @@ void ClintScop::undoTransformation() {
   m_undoneTransformationSeq.groups.push_back(m_transformationSeq.groups.back());
 //  m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1);
 //  --m_groupsExecuted;
+
   if (m_complementaryTransformationSeq.groups.back().transformations.empty()) {
-  m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1, std::end(m_transformationSeq.groups));
-  m_complementaryTransformationSeq.groups.erase(std::end(m_complementaryTransformationSeq.groups) - 1,
-                                                std::end(m_complementaryTransformationSeq.groups));
-  executeTransformationSequence();
-  m_groupsExecuted -= 1;
+    m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1, std::end(m_transformationSeq.groups));
+    m_complementaryTransformationSeq.groups.erase(std::end(m_complementaryTransformationSeq.groups) - 1,
+                                                  std::end(m_complementaryTransformationSeq.groups));
+    executeTransformationSequence();
+    m_groupsExecuted -= 1;
 
   } else {
-  transform(m_complementaryTransformationSeq.groups.back());
-  executeTransformationSequence();
-  m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 2, std::end(m_transformationSeq.groups));
-  m_complementaryTransformationSeq.groups.erase(std::end(m_complementaryTransformationSeq.groups) - 2,
-                                                std::end(m_complementaryTransformationSeq.groups));
-  m_groupsExecuted -= 2;
+    transform(m_complementaryTransformationSeq.groups.back());
+    executeTransformationSequence();
+    m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 2, std::end(m_transformationSeq.groups));
+    m_complementaryTransformationSeq.groups.erase(std::end(m_complementaryTransformationSeq.groups) - 2,
+                                                  std::end(m_complementaryTransformationSeq.groups));
+    m_groupsExecuted -= 2;
   }
   // TODO: update visible sequence properly
 }

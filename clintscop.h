@@ -62,6 +62,7 @@ public:
     CLINT_ASSERT(m_transformationSeq.groups.size() != 0,
                  "Cannot discard a group in empty sequence");
     m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 1);
+    m_complementaryTransformationSeq.groups.erase(std::end(m_complementaryTransformationSeq.groups) - 1);
   }
 
   void executeTransformationSequence();
