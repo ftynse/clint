@@ -72,7 +72,7 @@ public:
   }
 
   bool splitBetaAway(std::vector<int> &beta, size_t depth, TransformationGroup &group, bool extraChild = false);
-  bool fuseBetaTo(std::vector<int> &beta, std::vector<int> betaPrefix, TransformationGroup &group, bool extraChild = false);
+  bool fuseBetaTo(std::vector<int> &beta, std::vector<int> betaPrefix, TransformationGroup &group, bool extraChild = false, int startDepth = 0);
 
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
   std::unordered_set<ClintStmtOccurrence *> occurrences(const std::vector<int> &betaPrefix) const;

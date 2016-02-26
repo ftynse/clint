@@ -291,12 +291,13 @@ bool ClintScop::splitBetaAway(std::vector<int> &beta, size_t depth, Transformati
   return splitOnPreviousStep;
 }
 
-bool ClintScop::fuseBetaTo(std::vector<int> &beta, std::vector<int> betaPrefix, TransformationGroup &group, bool extraChild) {
+bool ClintScop::fuseBetaTo(std::vector<int> &beta, std::vector<int> betaPrefix, TransformationGroup &group, bool extraChild,
+                           int startDepth) {
   bool fuseOnPreviousStep = extraChild;
 
   std::vector<int> unmodifiedBetaPrefix(betaPrefix);
 
-  for (size_t currentDepth = 0; currentDepth < betaPrefix.size(); ++currentDepth) {
+  for (size_t currentDepth = startDepth; currentDepth < betaPrefix.size(); ++currentDepth) {
     if (beta[currentDepth] == betaPrefix[currentDepth]
         + (fuseOnPreviousStep ? beta[currentDepth] <= betaPrefix[currentDepth]
                               : beta[currentDepth] <  betaPrefix[currentDepth])) {

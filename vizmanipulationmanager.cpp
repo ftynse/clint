@@ -178,8 +178,9 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
         std::vector<int> targetBetaPrefix = r.coordinateSystem()->betaPrefix();
         std::vector<int> beta = vp->occurrence()->betaVector();
 
-        bool extraChild = vp->occurrence()->scop()->splitBetaAway(beta, BetaUtility::partialMatch(targetBetaPrefix, beta), iterGroup);
-        vp->occurrence()->scop()->fuseBetaTo(beta, targetBetaPrefix, iterGroup, extraChild);
+        int splitDepth = BetaUtility::partialMatch(targetBetaPrefix, beta);
+        bool extraChild = vp->occurrence()->scop()->splitBetaAway(beta, splitDepth, iterGroup);
+        vp->occurrence()->scop()->fuseBetaTo(beta, targetBetaPrefix, iterGroup, extraChild, splitDepth);
       } else if (r.action() == VizProjection::IsCsAction::InsertCS) {
         bool actionWithinPile = r.pileIdx() == oldPileIdx;
         if (actionWithinPile) {
