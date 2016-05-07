@@ -40,6 +40,7 @@ public slots:
 
   void viewFreezeToggled(bool value);
   void viewProjectionMatrixToggled(bool value);
+  void viewOnePointDepsToggled(bool value);
 
   void scopTransformed();
   void reflectBetaTransformations(size_t groupIndex, size_t tsIndex);
@@ -66,6 +67,7 @@ private:
 
   QAction *m_actionViewFreeze;
   QAction *m_actionViewProjectionMatrix;
+  QAction *m_actionViewOneDepArrow;
 
   QMenuBar *m_menuBar;
 

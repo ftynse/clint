@@ -6,6 +6,8 @@
 #include <QtGui>
 #include <QtWidgets>
 
+bool VizDepArrow::m_onePointArrows = false;
+
 VizDepArrow::VizDepArrow(QPointF source, QPointF target, VizPolyhedron *parent, bool violated) :
   QGraphicsObject(parent), m_coordinateSystemParent(nullptr), m_violated(violated) {
 

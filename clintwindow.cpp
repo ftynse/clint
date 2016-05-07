@@ -4,6 +4,7 @@
 #include <QtSvg>
 
 #include "vizprojection.h"
+#include "vizdeparrow.h"
 #include "clintwindow.h"
 #include "oslutils.h"
 #include "propertiesdialog.h"
@@ -127,10 +128,13 @@ void ClintWindow::setupActions() {
 
   m_actionViewFreeze = new QAction("Keep original code", this);
   m_actionViewProjectionMatrix = new QAction("Projection matrix", this);
+  m_actionViewOneDepArrow = new QAction("Dependence pattern only", this);
+
   m_actionViewProjectionMatrix->setCheckable(true);
   m_actionViewProjectionMatrix->setChecked(true);
   m_actionViewProjectionMatrix->setEnabled(false);
   m_actionViewFreeze->setCheckable(true);
+  m_actionViewOneDepArrow->setCheckable(true);
 
   connect(m_actionFileOpen, &QAction::triggered, this, &ClintWindow::fileOpen);
   connect(m_actionFileCompareTo, &QAction::triggered, this, &ClintWindow::fileCompareTo);
@@ -145,6 +149,7 @@ void ClintWindow::setupActions() {
 
   connect(m_actionViewFreeze, &QAction::toggled, this, &ClintWindow::viewFreezeToggled);
   connect(m_actionViewProjectionMatrix, &QAction::toggled, this, &ClintWindow::viewProjectionMatrixToggled);
+  connect(m_actionViewOneDepArrow, &QAction::toggled, this, &ClintWindow::viewOnePointDepsToggled);
 }
 
 void ClintWindow::setupMenus() {
@@ -167,6 +172,7 @@ void ClintWindow::setupMenus() {
   QMenu *viewMenu = new QMenu("View");
   viewMenu->addAction(m_actionViewFreeze);
   viewMenu->addAction(m_actionViewProjectionMatrix);
+  viewMenu->addAction(m_actionViewOneDepArrow);
 
   m_menuBar->addAction(fileMenu->menuAction());
   m_menuBar->addAction(editMenu->menuAction());
@@ -544,6 +550,18 @@ void ClintWindow::viewProjectionMatrixToggled(bool value) {
     projectionSelectedAlone(VizProperties::NO_DIMENSION, VizProperties::NO_DIMENSION);
   } else {
     projectionSelectedInOverview(0, 1); // FIXME: hardcoded values here...
+  }
+}
+
+void ClintWindow::viewOnePointDepsToggled(bool value) {
+  VizDepArrow::setOnePointArrows(value);
+  if (m_projection && m_graphicalInterface == m_projection->widget()) {
+    m_projection->updateProjection();
+    m_projection->updateInnerDependences();
+    m_projection->updateInternalDependences();
+  }
+  if (m_graphicalInterface == m_projectionOverview) {
+    m_projectionOverview->updateAllProjections();
   }
 }
 

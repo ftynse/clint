@@ -25,6 +25,14 @@ public:
   void reparent(VizCoordinateSystem *parent);
   void reparent(VizPolyhedron *parent);
 
+  static void setOnePointArrows(bool onePointArrows = true) {
+    m_onePointArrows = onePointArrows;
+  }
+
+  static bool onePointArrows() {
+    return m_onePointArrows;
+  }
+
 private slots:
   void repoint();
 
@@ -40,6 +48,8 @@ private:
   QLineF m_arrowLine;
   QPainterPath m_arrowHead;
   const VizProperties *m_vizProperties;
+
+  static bool m_onePointArrows;
 };
 
 template <typename ParentType>
@@ -55,6 +65,18 @@ void vizDependenceArrowsCreate(VizPolyhedron *sourcePolyhedron,
   typedef std::pair<std::pair<int, int>, std::pair<int, int>> DepCoordinates;
   std::unordered_set<DepCoordinates, boost::hash<DepCoordinates>> existingDependences;
 
+  std::vector<int> onePointSourceCoodrinates, onePointTargetCoordinates;
+  if (dependences.size() != 0) {
+    const std::vector<int> &firstDep = dependences.front();
+    const std::vector<int> &lastDep = dependences.back();
+    onePointSourceCoodrinates = std::vector<int>(
+          std::begin(firstDep),
+          std::begin(firstDep) + sourceInputDimensionality);
+    onePointTargetCoordinates = std::vector<int>(
+          std::begin(lastDep) + sourceInputDimensionality,
+          std::begin(lastDep) + sourceInputDimensionality + targetInputDimensionality);
+  }
+
   for (const std::vector<int> &dep : dependences) {
     CLINT_ASSERT(sourceInputDimensionality + targetInputDimensionality <= dep.size(),
                  "Not enough dimensions in a dependence projection");
@@ -62,6 +84,11 @@ void vizDependenceArrowsCreate(VizPolyhedron *sourcePolyhedron,
                                        std::begin(dep) + sourceInputDimensionality);
     std::vector<int> targetCoordinates(std::begin(dep) + sourceInputDimensionality,
                                        std::begin(dep) + sourceInputDimensionality + targetInputDimensionality);
+
+    if (VizDepArrow::onePointArrows() &&
+        sourceCoordinates != onePointSourceCoodrinates &&
+        targetCoordinates != onePointTargetCoordinates)
+      continue;
 
     VizPoint *sourcePoint = sourcePolyhedron->point(sourceCoordinates),
              *targetPoint = targetPolyhedron->point(targetCoordinates);
