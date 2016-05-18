@@ -19,3 +19,6 @@
 [submodule "isl"]
 	path = isl
 	url = http://repo.or.cz/isl.git
+[submodule "piplib"]
+	path = piplib
+	url = https://github.com/periscop/piplib
