@@ -182,7 +182,7 @@ enum clay_parser_arg_kind : size_t {
   try { arg##n##_optional = boost::get<T##n>(cmd.arguments[(n - 1)]); } \
   catch (boost::bad_get) { \
     throw clay_parser::semantic_error(string_builder()("Argument ", n, " has incorrect type.  Expected ", typeid(T##n).name())); }\
-  T##n arg##n = arg##n##_optional.value();
+  T##n arg##n = arg##n##_optional.get();
 
 template <typename T1>
 std::function<Transformation (const clay_parser::clay_parser_command &)>

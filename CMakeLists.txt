@@ -102,7 +102,7 @@ qt5_use_modules(${PROJECT_NAME} Widgets Gui Core Xml Svg)
 # Boost libraries
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost 1.56.0 REQUIRED)
+find_package(Boost 1.55.0 REQUIRED)
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
