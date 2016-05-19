@@ -11,7 +11,7 @@ const int Enumerator::NO_COORD;
 const int Enumerator::NO_DIMENSION;
 
 namespace {
-int addISLPointToVector(isl_point *point, void *vect) {
+isl_stat addISLPointToVector(isl_point *point, void *vect) {
   CLINT_ASSERT(point != nullptr, "Point is nullptr");
   CLINT_ASSERT(vect != nullptr, "Vector is nullptr");
 
@@ -33,7 +33,7 @@ int addISLPointToVector(isl_point *point, void *vect) {
   isl_point_free(point);
   vector.push_back(std::move(pointVector));
 
-  return 0;
+  return isl_stat_ok;
 }
 } // end anonymous namespace
 
