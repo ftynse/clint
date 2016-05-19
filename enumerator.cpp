@@ -1,5 +1,7 @@
 #include "enumerator.h"
 
+#include <algorithm>
+#include <functional>
 #include <vector>
 
 /// Application-wide ISL context
