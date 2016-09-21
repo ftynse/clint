@@ -190,7 +190,7 @@ void VizCoordinateSystem::updatePolyhedraPositions() {
     return;
   for (size_t i = 0, iend = m_polyhedra.size(); i < iend; i++) {
     VizPolyhedron *vph = m_polyhedra.at(i);
-    vph->setPos(polyhedronPosition(vph, i));
+    vph->setPos(defaultPolyhedronPosition(i));
     vph->setZValue(m_polyhedra.size() + 1 - i);
   }
 }
@@ -202,7 +202,7 @@ void VizCoordinateSystem::updatePolyhedraPositionsAnimated() {
   QParallelAnimationGroup *animationGroup = new QParallelAnimationGroup;
   for (size_t i = 0, iend = m_polyhedra.size(); i < iend; i++) {
     VizPolyhedron *vph = m_polyhedra.at(i);
-    QPointF endPos = polyhedronPosition(vph, i);
+    QPointF endPos = defaultPolyhedronPosition(i);
     QPropertyAnimation *animation = new QPropertyAnimation(vph, "pos", animationGroup);
     animation->setStartValue(vph->pos());
     animation->setEndValue(endPos);
@@ -222,35 +222,18 @@ void VizCoordinateSystem::updateAllPositions() {
   }
 }
 
-QPointF VizCoordinateSystem::polyhedronPosition(VizPolyhedron *polyhedron, size_t idx,
-                                                bool ignoreHorizontal, bool ignoreVertical) {
+QPointF VizCoordinateSystem::defaultPolyhedronPosition(size_t idx) const {
   double offset = m_projection->vizProperties()->polyhedronOffset() * idx;
-  QPointF position = polyhedron->pos();
-  double hpos = ignoreHorizontal ?
-        position.x() :
-        offset;
-  double vpos = ignoreVertical ?
-        position.y() :
-        -offset;
-  return QPointF(hpos, vpos);
-}
-
-void VizCoordinateSystem::setPolyhedronCoordinates(VizPolyhedron *polyhedron, int horizontal,
-                                                   int vertical, bool ignoreHorizontal,
-                                                   bool ignoreVertical) {
-  auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);
-  CLINT_ASSERT(it != std::end(m_polyhedra),
-               "Polyhedron updated does not belong to the coordinate system");
-
-  size_t idx = static_cast<size_t>(std::distance(std::begin(m_polyhedra), it));
-  polyhedron->setPos(polyhedronPosition(polyhedron, idx, ignoreHorizontal, ignoreVertical));
-  polyhedron->setZValue(m_polyhedra.size() + 1 - idx);
+  return QPointF(offset, -offset);
 }
 
 void VizCoordinateSystem::resetPolyhedronPos(VizPolyhedron *polyhedron) {
-  setPolyhedronCoordinates(polyhedron,
-                           polyhedron->localHorizontalMin(),
-                           polyhedron->localVerticalMin());
+  auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);
+  CLINT_ASSERT(it != std::end(m_polyhedra),
+               "Polyhedron updated does not belong to the coordinate system");
+  size_t idx = static_cast<size_t>(std::distance(std::begin(m_polyhedra), it));
+  polyhedron->setPos(defaultPolyhedronPosition(idx));
+  polyhedron->setZValue(m_polyhedra.size() + 1 - idx);
 }
 
 void VizCoordinateSystem::createPolyhedronShadow(VizPolyhedron *polyhedron) {
@@ -261,7 +244,7 @@ void VizCoordinateSystem::createPolyhedronShadow(VizPolyhedron *polyhedron) {
 
   prepareGeometryChange();
   VizPolyhedron *shadow = m_polyhedra[index]->createShadow();
-  shadow->setPos(polyhedronPosition(shadow, index));
+  shadow->setPos(defaultPolyhedronPosition(index));
   shadow->setZValue(index);
   m_polyhedronShadows.emplace(index, shadow);
 }
@@ -273,7 +256,7 @@ void VizCoordinateSystem::createPolyhedronAnimationTarget(VizPolyhedron *polyhed
   prepareGeometryChange();
   size_t index = static_cast<size_t>(std::distance(std::begin(m_polyhedra), it));
   VizPolyhedron *shadow = polyhedron->createShadow(false);
-  shadow->setPos(polyhedronPosition(shadow, index));
+  shadow->setPos(defaultPolyhedronPosition(index));
   m_polyhedronAnimationTargets.emplace(polyhedron, shadow);
 }
 

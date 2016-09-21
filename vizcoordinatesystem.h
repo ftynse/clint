@@ -162,8 +162,6 @@ public:
   int ticMargin() const;
 
   void polyhedronUpdated(VizPolyhedron *polyhedron);
-  void setPolyhedronCoordinates(VizPolyhedron *polyhedron, int horizontal, int vertical,
-                                bool ignoreHorizontal = false, bool ignoreVertical = false);
   void reparentPolyhedron(VizPolyhedron *polyhedron);
   void resetPolyhedronPos(VizPolyhedron *polyhedron);
 
@@ -234,8 +232,7 @@ private:
   QPolygonF leftArrow(int length, const double pointRadius);
   QPolygonF topArrow(int length, const double pointRadius);
 
-  QPointF polyhedronPosition(VizPolyhedron *polyhedron, size_t idx,
-                             bool ignoreHorizontal = false, bool ignoreVertical = false);
+  QPointF defaultPolyhedronPosition(size_t idx) const;
 
 };
 
