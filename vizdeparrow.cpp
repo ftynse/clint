@@ -30,6 +30,9 @@ VizDepArrow::VizDepArrow(VizPoint *source, VizPoint *target, VizPolyhedron *pare
 
   connect(source, &VizPoint::positionChanged, this, &VizDepArrow::repoint);
   connect(target, &VizPoint::positionChanged, this, &VizDepArrow::repoint);
+
+  connect(source, &VizPoint::destroyed, this, &VizDepArrow::setBlockRepointSlot);
+  connect(target, &VizPoint::destroyed, this, &VizDepArrow::setBlockRepointSlot);
 }
 
 void VizDepArrow::pointLinkCS(VizPoint *source, VizPoint *target) {
@@ -50,6 +53,12 @@ VizDepArrow::VizDepArrow(VizPoint *source, VizPoint *target, VizCoordinateSystem
   connect(target, &VizPoint::positionChanged, this, &VizDepArrow::repoint);
   connect(source->polyhedron(), &VizPolyhedron::positionChanged, this, &VizDepArrow::repoint);
   connect(target->polyhedron(), &VizPolyhedron::positionChanged, this, &VizDepArrow::repoint);
+
+  // Repoint slot may be called from both the source and the target points, but requires
+  // both of them to be alive.  If one of them is not anymore alive, return immediately from
+  // repoint slot to avoid UB of read-after-free.
+  connect(source, &VizPoint::destroyed, this, &VizDepArrow::setBlockRepointSlot);
+  connect(target, &VizPoint::destroyed, this, &VizDepArrow::setBlockRepointSlot);
 }
 
 void VizDepArrow::reparent(VizCoordinateSystem *parent) {
@@ -65,8 +74,12 @@ void VizDepArrow::reparent(VizPolyhedron *parent) {
   setParentItem(parent);
 }
 
+void VizDepArrow::setBlockRepointSlot() {
+  m_blockRepointSlot = true;
+}
+
 void VizDepArrow::repoint() {
-  if (!m_sourcePoint || !m_targetPoint)
+  if (!m_sourcePoint || !m_targetPoint || m_blockRepointSlot)
     return;
 
   if (m_coordinateSystemParent) {

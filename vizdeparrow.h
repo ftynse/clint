@@ -36,7 +36,10 @@ public:
 private slots:
   void repoint();
 
+  void setBlockRepointSlot();
+
 private:
+  bool m_blockRepointSlot = false;
   void pointLink(QPointF source, QPointF target);
   void pointLinkCS(VizPoint *source, VizPoint *target);
 

@@ -37,6 +37,13 @@ VizPolyhedron::VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSyste
 
 VizPolyhedron::~VizPolyhedron() {
   disconnectAll();
+  // Delete deps before points (all of them are children of this VizPolyhedron, but deps depend on
+  // points to exist).
+  for (VizDepArrow *vda : m_deps) {
+    vda->setParentItem(nullptr);
+    delete vda;
+  }
+  m_deps.clear();
 }
 
 VizPolyhedron *VizPolyhedron::createShadow(bool visible) {
@@ -329,8 +336,11 @@ void VizPolyhedron::setInternalDependences(std::vector<std::vector<int>> &&depen
 }
 
 void VizPolyhedron::updateInternalDependences() {
+  prepareGeometryChange();
   for (VizDepArrow *vda : m_deps) {
-    // setting parent to nullptr led to segfault after delete.
+    // The geometry change scheduled above needs the size of all "old" objects to properly
+    // compute the rectangle it updates.  Therefore, VizDepArrows should not be deleted
+    // immediately, but scheduled for deletion after change.
     vda->setVisible(false);
     vda->deleteLater();
   }
@@ -340,7 +350,6 @@ void VizPolyhedron::updateInternalDependences() {
     setInternalDependences(dependence->projectOn(coordinateSystem()->horizontalDimensionIdx(),
                                                  coordinateSystem()->verticalDimensionIdx()));
   }
-  prepareGeometryChange();
 }
 
 static std::pair<int, int> vizPointPosPair(const VizPoint *vp) {
