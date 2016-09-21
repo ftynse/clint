@@ -725,8 +725,8 @@ void VizProjection::reflectBetaTransformation(const Transformation &transformati
       for (size_t pileIdx = 0; pileIdx < m_coordinateSystems.size(); ++pileIdx) {
         for (size_t csIdx = 0; csIdx < m_coordinateSystems[pileIdx].size(); ++csIdx) {
           VizCoordinateSystem *vcs = m_coordinateSystems[pileIdx][csIdx];
-          if (BetaUtility::isPrefix(transformation.target(),
-                                    vcs->betaPrefix())) {
+          if (BetaUtility::isPrefixOrEqual(transformation.target(),
+                                           vcs->betaPrefix())) {
             vcs->reorderPolyhedra(transformation);
           }
         }

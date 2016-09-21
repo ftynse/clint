@@ -230,13 +230,12 @@ private:
   void addAxisLabels(ClintStmtOccurrence *occurrence);
   void regenerateAxisLabels();
   void updatePolyhedraPositions();
+  void updatePolyhedraPositionsAnimated();
   QPolygonF leftArrow(int length, const double pointRadius);
   QPolygonF topArrow(int length, const double pointRadius);
 
-  void setAnyPolyhedronPosition(VizPolyhedron *polyhedron, int horizontal,
-                                int vertical, ssize_t idx,
-                                bool ignoreHorizontal = false,
-                                bool ignoreVertical = false);
+  QPointF polyhedronPosition(VizPolyhedron *polyhedron, size_t idx,
+                             bool ignoreHorizontal = false, bool ignoreVertical = false);
 
 };
 

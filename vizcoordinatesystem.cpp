@@ -190,9 +190,27 @@ void VizCoordinateSystem::updatePolyhedraPositions() {
     return;
   for (size_t i = 0, iend = m_polyhedra.size(); i < iend; i++) {
     VizPolyhedron *vph = m_polyhedra.at(i);
-    setAnyPolyhedronPosition(vph, vph->localHorizontalMin(), vph->localVerticalMin(), i);
+    vph->setPos(polyhedronPosition(vph, i));
     vph->setZValue(m_polyhedra.size() + 1 - i);
   }
+}
+
+void VizCoordinateSystem::updatePolyhedraPositionsAnimated() {
+  prepareGeometryChange();
+  if (m_ignorePolyhedraPositionUpdates)
+    return;
+  QParallelAnimationGroup *animationGroup = new QParallelAnimationGroup;
+  for (size_t i = 0, iend = m_polyhedra.size(); i < iend; i++) {
+    VizPolyhedron *vph = m_polyhedra.at(i);
+    QPointF endPos = polyhedronPosition(vph, i);
+    QPropertyAnimation *animation = new QPropertyAnimation(vph, "pos", animationGroup);
+    animation->setStartValue(vph->pos());
+    animation->setEndValue(endPos);
+    animation->setDuration(1000);
+    animation->setEasingCurve(QEasingCurve::InOutBack);
+    animationGroup->addAnimation(animation);
+  }
+  animationGroup->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 void VizCoordinateSystem::updateAllPositions() {
@@ -204,10 +222,8 @@ void VizCoordinateSystem::updateAllPositions() {
   }
 }
 
-void VizCoordinateSystem::setAnyPolyhedronPosition(VizPolyhedron *polyhedron, int horizontal,
-                                                   int vertical, ssize_t idx,
-                                                   bool ignoreHorizontal, bool ignoreVertical) {
-  prepareGeometryChange();
+QPointF VizCoordinateSystem::polyhedronPosition(VizPolyhedron *polyhedron, size_t idx,
+                                                bool ignoreHorizontal, bool ignoreVertical) {
   double offset = m_projection->vizProperties()->polyhedronOffset() * idx;
   QPointF position = polyhedron->pos();
   double hpos = ignoreHorizontal ?
@@ -216,7 +232,7 @@ void VizCoordinateSystem::setAnyPolyhedronPosition(VizPolyhedron *polyhedron, in
   double vpos = ignoreVertical ?
         position.y() :
         -offset;
-  polyhedron->setPos(hpos, vpos);
+  return QPointF(hpos, vpos);
 }
 
 void VizCoordinateSystem::setPolyhedronCoordinates(VizPolyhedron *polyhedron, int horizontal,
@@ -226,8 +242,8 @@ void VizCoordinateSystem::setPolyhedronCoordinates(VizPolyhedron *polyhedron, in
   CLINT_ASSERT(it != std::end(m_polyhedra),
                "Polyhedron updated does not belong to the coordinate system");
 
-  ssize_t idx = std::distance(std::begin(m_polyhedra), it);
-  setAnyPolyhedronPosition(polyhedron, horizontal, vertical, idx, ignoreHorizontal, ignoreVertical);
+  size_t idx = static_cast<size_t>(std::distance(std::begin(m_polyhedra), it));
+  polyhedron->setPos(polyhedronPosition(polyhedron, idx, ignoreHorizontal, ignoreVertical));
   polyhedron->setZValue(m_polyhedra.size() + 1 - idx);
 }
 
@@ -241,11 +257,11 @@ void VizCoordinateSystem::createPolyhedronShadow(VizPolyhedron *polyhedron) {
   auto it = std::find(std::begin(m_polyhedra), std::end(m_polyhedra), polyhedron);
   CLINT_ASSERT(it != std::end(m_polyhedra),
                "Polyhedron updated does not belong to the coordinate system");
-  ssize_t index = std::distance(std::begin(m_polyhedra), it);
+  size_t index = static_cast<size_t>(std::distance(std::begin(m_polyhedra), it));
 
   prepareGeometryChange();
   VizPolyhedron *shadow = m_polyhedra[index]->createShadow();
-  setAnyPolyhedronPosition(shadow, shadow->localHorizontalMin(), shadow->localVerticalMin(), index);
+  shadow->setPos(polyhedronPosition(shadow, index));
   shadow->setZValue(index);
   m_polyhedronShadows.emplace(index, shadow);
 }
@@ -255,9 +271,9 @@ void VizCoordinateSystem::createPolyhedronAnimationTarget(VizPolyhedron *polyhed
   CLINT_ASSERT(it != std::end(m_polyhedra),
                "Polyhedron updated does not belong to the coordinate system");
   prepareGeometryChange();
-  ssize_t index = std::distance(std::begin(m_polyhedra), it);
+  size_t index = static_cast<size_t>(std::distance(std::begin(m_polyhedra), it));
   VizPolyhedron *shadow = polyhedron->createShadow(false);
-  setAnyPolyhedronPosition(shadow, shadow->localHorizontalMin(), shadow->localVerticalMin(), index);
+  shadow->setPos(polyhedronPosition(shadow, index));
   m_polyhedronAnimationTargets.emplace(polyhedron, shadow);
 }
 
@@ -663,5 +679,5 @@ static std::vector<int> polyhedronBeta(const VizPolyhedron *const &ph) {
 
 void VizCoordinateSystem::reorderPolyhedra(const Transformation &transformation) {
   m_polyhedra = reflectReorder<VizPolyhedron *>(m_polyhedra, polyhedronBeta, transformation);
-  updatePolyhedraPositions();
+  updatePolyhedraPositionsAnimated();
 }
