@@ -206,7 +206,7 @@ void VizCoordinateSystem::updatePolyhedraPositionsAnimated() {
     QPropertyAnimation *animation = new QPropertyAnimation(vph, "pos", animationGroup);
     animation->setStartValue(vph->pos());
     animation->setEndValue(endPos);
-    animation->setDuration(1000);
+    animation->setDuration(m_projection->vizProperties()->animationDuration());
     animation->setEasingCurve(QEasingCurve::InOutBack);
     animationGroup->addAnimation(animation);
   }

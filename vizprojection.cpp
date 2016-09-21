@@ -905,7 +905,7 @@ void VizProjection::updateSceneLayoutAnimated() {
     QPropertyAnimation *animation = new QPropertyAnimation(pos.first, "pos", animationGroup);
     animation->setKeyValueAt(0.0, pos.first->pos());
     animation->setKeyValueAt(1.0, QPointF(pos.second.first, pos.second.second));
-    animation->setDuration(1000);
+    animation->setDuration(vizProperties()->animationDuration());
     animationGroup->addAnimation(animation);
   }
   animationGroup->start(QAbstractAnimation::DeleteWhenStopped);

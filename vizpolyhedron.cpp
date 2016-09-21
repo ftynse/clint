@@ -181,6 +181,7 @@ void VizPolyhedron::setupAnimation() {
 //  double horizontalOffset = (m_localHorizontalMin - oldLocalHorizontalMin) * pointDistance;
 //  double verticalOffset = (m_localVerticalMin - oldLocalVerticalMin) * pointDistance;
 
+  int animationDuration = coordinateSystem()->projection()->vizProperties()->animationDuration();
   QParallelAnimationGroup *group = new QParallelAnimationGroup();
   for (auto p : m_pts) {
     VizPoint *vp = p.second;
@@ -194,13 +195,13 @@ void VizPolyhedron::setupAnimation() {
     QPointF targetPos = QPointF(x * pointDistance, -y * pointDistance);
     QPointF currentPos = vp->pos();
 //    currentPos += QPointF(horizontalOffset, verticalOffset);
-    animation->setDuration(1000);
+    animation->setDuration(animationDuration);
     animation->setStartValue(currentPos);
     animation->setEndValue(targetPos);
     group->addAnimation(animation);
   }
 
-  m_shapeAnimation->setDuration(1000);
+  m_shapeAnimation->setDuration(animationDuration);
   group->addAnimation(m_shapeAnimation);
 
   group->start();
@@ -1282,7 +1283,7 @@ void VizPolyhedron::reparent(VizCoordinateSystem *vcs) {
 
   enlargeCoordinateSystem();
   QPropertyAnimation *anim = new QPropertyAnimation(this, "pos", this);
-  anim->setDuration(1000);
+  anim->setDuration(coordinateSystem()->projection()->vizProperties()->animationDuration());
   anim->setEndValue(QPointF(offset, -offset));
   anim->start();
   m_transitionAnimation = anim;

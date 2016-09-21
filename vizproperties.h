@@ -23,6 +23,9 @@ public:
   /*inline*/ double coordinateSystemMargin() const {
     return m_coordinateSystemMargin;
   }
+  /*inline*/ int animationDuration() const {
+    return m_animationDuration;
+  }
 
   QColor color(const std::vector<int> &beta) const {
     int id = 0;
@@ -64,6 +67,8 @@ public:
              READ coordinateSystemMargin
              WRITE setCoordinateSystemMargin
              NOTIFY vizPropertyChanged)
+  Q_PROPERTY(int m_animationDuration
+             READ animationDuration)
 
 signals:
   void vizPropertyChanged();
@@ -79,6 +84,8 @@ private:
   double m_pointRadius            = 4.0;
   double m_pointDistance          = 16.0;
   double m_coordinateSystemMargin = 5.0;
+
+  const int m_animationDuration   = 1000;
 
   bool m_filledPolygons           = true;
   bool m_filledPoints             = false;
