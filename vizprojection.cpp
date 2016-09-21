@@ -732,6 +732,7 @@ void VizProjection::reflectBetaTransformation(const Transformation &transformati
         }
       }
     }
+    m_nextSceneUpdateAnimated = true;
   } else if (transformation.kind() == Transformation::Kind::Embed) {
     std::vector<int> beta  = transformation.target();
     std::unordered_set<ClintStmtOccurrence *> occs = m_scop->occurrences(beta);
@@ -853,7 +854,10 @@ void VizProjection::ensureFitsVertically(VizCoordinateSystem *coordinateSystem, 
   updateProjection();
 }
 
-void VizProjection::updateSceneLayout() {
+std::unordered_map<VizCoordinateSystem *, std::pair<double, double>>
+VizProjection::recomputeCoordinateSystemPositions() {
+  std::unordered_map<VizCoordinateSystem *, std::pair<double, double>> positions;
+
   double horizontalOffset = 0.0;
   for (size_t col = 0, col_end = m_coordinateSystems.size(); col < col_end; col++) {
     double verticalOffset = 0.0;
@@ -868,13 +872,43 @@ void VizProjection::updateSceneLayout() {
     for (size_t row = 0, row_end = m_coordinateSystems[col].size(); row < row_end; row++) {
       VizCoordinateSystem *vcs = m_coordinateSystems[col][row];
       QRectF bounding = vcs->boundingRect();
-      vcs->setPos(horizontalOffset - left, -verticalOffset - bounding.bottom());
+      auto position = std::make_pair(horizontalOffset - left, -verticalOffset - bounding.bottom());
+      positions[vcs] = position;
       verticalOffset += bounding.height() + m_vizProperties->coordinateSystemMargin();
       maximumWidth = std::max(maximumWidth, bounding.width());
     }
     horizontalOffset += maximumWidth + m_vizProperties->coordinateSystemMargin();
   }
-  updateOuterDependences();
+  return positions;
+}
+
+void VizProjection::updateSceneLayout() {
+  if (m_nextSceneUpdateAnimated) {
+    m_nextSceneUpdateAnimated = false;
+    updateSceneLayoutAnimated();
+    return;
+  }
+  std::unordered_map<VizCoordinateSystem *, std::pair<double, double>> positions = recomputeCoordinateSystemPositions();
+  for (auto pos : positions) {
+    pos.first->setPos(pos.second.first, pos.second.second);
+  }
+}
+
+// This function moves coordianted systems with animation.  It should not be called when, e.g., constructing the projection from scratch.
+// It is initially targeted at animating "reorder" transformations.  It may work pretty well for "fuse" transformations when a CS is
+// deleted, but produces weird output for "split" transformations with newly created CS moving from (0,0) to its position.  It also
+// does account for polyhedron reparenting in "fuse/split" transformations: polyhedra are animated relative to CS, which is moving by itself.
+void VizProjection::updateSceneLayoutAnimated() {
+  std::unordered_map<VizCoordinateSystem *, std::pair<double, double>> positions = recomputeCoordinateSystemPositions();
+  QParallelAnimationGroup *animationGroup = new QParallelAnimationGroup;
+  for (auto pos : positions) {
+    QPropertyAnimation *animation = new QPropertyAnimation(pos.first, "pos", animationGroup);
+    animation->setKeyValueAt(0.0, pos.first->pos());
+    animation->setKeyValueAt(1.0, QPointF(pos.second.first, pos.second.second));
+    animation->setDuration(1000);
+    animationGroup->addAnimation(animation);
+  }
+  animationGroup->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 void VizProjection::selectProjection() {

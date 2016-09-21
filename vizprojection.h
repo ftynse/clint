@@ -6,6 +6,7 @@
 #include <QObject>
 
 #include <vector>
+#include <unordered_map>
 
 #include "projectionview.h"
 #include "vizcoordinatesystem.h"
@@ -149,6 +150,7 @@ public slots:
   void updateProjection();
   void selectProjection();
   void updateSceneLayout();
+  void updateSceneLayoutAnimated();
   void finalizeOccurrenceChange();
 
 private:
@@ -171,8 +173,14 @@ private:
 
   int m_skipBetaTransformations = 0;
 
+  // When "reflecting" beta transformations triggered elsewhere, we want to have animated
+  // movement of the coordinate systems.  This flag overrides the behavior of updateSceneLayout
+  // for the next call to actually call updateSceneLayoutAnimated.
+  bool m_nextSceneUpdateAnimated = false;
+
   void projectScop();
   void appendCoordinateSystem(int dimensionality);
+  std::unordered_map<VizCoordinateSystem *, std::pair<double, double>> recomputeCoordinateSystemPositions();
   VizCoordinateSystem *createCoordinateSystem(VizCoordinateSystem *oldVCS);
   IsCsResult findCoordinateSystem(QPointF point);
   void correctIsCs(IsCsResult &result, VizPolyhedron *polyhedron);
