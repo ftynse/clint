@@ -53,10 +53,7 @@ public:
     return iterator->second;
   }
 
-  void transform(const TransformationGroup &tg) {
-    m_transformationSeq.groups.push_back(tg);
-    remapWithTransformationGroup(m_transformationSeq.groups.size() - 1);
-  }
+  void transform(const TransformationGroup &tg);
 
   void discardLastTransformationGroup() {
     CLINT_ASSERT(m_transformationSeq.groups.size() != 0,
@@ -169,8 +166,7 @@ private:
   void updateDependences(osl_scop_p transformed);
   void resetOccurrences(osl_scop_p transformed);
 
-  Transformation remapBetas(const Transformation &transformation);
-  void remapWithTransformationGroup(size_t index);
+  void remapBetas(const Transformation &transformation);
 
   osl_scop_p m_scopPart;
   osl_scop_p m_appliedScopCache = nullptr;

@@ -122,7 +122,6 @@ boost::optional<Transformation> ClayTransformer::guessInverseTransformation(osl_
       return Transformation::grain(transformation.target(), transformation.depth(), grain);
     else
       return boost::none;
-    break;
   }
 
   case Transformation::Kind::Linearize:
@@ -132,7 +131,6 @@ boost::optional<Transformation> ClayTransformer::guessInverseTransformation(osl_
       return Transformation::tile(transformation.target(), transformation.depth(), size);
     else
       return boost::none;
-    break;
   }
 
   case Transformation::Kind::Unembed:
@@ -140,7 +138,6 @@ boost::optional<Transformation> ClayTransformer::guessInverseTransformation(osl_
       return Transformation::embed(transformation.target());
     else
       return boost::none;
-    break;
 
   case Transformation::Kind::Collapse:
   {
@@ -156,13 +153,48 @@ boost::optional<Transformation> ClayTransformer::guessInverseTransformation(osl_
       return boost::none;
     }
   }
-    break;
+
+  case Transformation::Kind::Fuse:
+  {
+    clay_array_p beta_max = clay_beta_max(scop->statement, ClayBeta(transformation.target()));
+    int maximum = beta_max->data[transformation.target().size()];
+    clay_array_free(beta_max);
+    std::vector<int> beta = transformation.target();
+    beta.push_back(maximum);
+    return Transformation::splitAfter(beta);
+  }
+
+  case Transformation::Kind::Split:
+  {
+    std::vector<int> betaPrefix = transformation.target();
+    betaPrefix.resize(betaPrefix.size() - 1);
+    return Transformation::fuseNext(betaPrefix);
+  }
+
+  case Transformation::Kind::Reorder:
+  {
+    std::vector<int> order = transformation.order();
+    std::vector<int> new_order;
+    new_order.resize(order.size());
+    for (size_t i = 0; i < order.size(); ++i) {
+      new_order[order[i]] = i;
+    }
+    return Transformation::rawReorder(transformation.target(), new_order);
+  }
+
+  case Transformation::Kind::Tile:
+  {
+    return Transformation::linearize(transformation.target(), transformation.depth());
+  }
+
+  case Transformation::Kind::IndexSetSplitting:
+  {
+    return Transformation::collapse(transformation.target());
+  }
 
   default:
     throw std::invalid_argument("Cannot guess parameters for this transformation");
   }
-
-  return boost::none;
 }
 
 ClayBetaMapper::ClayBetaMapper(ClintScop *scop) {
@@ -471,55 +503,6 @@ void ClayBetaMapper::apply(osl_scop_p scop, const TransformationGroup &group) {
 void ClayBetaMapper::apply(osl_scop_p scop, const TransformationSequence &sequence) {
   iterativeApply(sequence.groups);
 }
-
-Transformation ClayBetaMapper::apply(const Transformation &transformation) {
-  Transformation complementary;
-
-  if (transformation.kind() == Transformation::Kind::Fuse) {
-    std::vector<int> betaPrefix = transformation.target();
-    int lastBetaValue = INT_MIN;
-    for (auto it : m_forwardMapping) {
-      // use beta-vectors after with current transformation
-      if (BetaUtility::isPrefix(betaPrefix, it.second)) {
-        int betaValue = it.first.at(betaPrefix.size());
-        lastBetaValue = std::max(lastBetaValue, betaValue);
-      }
-    }
-    CLINT_ASSERT(lastBetaValue != INT_MIN, "Fusing with empty loop");
-
-    betaPrefix.push_back(lastBetaValue);
-    complementary = Transformation::splitAfter(betaPrefix);
-  } else if (transformation.kind() == Transformation::Kind::Split) {
-    std::vector<int> betaPrefix = transformation.target();
-    betaPrefix.resize(betaPrefix.size() - 1);
-    complementary = Transformation::fuseNext(betaPrefix);
-  } else if (transformation.kind() == Transformation::Kind::Reorder) {
-    std::vector<int> order = transformation.order();
-    std::vector<int> new_order;
-    new_order.resize(order.size());
-    for (int i = 0; i < order.size(); ++i) {
-      new_order[order[i]] = i;
-    }
-    complementary = Transformation::rawReorder(transformation.target(), new_order);
-#if 0
-  } else if (transformation.kind() == Transformation::Kind::Shift) {
-    std::vector<int> parameters;
-    const std::vector<int> &transformationParameters = transformation.parameters();
-    parameters.reserve(transformationParameters.size());
-    std::transform(std::begin(transformationParameters),
-                   std::end(transformationParameters),
-                   std::back_inserter(parameters),
-                   std::negate<int>());
-    complementary = Transformation::rawShift(
-          transformation.target(), transformation.depth(),
-          parameters, -transformation.constantAmount());
-#endif
-  }
-
-  apply(nullptr, transformation);
-  return complementary;
-}
-
 
 void ClayBetaMapper::dump(std::ostream &out) const {
   std::set<Identifier> uniqueKeys;

@@ -429,18 +429,24 @@ const std::set<int> &ClintScop::tilingDimensions(const std::vector<int> &beta) c
   return o->tilingDimensions();
 }
 
-void ClintScop::remapWithTransformationGroup(size_t index) {
-  const TransformationGroup &tg = m_transformationSeq.groups.at(index);
+void ClintScop::transform(const TransformationGroup &tg) {
   TransformationGroup complementaryTG;
+  // Get the SCoP before the current group gets applied.
+  osl_scop_p applied = osl_scop_clone(appliedScop());
+  m_transformationSeq.groups.push_back(tg);
 
   for (size_t i = 0; i < tg.transformations.size(); ++i) {
     const Transformation &transformation = tg.transformations[i];
     // Remap betas when needed.
     if (transformation.modifiesBetas()) {
-      emit aboutToChangeBeta(index, i);
-      Transformation complementary = remapBetas(transformation);
+      emit aboutToChangeBeta(m_transformationSeq.groups.size() - 1, i);
+      remapBetas(transformation);
+      boost::optional<Transformation> optTransformation = m_transformer->guessInverseTransformation(applied, transformation);
+      CLINT_ASSERT(optTransformation, "Could not infer the inverse transfomation");
+      Transformation complementary = optTransformation.get();
       complementaryTG.transformations.insert(std::begin(complementaryTG.transformations), complementary);
     }
+    m_transformer->apply(applied, transformation);
     // XXX: needs rethinking
     // This weird move allows to workaround the 1-to-1 mapping condition imposed by the current implementation of remapBetas.
     // The problem is primarily caused by the fact of ClintStmtOccurrence creation in executeTransformationSequence (thus
@@ -453,10 +459,11 @@ void ClintScop::remapWithTransformationGroup(size_t index) {
       m_betaMapper->apply(nullptr, transformation);
     }
   }
+  appliedScopFlushCache();
   m_complementaryTransformationSeq.groups.push_back(complementaryTG);
 }
 
-Transformation ClintScop::remapBetas(const Transformation &transformation) {
+void ClintScop::remapBetas(const Transformation &transformation) {
   // m_betaMapper keeps the mapping from the original beta-vectors to the current ones,
   // but we cannot find get a ClintStmtOccurrence by original beta-vector if their beta-vectors
   // were changed during transformation: some of them may have been created by ISS thus making
@@ -464,7 +471,7 @@ Transformation ClintScop::remapBetas(const Transformation &transformation) {
   // temporary mapper to map from current beta-vectors to the new ones as well as we update the
   // m_betaMapper to keep dependency maps consistent.
   ClayBetaMapper *mapper = new ClayBetaMapper(this);
-  Transformation complementary = mapper->apply(transformation);
+  mapper->apply(nullptr, transformation);
 
   m_betaMapper->apply(nullptr, transformation);
 
@@ -482,7 +489,6 @@ Transformation ClintScop::remapBetas(const Transformation &transformation) {
 
   delete mapper;
   updateBetas(mapping);
-  return complementary;
 }
 
 // old->new
