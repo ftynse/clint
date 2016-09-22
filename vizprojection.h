@@ -152,6 +152,7 @@ public slots:
   void updateSceneLayout();
   void updateSceneLayoutAnimated();
   void finalizeOccurrenceChange();
+  void enableSceneLayoutUpdates();
 
 private:
   ProjectionView *m_view         = nullptr;
@@ -177,6 +178,7 @@ private:
   // movement of the coordinate systems.  This flag overrides the behavior of updateSceneLayout
   // for the next call to actually call updateSceneLayoutAnimated.
   bool m_nextSceneUpdateAnimated = false;
+  bool m_skipSceneLayoutUpdates = false;
 
   void projectScop();
   void appendCoordinateSystem(int dimensionality);

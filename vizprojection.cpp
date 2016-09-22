@@ -882,12 +882,20 @@ VizProjection::recomputeCoordinateSystemPositions() {
   return positions;
 }
 
+void VizProjection::enableSceneLayoutUpdates() {
+  m_skipSceneLayoutUpdates = false;
+}
+
 void VizProjection::updateSceneLayout() {
   if (m_nextSceneUpdateAnimated) {
     m_nextSceneUpdateAnimated = false;
     updateSceneLayoutAnimated();
     return;
   }
+  if (m_skipSceneLayoutUpdates) {
+    return;
+  }
+
   std::unordered_map<VizCoordinateSystem *, std::pair<double, double>> positions = recomputeCoordinateSystemPositions();
   for (auto pos : positions) {
     pos.first->setPos(pos.second.first, pos.second.second);
@@ -908,6 +916,9 @@ void VizProjection::updateSceneLayoutAnimated() {
     animation->setDuration(vizProperties()->animationDuration());
     animationGroup->addAnimation(animation);
   }
+  m_skipSceneLayoutUpdates = true;
+  connect(animationGroup, &QParallelAnimationGroup::finished,
+          this, &VizProjection::enableSceneLayoutUpdates);
   animationGroup->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
