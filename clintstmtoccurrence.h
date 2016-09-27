@@ -65,8 +65,8 @@ public:
     return m_tilingDimensions;
   }
 
-  void tile(int dimensionIdx, unsigned tileSize);
-  void untile(int dimensionIdx);
+  void tile(int depth, unsigned tileSize);
+  void untile(int depth);
 
   bool isTiled() const {
     return !m_tilingDimensions.empty();

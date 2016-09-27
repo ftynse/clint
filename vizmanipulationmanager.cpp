@@ -1274,18 +1274,20 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
   bool verticalTiled = occurrence->isProjectionTiled(point->coordinateSystem()->verticalDimensionIdx());
   int verticalTileSizeOld = occurrence->projectionDimTileSize(point->coordinateSystem()->verticalDimensionIdx());
 
+  // Do transformations in the order inverse to their depth since tile/linearize may change the
+  // depth, but will not affect the outer dimensions.
   TransformationGroup group;
   if (verticalTilingAllowed && verticalTileSizeOld != verticalTileSize) {
     int verticalDepth = occurrence->depth(point->coordinateSystem()->verticalDimensionIdx());
     std::vector<int> beta = occurrence->betaVector();
-    beta.resize(verticalDepth);
     if (verticalTiled) {
+      beta.resize(verticalDepth - 1);
       group.transformations.push_back(Transformation::linearize(
                                         beta,
                                         verticalDepth - 1));
-      occurrence->scop()->untile(beta, point->coordinateSystem()->verticalDimensionIdx());
+      // linearize changed depth
+      verticalDepth -= 1;
     }
-    verticalDepth = occurrence->depth(point->coordinateSystem()->verticalDimensionIdx());
     beta = occurrence->betaVector();
     beta.resize(verticalDepth);
     if (!verticalFullSelection) {
@@ -1293,23 +1295,20 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
                                         beta,
                                         verticalDepth,
                                         verticalTileSize));
-      occurrence->scop()->tile(beta,
-                               point->coordinateSystem()->verticalDimensionIdx(),
-                               verticalTileSize);
     }
   }
 
   if (horizontalTilingAllowed && horizontalTileSizeOld != horizontalTileSize) {
     int horizontalDepth = occurrence->depth(point->coordinateSystem()->horizontalDimensionIdx());
     std::vector<int> beta = occurrence->betaVector();
-    beta.resize(horizontalDepth);
     if (horizontalTiled) {
+      beta.resize(horizontalDepth - 1);
       group.transformations.push_back(Transformation::linearize(
                                         beta,
                                         horizontalDepth - 1));
-      occurrence->scop()->untile(beta, point->coordinateSystem()->horizontalDimensionIdx());
+      // linearize changed depth
+      horizontalDepth -= 1;
     }
-    horizontalDepth = occurrence->depth(point->coordinateSystem()->horizontalDimensionIdx());
     beta = occurrence->betaVector();
     beta.resize(horizontalDepth);
     if (!horizontalFullSelection) {
@@ -1317,9 +1316,6 @@ void VizManipulationManager::pointRightClicked(VizPoint *point) {
                                         beta,
                                         horizontalDepth,
                                         horizontalTileSize));
-      occurrence->scop()->tile(beta,
-                               point->coordinateSystem()->horizontalDimensionIdx(),
-                               horizontalTileSize);
     }
   }
 

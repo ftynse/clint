@@ -416,17 +416,17 @@ std::vector<int> ClintStmtOccurrence::untiledBetaVector() const {
   return std::move(beta);
 }
 
-void ClintStmtOccurrence::tile(int dimensionIdx, unsigned tileSize) {
+void ClintStmtOccurrence::tile(int depth, unsigned tileSize) {
   CLINT_ASSERT(tileSize != 0,
                "Cannot tile by 0 elements");
 
-  // Ignore previously tiled dimensions.
-  dimensionIdx = depth(dimensionIdx) - 1;
+  // For 0-based indexing (depth is 1-based).
+  depth -= 1;
 
   std::set<int> tilingDimensions;
   std::unordered_map<int, unsigned> tileSizes;
   for (int dim : m_tilingDimensions) {
-    if (dim >= 2 * dimensionIdx + 1) {
+    if (dim >= 2 * depth + 1) {
       tilingDimensions.insert(dim + 2);
       if (m_tileSizes.count(dim))
         tileSizes[dim + 2] = m_tileSizes[dim];
@@ -436,23 +436,24 @@ void ClintStmtOccurrence::tile(int dimensionIdx, unsigned tileSize) {
         tileSizes[dim] = m_tileSizes[dim];
     }
   }
-  tilingDimensions.insert(2 * dimensionIdx + 2);
-  tilingDimensions.insert(2 * dimensionIdx + 1);
-  tileSizes[2 * dimensionIdx + 1] = tileSize;
+  tilingDimensions.insert(2 * depth + 2);
+  tilingDimensions.insert(2 * depth + 1);
+  tileSizes[2 * depth + 1] = tileSize;
   m_tilingDimensions = tilingDimensions;
   m_tileSizes = tileSizes;
 }
 
-void ClintStmtOccurrence::untile(int dimensionIdx) {
-  dimensionIdx = depth(dimensionIdx) - 2;
+void ClintStmtOccurrence::untile(int depth) {
+  // For 0-based indexing (depth is 1-based).
+  depth -= 1;
 
   std::set<int> tilingDimensions;
   std::unordered_map<int, unsigned> tileSizes;
-  m_tilingDimensions.erase(2 * dimensionIdx + 2);
-  m_tilingDimensions.erase(2 * dimensionIdx + 1);
-  m_tileSizes.erase(2 * dimensionIdx + 1);
+  m_tilingDimensions.erase(2 * depth + 2);
+  m_tilingDimensions.erase(2 * depth + 1);
+  m_tileSizes.erase(2 * depth + 1);
   for (int dim : m_tilingDimensions) {
-    if (dim > 2 * dimensionIdx + 2) {
+    if (dim > 2 * depth + 2) {
       tilingDimensions.insert(dim - 2);
       if (m_tileSizes.count(dim))
         tileSizes[dim - 2] = m_tileSizes[dim];

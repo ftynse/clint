@@ -447,6 +447,17 @@ void ClintScop::transform(const TransformationGroup &tg) {
       complementaryTG.transformations.insert(std::begin(complementaryTG.transformations), complementary);
     }
     m_transformer->apply(applied, transformation);
+
+    // Keep track of tiled dimensions in occurrences to properly compute depth for projections.
+    // This makes ClintScop aware of transformation kinds.  A transformation-agnostic approach
+    // would imply assuming all implicitly-defined dimensions are a result of tiling and call
+    // Chlore function to discover them after a trasnformation affecting implicit definitions.
+    if (transformation.kind() == Transformation::Kind::Tile) {
+      tile(transformation.target(), transformation.depth(), transformation.constantAmount());
+    } else if (transformation.kind() == Transformation::Kind::Linearize) {
+      untile(transformation.target(), transformation.depth());
+    }
+
     // XXX: needs rethinking
     // This weird move allows to workaround the 1-to-1 mapping condition imposed by the current implementation of remapBetas.
     // The problem is primarily caused by the fact of ClintStmtOccurrence creation in executeTransformationSequence (thus
