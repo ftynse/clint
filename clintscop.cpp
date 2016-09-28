@@ -214,26 +214,6 @@ void ClintScop::executeTransformationSequence() {
   for (const TransformationGroup &group : m_transformationSeq.groups) {
     for (const Transformation &transformation : group.transformations) {
       m_transformer->apply(transformed, transformation);
-
-      if (groupsExecuted >= m_groupsExecuted) {
-        // Create the occurrence to reflect the ISS/Collapse result.
-        // XXX: this assumes loop contains only one statement, and makes assumptions on beta-structure.
-        // It is true for the transformation sequences created by VizManipulationManager.
-        if (transformation.kind() == Transformation::Kind::IndexSetSplitting) {
-          std::vector<int> loopBeta = transformation.target();
-          loopBeta.push_back(0);
-          ClintStmtOccurrence *occ = occurrence(loopBeta);
-          loopBeta.back() = 1;
-          occ->statement()->splitOccurrence(occ, loopBeta);
-          m_vizBetaMap[loopBeta] = occ->statement();                 // The subsequent call to resetOccurrences will replace the statement anyway
-        } else if (transformation.kind() == Transformation::Kind::Collapse) {
-          std::vector<int> loopBeta = transformation.target();
-          loopBeta.push_back(1);
-          ClintStmtOccurrence *occ = occurrence(loopBeta);
-          occ->statement()->removeOccurrence(occ);
-          m_vizBetaMap.erase(loopBeta);
-        }
-      }
     }
     ++groupsExecuted;
   }
@@ -430,23 +410,34 @@ const std::set<int> &ClintScop::tilingDimensions(const std::vector<int> &beta) c
 }
 
 void ClintScop::transform(const TransformationGroup &tg) {
-  TransformationGroup complementaryTG;
   // Get the SCoP before the current group gets applied.
   osl_scop_p applied = osl_scop_clone(appliedScop());
   m_transformationSeq.groups.push_back(tg);
+  m_complementaryTransformationSeq.groups.push_back(TransformationGroup()); // add an empty complementary group always
+  TransformationGroup &complementaryTG = m_complementaryTransformationSeq.groups.back(); // add transformations to it if necessary
 
   for (size_t i = 0; i < tg.transformations.size(); ++i) {
     const Transformation &transformation = tg.transformations[i];
+
     // Remap betas when needed.
-    if (transformation.modifiesBetas()) {
+    std::unordered_set<ClintStmt *> affectedStmts = std::unordered_set<ClintStmt *>();
+    if (transformation.modifiesBetas() ||
+        transformation.modifiesOccurrenceList()) {
       emit aboutToChangeBeta(m_transformationSeq.groups.size() - 1, i);
-      remapBetas(transformation);
+       affectedStmts = remapBetas(transformation);
       boost::optional<Transformation> optTransformation = m_transformer->guessInverseTransformation(applied, transformation);
       CLINT_ASSERT(optTransformation, "Could not infer the inverse transfomation");
       Transformation complementary = optTransformation.get();
       complementaryTG.transformations.insert(std::begin(complementaryTG.transformations), complementary);
     }
-    m_transformer->apply(applied, transformation);
+    m_transformer->apply(applied, transformation); // may throw
+    if (transformation.modifiesOccurrenceList()) {
+      resetOccurrences(applied);
+      updateDependences(applied);
+      for (ClintStmt *stmt : affectedStmts) {
+        emit stmtOccurrenceListChanged(stmt);
+      }
+    }
 
     // Keep track of tiled dimensions in occurrences to properly compute depth for projections.
     // This makes ClintScop aware of transformation kinds.  A transformation-agnostic approach
@@ -457,24 +448,11 @@ void ClintScop::transform(const TransformationGroup &tg) {
     } else if (transformation.kind() == Transformation::Kind::Linearize) {
       untile(transformation.target(), transformation.depth());
     }
-
-    // XXX: needs rethinking
-    // This weird move allows to workaround the 1-to-1 mapping condition imposed by the current implementation of remapBetas.
-    // The problem is primarily caused by the fact of ClintStmtOccurrence creation in executeTransformationSequence (thus
-    // apart from beta remapping) that happens in the undefined future; it is also not clear how to deal with multiple statements
-    // being created by a transformation (which beta to assign to the remapped statement and which to the one being created;
-    // is it important at all? occurrences will filter the scatterings they need, but not sure about dependence maps).
-    // As long as VizManipulationManager deals with the association of VizPolyhedron to ClintStmtOccurrrence after it was created,
-    // that part works fine.
-    if (transformation.modifiesOccurrenceList()) {
-      m_betaMapper->apply(nullptr, transformation);
-    }
   }
   appliedScopFlushCache();
-  m_complementaryTransformationSeq.groups.push_back(complementaryTG);
 }
 
-void ClintScop::remapBetas(const Transformation &transformation) {
+std::unordered_set<ClintStmt *> ClintScop::remapBetas(const Transformation &transformation) {
   // m_betaMapper keeps the mapping from the original beta-vectors to the current ones,
   // but we cannot find get a ClintStmtOccurrence by original beta-vector if their beta-vectors
   // were changed during transformation: some of them may have been created by ISS thus making
@@ -486,11 +464,64 @@ void ClintScop::remapBetas(const Transformation &transformation) {
 
   m_betaMapper->apply(nullptr, transformation);
 
+  std::multimap<std::vector<int>, std::vector<int>> createdBetaMapping; // iss only creates one beta, but unroll may create many
+  std::set<std::vector<int>> createdBetaVectors;
+
+  std::unordered_set<ClintStmt *> stmtsWithAffectedOccurrenceList;
+
+  // Add the occurrences that were issed away.
+  if (transformation.kind() == Transformation::Kind::IndexSetSplitting) {
+    std::vector<int> loopBeta = transformation.target();
+    int nbBetas = lastValueInLoop(loopBeta) + 1; // if the betas are not normalized, will skip unfound occurrences
+    for (int i = 0; i < nbBetas; i++) {
+      std::vector<int> beta = loopBeta;
+      beta.push_back(i);
+      ClintStmtOccurrence *occ = occurrence(beta); // too much beta-knowledge; just go through all occurrences with beta-prefix
+      if (!occ) continue;
+
+      std::set<std::vector<int>> mappedBetas = mapper->forwardMap(beta);
+      mappedBetas.erase(beta);
+      CLINT_ASSERT(mappedBetas.size() == 1, "ISS should split into two beta vectors");
+      std::vector<int> issedBeta = *mappedBetas.begin();
+
+      // This duplicates the work of a beta-mapper
+      occ->statement()->splitOccurrence(occ, issedBeta);
+      m_vizBetaMap[issedBeta] = occ->statement();
+      createdBetaMapping.insert(std::make_pair(beta, issedBeta));
+      createdBetaVectors.insert(issedBeta);
+
+      stmtsWithAffectedOccurrenceList.insert(occ->statement());
+    }
+  } else if (transformation.kind() == Transformation::Kind::Collapse) {
+    std::vector<int> loopBeta = transformation.target();
+    int nbBetas = lastValueInLoop(loopBeta) + 1;
+    for (int i = 0; i < nbBetas / 2; i++) {
+      std::vector<int> beta = loopBeta;
+      beta.push_back(i + nbBetas / 2);  // beta-mapper should know this...
+      ClintStmtOccurrence *occ = occurrence(beta);
+      if (!occ) continue;
+
+      occ->statement()->removeOccurrence(occ);
+      m_vizBetaMap.erase(beta);
+
+      stmtsWithAffectedOccurrenceList.insert(occ->statement());
+    }
+  }
+
   std::map<std::vector<int>, std::vector<int>> mapping;
   for (ClintStmt *stmt : statements()) {
     for (ClintStmtOccurrence *occurrence : stmt->occurrences()) {
-      std::set<std::vector<int>> mappedBetas =
-          mapper->forwardMap(occurrence->betaVector());
+      std::vector<int> beta = occurrence->betaVector();
+      if (createdBetaVectors.count(beta) != 0)
+        continue;
+      std::set<std::vector<int>> mappedBetas = mapper->forwardMap(beta);
+
+      for (auto it = createdBetaMapping.lower_bound(beta), eit = createdBetaMapping.upper_bound(beta);
+           it != eit; ++it) {
+        mappedBetas.erase(it->second);
+        mapping[it->second] = it->second; // mapped to itself, no need to reset beta-vector of the occurrence as it is already created with it
+      }
+
       CLINT_ASSERT(mappedBetas.size() == 1,
                    "Beta remapping is only possible for one-to-one mapping."); // Did you forget to add/remove occurrences before calling it?
       mapping[occurrence->betaVector()] = *mappedBetas.begin();
@@ -500,6 +531,8 @@ void ClintScop::remapBetas(const Transformation &transformation) {
 
   delete mapper;
   updateBetas(mapping);
+
+  return stmtsWithAffectedOccurrenceList;
 }
 
 // old->new
@@ -593,7 +626,7 @@ void ClintScop::undoTransformation() {
     m_groupsExecuted -= 1;
 
   } else {
-    transform(m_complementaryTransformationSeq.groups.back());
+    transform(TransformationGroup(m_complementaryTransformationSeq.groups.back())); // Force copy, back() is modified inside the function
     executeTransformationSequence();
     m_transformationSeq.groups.erase(std::end(m_transformationSeq.groups) - 2, std::end(m_transformationSeq.groups));
     m_complementaryTransformationSeq.groups.erase(std::end(m_complementaryTransformationSeq.groups) - 2,

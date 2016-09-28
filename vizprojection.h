@@ -153,6 +153,7 @@ public slots:
   void updateSceneLayoutAnimated();
   void finalizeOccurrenceChange();
   void enableSceneLayoutUpdates();
+  void createDeletePolyhedra(ClintStmt *stmt);
 
 private:
   ProjectionView *m_view         = nullptr;

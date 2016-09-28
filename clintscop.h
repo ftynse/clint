@@ -72,7 +72,7 @@ public:
   bool fuseBetaTo(std::vector<int> &beta, std::vector<int> betaPrefix, TransformationGroup &group, bool extraChild = false, int startDepth = 0);
 
   ClintStmtOccurrence *occurrence(const std::vector<int> &beta) const;
-  std::unordered_set<ClintStmtOccurrence *> occurrences(const std::vector<int> &betaPrefix) const;
+  std::unordered_set<ClintStmtOccurrence *> occurrences(const std::vector<int> &betaPrefix = std::vector<int>()) const;
   int lastValueInLoop(const std::vector<int> &loopBeta) const;
   std::unordered_set<ClintDependence *> internalDependences(ClintStmtOccurrence *occurrence) const;
   std::unordered_set<ClintDependence *> dependencesBetween(ClintStmtOccurrence *occ1, ClintStmtOccurrence *occ2) const;
@@ -149,6 +149,7 @@ public:
 signals:
   void transformExecuted();
   void aboutToChangeBeta(size_t, size_t);
+  void stmtOccurrenceListChanged(ClintStmt *);
   void dimensionalityChanged();
 
 public slots:
@@ -166,7 +167,7 @@ private:
   void updateDependences(osl_scop_p transformed);
   void resetOccurrences(osl_scop_p transformed);
 
-  void remapBetas(const Transformation &transformation);
+  std::unordered_set<ClintStmt *> remapBetas(const Transformation &transformation);
 
   osl_scop_p m_scopPart;
   osl_scop_p m_appliedScopCache = nullptr;

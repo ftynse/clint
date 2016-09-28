@@ -399,7 +399,6 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
   case PT_DETACHED_HORIZONTAL:
   case PT_DETACHED_VERTICAL:
   {
-    VizPolyhedron *polyhedron = new VizPolyhedron(nullptr, point->coordinateSystem());
     VizSelectionManager *sm = point->coordinateSystem()->projection()->selectionManager();
     const std::unordered_set<VizPoint *> selectedPoints = sm->selectedPoints();
     CLINT_ASSERT(std::find(std::begin(selectedPoints), std::end(selectedPoints), point) != std::end(selectedPoints),
@@ -415,13 +414,18 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     }
     int depth = oldPolyhedron->occurrence()->depth(dimensionIdx);
 
+    // TODO: this checks should happen in "about to move"
+    std::unordered_set<VizPolyhedron *> polyhedraWithSelectedPoints;
     for (VizPoint *vp : selectedPoints) {
-      polyhedron->reparentPoint(vp);
+      polyhedraWithSelectedPoints.insert(vp->polyhedron());
     }
-    oldPolyhedron->updateShape();
-    polyhedron->setColor(Qt::white);
-    polyhedron->updateShape();
-    point->coordinateSystem()->insertPolyhedronAfter(polyhedron, oldPolyhedron);
+    auto polyhedraInCS = point->polyhedron()->coordinateSystem()->polyhedra();
+    std::unordered_set<VizPolyhedron *> polyhedraInCoordinateSystem(std::begin(polyhedraInCS), std::end(polyhedraInCS));
+    // TODO: check whether the selected points have the same coordinates for all polyhedra?
+    if (polyhedraInCoordinateSystem != polyhedraWithSelectedPoints) {
+      qDebug() << "Not all polyhedra in the CS are selected.  Ignoring ISS.";
+      return;
+    }
 
     std::vector<int> betaLoop(oldPolyhedron->occurrence()->betaVector());
     betaLoop.erase(betaLoop.end() - 1);
@@ -434,109 +438,26 @@ void VizManipulationManager::pointHasMoved(VizPoint *point) {
     CLINT_ASSERT(issVector.size() >= 2, "malformed ISS vector");
 
     int nbInputDims = oldPolyhedron->occurrence()->untiledBetaVector().size() - 1;
-
-    // Exclude the statement from its position, iss works only with loops.
-    int lastValue = oldPolyhedron->scop()->lastValueInLoop(betaLoop);
-    int nbStatements = oldPolyhedron->scop()->occurrences(betaLoop).size();
-    CLINT_ASSERT(nbStatements - 1 == lastValue, "Beta map is not normalized");
-    std::vector<int> beta = oldPolyhedron->occurrence()->betaVector();
-    int originalPosition = beta.back();
-    TransformationGroup preGroup, postGroup;
-    if (nbStatements != 1) {
-      if (originalPosition != nbStatements - 1) { // if it is not already the last statement
-        preGroup.transformations.push_back(Transformation::putAfterLast(beta, nbStatements));
-      }
-      std::vector<int> splitBeta(betaLoop);
-      splitBeta.push_back(lastValue - 1);
-      preGroup.transformations.push_back(Transformation::splitAfter(splitBeta));
-      betaLoop.back() += 1; // splitted
-    }
-
     group.transformations.push_back(Transformation::issFromConstraint(betaLoop, issVector, nbInputDims));
 
-    // Put statement back to its original position along with the created statement.
-    if (nbStatements != 1) {
-      betaLoop.back() -= 1; // previous loop before splitted
-      postGroup.transformations.push_back(Transformation::fuseNext(betaLoop));
-      std::vector<int> betaStmt(betaLoop);
-      if (originalPosition != nbStatements - 1) {
-        betaStmt.push_back(nbStatements - 1);
-        postGroup.transformations.push_back(Transformation::putBefore(betaStmt, originalPosition, nbStatements + 1));
-        postGroup.transformations.push_back(Transformation::putAfter(betaStmt, originalPosition, nbStatements + 1));
-      }
-    }
-
-    // Execute statement split and index-set-split.
-    // Beta-remap needed after split, and executeTransformSequence will create the new statement.
-    if (preGroup.transformations.size() != 0) {
-      oldPolyhedron->scop()->transform(preGroup);
-    }
+    sm->clearSelection();
     oldPolyhedron->scop()->transform(group);
     oldPolyhedron->scop()->executeTransformationSequence();
 
-    // Execute statement fuse.  The new statement already exists, so we can safely remap it after fuse.
-    if (postGroup.transformations.size() != 0) {
-      oldPolyhedron->scop()->transform(postGroup);
-    }
-    oldPolyhedron->scop()->executeTransformationSequence();
-
-    originalPosition += 1;
-
-    betaLoop.push_back(originalPosition);
-    ClintStmtOccurrence *occurrence = oldPolyhedron->scop()->occurrence(betaLoop);
-    polyhedron->setOccurrenceImmediate(occurrence);
-    polyhedron->occurrenceChanged(); // Occurrence is not set when the transformation is executed so we have to notify changes manually.
-    oldPolyhedron->updateInternalDependences();
-    polyhedron->updateInternalDependences();
-    polyhedron->coordinateSystem()->projection()->updateInnerDependences();
   }
     break;
 
   case PT_ATTACHED:
   {
-    // XXX: makes assumptions about beta-structure and values (fine for now, given that we can recover betas with chlore)
     VizPolyhedron *currentPolyhedron = point->polyhedron();
-    VizPolyhedron *remaining = nullptr;
     std::vector<int> loopBeta = currentPolyhedron->coordinateSystem()->betaPrefix();
-    std::vector<int> remainingBeta(loopBeta), removingBeta(loopBeta);
-    std::vector<int> currentBeta = currentPolyhedron->occurrence()->betaVector();
-    remainingBeta.push_back(0);
-    removingBeta.push_back(1);
-    if (BetaUtility::isPrefixOrEqual(removingBeta, currentBeta)) {
-      // Reparent all selection points to another polyhedron.
-      VizPolyhedron *otherPolyhedron = currentPolyhedron->coordinateSystem()->polyhedron(remainingBeta);
-      CLINT_ASSERT(otherPolyhedron != 0, "Couldn't find a matching polyhedron for collapse");
-      VizSelectionManager *sm = currentPolyhedron->coordinateSystem()->projection()->selectionManager();
-      const std::unordered_set<VizPoint *> selectedPoints = sm->selectedPoints();
-      for (VizPoint *point : selectedPoints) {
-        otherPolyhedron->reparentPoint(point);
-      }
-      currentPolyhedron->coordinateSystem()->removePolyhedron(currentPolyhedron);
-      currentPolyhedron->deleteLater();
-      remaining = otherPolyhedron;
-    } else if (BetaUtility::isPrefixOrEqual(remainingBeta, currentBeta)) {
-      // Reparent all points of another polyhedron to the current.
-      VizPolyhedron *otherPolyhedron = currentPolyhedron->coordinateSystem()->polyhedron(removingBeta);
-      CLINT_ASSERT(otherPolyhedron != 0, "Couldn't find a matching polyhedron for collapse");
-      std::unordered_set<VizPoint *> points = otherPolyhedron->points();
-      for (VizPoint *point : points) {
-        currentPolyhedron->reparentPoint(point);
-      }
-      currentPolyhedron->coordinateSystem()->removePolyhedron(otherPolyhedron);
-      otherPolyhedron->deleteLater();
-      remaining = currentPolyhedron;
-    } else {
-      CLINT_UNREACHABLE;
-    }
-
-    remaining->updateShape();
 
     TransformationGroup group;
+    ClintScop *scop = currentPolyhedron->scop();
     group.transformations.push_back(Transformation::collapse(loopBeta));
-    remaining->scop()->transform(group);
-    remaining->scop()->executeTransformationSequence();
-    remaining->updateInternalDependences();
-    remaining->coordinateSystem()->projection()->updateInnerDependences();
+    scop->transform(group);
+    scop->executeTransformationSequence();
+
   }
     break;
   }

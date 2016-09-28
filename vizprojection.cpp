@@ -31,6 +31,8 @@ VizProjection::VizProjection(int horizontalDimensionIdx, int verticalDimensionId
   m_selectionManager = new VizSelectionManager(this);
   m_manipulationManager = new VizManipulationManager(this);
 
+  connect(m_scop, &ClintScop::stmtOccurrenceListChanged, this, &VizProjection::createDeletePolyhedra);
+
   projectScop();
 }
 
@@ -769,6 +771,38 @@ void VizProjection::reflectBetaTransformation(const Transformation &transformati
       vcs->setVerticalAxisState(VizCoordinateSystem::AxisState::Invisible);
     }
   }
+}
+
+void VizProjection::createDeletePolyhedra(ClintStmt *stmt) {
+  // Delete polyhedra for which occurrences no longer exist.
+  // Not a very effective method, may want to receive a signal each time an occurrence is deleted.
+  std::unordered_set<ClintStmtOccurrence *> allOccurrences = stmt->scop()->occurrences();
+  for (auto pile : m_coordinateSystems) {
+    for (VizCoordinateSystem *vcs : pile) {
+      for (VizPolyhedron *vph : vcs->polyhedra()) {
+        if (allOccurrences.count(vph->occurrence()) == 0) {
+          vph->coordinateSystem()->removePolyhedron(vph);
+          vph->deleteLater();
+        }
+      }
+    }
+  }
+
+  // Create polyhedra for newly created occurrences.
+  VizPolyhedron *vphOriginal = nullptr;
+  for (ClintStmtOccurrence *occ : stmt->occurrences()) {
+    VizPolyhedron *vph = polyhedron(occ);
+    if (!vph) continue;
+    CLINT_ASSERT(vphOriginal == nullptr, "Two \"original\" polyhedra exist during ISS, expected one.");
+    vphOriginal = vph;
+  }
+  for (ClintStmtOccurrence *occ : stmt->occurrences()) {
+    if (occ == vphOriginal->occurrence()) continue;
+    VizPolyhedron *vphCreated = new VizPolyhedron(occ, vphOriginal->coordinateSystem());
+    vphOriginal->coordinateSystem()->insertPolyhedronAfter(vphCreated, vphOriginal);
+  }
+  vphOriginal->coordinateSystem()->updateInnerDependences();
+  vphOriginal->coordinateSystem()->updateInternalDependences();
 }
 
 void VizProjection::updateColumnHorizontalMinMax(VizCoordinateSystem *coordinateSystem, int minOffset, int maxOffset) {
