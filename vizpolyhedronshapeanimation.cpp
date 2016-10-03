@@ -7,7 +7,7 @@
 #endif
 
 VizPolyhedronShapeAnimation::VizPolyhedronShapeAnimation(VizPolyhedron *polyhedron, int duration) :
-  QAbstractAnimation(polyhedron), m_polyhedron(polyhedron), m_duration(duration) {
+  QAbstractAnimation(), m_polyhedron(polyhedron), m_duration(duration) {
 }
 
 int VizPolyhedronShapeAnimation::duration() const {

@@ -44,6 +44,14 @@ VizPolyhedron::~VizPolyhedron() {
     delete vda;
   }
   m_deps.clear();
+
+  if (m_shapeAnimation) {
+    m_shapeAnimation->setParent(nullptr); // m_transitionAnimation can be a group containing m_shapeAnimation or may be not
+    delete m_shapeAnimation;
+  }
+  if (m_transitionAnimation) {
+    delete m_transitionAnimation;
+  }
 }
 
 VizPolyhedron *VizPolyhedron::createShadow(bool visible) {
@@ -144,6 +152,7 @@ void VizPolyhedron::reprojectPoints() {
   for (auto p : m_pts) {
     p.second->setParent(nullptr);
     p.second->setParentItem(nullptr);
+    p.second->setVisible(false);
     p.second->deleteLater();
   }
   m_pts.clear();
@@ -231,6 +240,7 @@ void VizPolyhedron::clearAnimation() {
     stopAnimation();
     if (m_shapeAnimation)
       m_shapeAnimation->setParent(nullptr);
+    m_transitionAnimation->setParent(nullptr);
     delete m_transitionAnimation;
     m_transitionAnimation = nullptr;
   }
@@ -700,6 +710,7 @@ VizPolyhedron::buildPolygonPoints(std::vector<VizPoint *> points,
 }
 
 void VizPolyhedron::recomputeShape() {
+  CLINT_ASSERT(m_coordinateSystem, "no coordinate system in recompute shape!");
   // Use pointScatteredCoordsReal * pointDistance for non-visual polygon
   recomputeSmoothShapeImpl(vizPointPos);
   prepareGeometryChange();
@@ -1282,7 +1293,7 @@ void VizPolyhedron::reparent(VizCoordinateSystem *vcs) {
   double offset = coordinateSystem()->projection()->vizProperties()->polyhedronOffset() * index;
 
   enlargeCoordinateSystem();
-  QPropertyAnimation *anim = new QPropertyAnimation(this, "pos", this);
+  QPropertyAnimation *anim = new QPropertyAnimation(this, "pos");
   anim->setDuration(coordinateSystem()->projection()->vizProperties()->animationDuration());
   anim->setEndValue(QPointF(offset, -offset));
   anim->start();
