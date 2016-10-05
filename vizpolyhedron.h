@@ -213,6 +213,7 @@ private:
   VizPolyhedron(ClintStmtOccurrence *occurrence, VizCoordinateSystem *vcs, CreateShadowTag);
 
   void setPointVisiblePos(VizPoint *vp, int x, int y);
+  void setPointVisiblePos(VizPoint *vp, std::pair<int, int> position);
   static std::pair<int, int> pointScatteredCoordsReal(const VizPoint *vp);
   std::vector<VizPoint *> convexHull() const;
   QPolygonF recomputePolygon() const;

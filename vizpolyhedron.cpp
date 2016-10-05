@@ -93,17 +93,21 @@ void VizPolyhedron::setHandleVisible(bool visible) {
 void VizPolyhedron::setPointVisiblePos(VizPoint *vp, int x, int y) {
   const double pointDistance =
       m_coordinateSystem->projection()->vizProperties()->pointDistance();
+  if (x == VizPoint::NO_COORD) x = 0;
+  if (y == VizPoint::NO_COORD) y = 0;
   vp->setPos(x * pointDistance, -y * pointDistance);
+}
+
+void VizPolyhedron::setPointVisiblePos(VizPoint *vp, std::pair<int, int> pos) {
+  int x, y;
+  std::tie(x, y) = pos;
+  setPointVisiblePos(vp, x, y);
 }
 
 void VizPolyhedron::resetPointPositions() {
   for (auto p : m_pts) {
     VizPoint *vp = p.second;
-    int x, y;
-    std::tie(x, y) = vp->scatteredCoordinates();
-    if (x == VizPoint::NO_COORD) x = 0;
-    if (y == VizPoint::NO_COORD) y = 0;
-    setPointVisiblePos(vp, x, y);
+    setPointVisiblePos(vp, vp->scatteredCoordinates());
   }
 }
 
@@ -139,6 +143,7 @@ void VizPolyhedron::reprojectPoints() {
       } else {
         vp = new VizPoint(this);
         vp->setOriginalCoordinates(originalCoordinates);
+        setPointVisiblePos(vp, scatteredCoordinates);
       }
       vp->setScatteredCoordinates(scatteredCoordinates);
       updatedPoints.emplace(originalCoordinates, vp);
@@ -361,12 +366,6 @@ void VizPolyhedron::updateInternalDependences() {
     setInternalDependences(dependence->projectOn(coordinateSystem()->horizontalDimensionIdx(),
                                                  coordinateSystem()->verticalDimensionIdx()));
   }
-}
-
-static std::pair<int, int> vizPointPosPair(const VizPoint *vp) {
-  QPointF posf = vp->pos();
-  QPoint pos = posf.toPoint();
-  return std::make_pair(pos.x(), -pos.y());
 }
 
 static QPointF vizPointPos(const VizPoint *vp) {
