@@ -37,22 +37,25 @@ osl_relation_p oslApplyScattering(osl_statement_p stmt, const std::vector<int> &
 
 osl_relation_p oslApplyScattering(const std::vector<osl_relation_p> &domains,
                                   const std::vector<osl_relation_p> &scatterings) {
-  std::vector<osl_relation_p> domain, scattering;
-  std::transform(std::begin(domains), std::end(domains), std::back_inserter(domain),
-                 std::bind(&osl_relation_nclone, std::placeholders::_1, 1));
-  std::transform(std::begin(scatterings), std::end(scatterings), std::back_inserter(scattering),
-                 std::bind(&osl_relation_nclone, std::placeholders::_1, 1));
-
-  osl_relation_p applied_domain = nullptr;
   osl_relation_p result = nullptr;
   // Cartesian product of unions of relations
-  for (osl_relation_p domain_union_part : domain) {
-    for (osl_relation_p scattering_union_part : scattering) {
-      CLINT_ASSERT(domain_union_part->nb_output_dims == scattering_union_part->nb_input_dims,
+  for (osl_relation_p domain_union_part : domains) {
+    for (osl_relation_p scattering_union_part : scatterings) {
+      // Stash old sizes as we are going to resize the relations.
+      int domain_output_dims = domain_union_part->nb_output_dims;
+      int domain_input_dims = domain_union_part->nb_input_dims;
+      int domain_local_dims = domain_union_part->nb_local_dims;
+      int domain_parameters = domain_union_part->nb_parameters;
+      int scattering_output_dims = scattering_union_part->nb_output_dims;
+      int scattering_input_dims = scattering_union_part->nb_input_dims;
+      int scattering_local_dims = scattering_union_part->nb_local_dims;
+      int scattering_parameters = scattering_union_part->nb_parameters;
+
+      CLINT_ASSERT(domain_output_dims == scattering_input_dims,
                    "Scattering is not applicable to the domain: dimensionality mismatch");
-      CLINT_ASSERT(domain_union_part->nb_parameters == scattering_union_part->nb_parameters,
+      CLINT_ASSERT(domain_parameters == scattering_parameters,
                    "Number of parameters doesn't match between domain and scattering");
-      CLINT_ASSERT(domain_union_part->nb_input_dims == 0,
+      CLINT_ASSERT(domain_input_dims == 0,
                    "Domain should not have input dimensions");
 
       // Prepare a domain relation for concatenation with a scattering relation.
@@ -61,55 +64,42 @@ osl_relation_p oslApplyScattering(const std::vector<osl_relation_p> &domains,
       // Prepend local dimensions to the domain and append to the scattering.
       osl_relation_p domain_part = osl_relation_nclone(domain_union_part, 1);
       osl_relation_p scattering_part = osl_relation_nclone(scattering_union_part, 1);
-      int domain_local_index = 1 + domain_part->nb_output_dims + domain_part->nb_input_dims;
-      for (int i = 0; i < scattering_union_part->nb_local_dims; i++) {
+      int domain_local_index = 1 + domain_output_dims + domain_input_dims;
+      for (int i = 0; i < scattering_local_dims; i++) {
         osl_relation_insert_blank_column(domain_part, domain_local_index);
       }
       // Add columns to accommodate output dimensions of the scattering relation (c's).
-      for (int i = 0; i < scattering_union_part->nb_output_dims; i++) {
+      for (int i = 0; i < scattering_output_dims; i++) {
         osl_relation_insert_blank_column(domain_part, 1);
       }
-      domain_part->nb_input_dims  = scattering_union_part->nb_input_dims;
-      domain_part->nb_output_dims = scattering_union_part->nb_output_dims;
-      domain_part->nb_local_dims  = domain_part->nb_local_dims + scattering_union_part->nb_local_dims;
+      domain_part->nb_input_dims  = scattering_input_dims;
+      domain_part->nb_output_dims = scattering_output_dims;
+      domain_part->nb_local_dims  = domain_local_dims + scattering_local_dims;
       domain_part->type           = OSL_TYPE_SCATTERING;
 
-      // Append local dimensions to the scatteirng;
+      // Append local dimensions to the scatteirng.
       int scattering_local_index = 1 + scattering_part->nb_input_dims
           + scattering_part->nb_output_dims + scattering_part->nb_local_dims;
-      for (int i = 0; i < domain_union_part->nb_local_dims; i++) {
+      for (int i = 0; i < domain_local_dims; i++) {
         osl_relation_insert_blank_column(scattering_part, scattering_local_index);
       }
-      scattering_part->nb_local_dims += domain_union_part->nb_local_dims;
+      scattering_part->nb_local_dims += domain_local_dims;
 
       // Create a scattered domain relation.
       osl_relation_p result_union_part = osl_relation_concat_constraints(domain_part, scattering_part);
-      result_union_part->nb_output_dims = scattering_union_part->nb_input_dims + scattering_union_part->nb_output_dims;
+      result_union_part->nb_output_dims = scattering_input_dims + scattering_output_dims;
       result_union_part->nb_input_dims = 0;
-      result_union_part->nb_local_dims = domain_union_part->nb_local_dims + scattering_union_part->nb_local_dims;
-      result_union_part->nb_parameters = domain_union_part->nb_parameters;
+      result_union_part->nb_local_dims = domain_local_dims + scattering_local_dims;
+      result_union_part->nb_parameters = domain_parameters;
       result_union_part->type = OSL_TYPE_DOMAIN;
       result_union_part->next = nullptr;
       osl_relation_integrity_check(result_union_part, OSL_TYPE_DOMAIN,
-                                   scattering_union_part->nb_input_dims + scattering_union_part->nb_output_dims,
-                                   0, scattering_union_part->nb_parameters);
-      if (result == nullptr) {
-        applied_domain = result_union_part;
-        result = applied_domain;
-      } else {
-        applied_domain->next = result_union_part;
-        applied_domain = result_union_part;
-      }
+                                   scattering_input_dims + scattering_output_dims,
+                                   0, scattering_parameters);
+      osl_relation_add(&result, result_union_part);
       osl_relation_free(domain_part);
       osl_relation_free(scattering_part);
     }
-  }
-
-  for (osl_relation_p domain_union_part : domain) {
-    osl_relation_free(domain_union_part);
-  }
-  for (osl_relation_p scattering_union_part : scattering) {
-    osl_relation_free(scattering_union_part);
   }
 
   return result;
