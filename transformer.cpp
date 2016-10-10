@@ -133,11 +133,23 @@ boost::optional<Transformation> ClayTransformer::guessInverseTransformation(osl_
       return boost::none;
   }
 
+  case Transformation::Kind::Embed:
+  {
+    std::vector<int> beta = transformation.target();
+    BetaUtility::createLoop(beta, beta.size());
+    return Transformation::unembed(beta);
+  }
+
   case Transformation::Kind::Unembed:
-    if (chlore_extract_embed(scop, ClayBeta(transformation.target())))
-      return Transformation::embed(transformation.target());
-    else
+  {
+    std::vector<int> beta = transformation.target();
+    if (chlore_extract_embed(scop, ClayBeta(beta))) {
+      BetaUtility::removeLoop(beta, beta.size() - 1);
+      return Transformation::embed(beta);
+    } else {
       return boost::none;
+    }
+  }
 
   case Transformation::Kind::Collapse:
   {
