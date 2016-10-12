@@ -13,7 +13,9 @@ class ClintStmtOccurrence;
 #include <clay/options.h>
 #include <clay/transformation.h>
 
+#include <climits>
 #include <exception>
+#include <iterator>
 #include <map>
 #include <set>
 #include <unordered_map>

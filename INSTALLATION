@@ -1,0 +1,78 @@
+Prerequisites
+-------------
+
+Clint should build on most modern POSIX and BSD systems with windowing
+interfaces.  It requires the following widely available libraries to be
+installed and visible in respective pathes:
+* Qt (version 5.4 or later)
+* Boost (version 1.55 or later)
+* GMP (version 6.0 or later)
+These libraries should be available in all major distributions and were tested
+in Debian stable (Jessie).
+
+The build process is multi-stage and requies the following tools:
+* make
+* autotools
+* autoconf
+* libtool
+* cmake (version 3.0 or later)
+* flex
+* bison
+Clint must be compiled with C++14 support (clang-3.5+ or GCC 4.9+ required).
+
+It also requires *development* versions of the following polyhedral framework
+libraries:
+* isl
+* OpenScop
+* CLooG
+* Clan
+* Candl
+* Clay
+* Chlore
+all of which are available via git submodules mechanism.  Do *not* initialize
+submodules if you intend to use the Clint build script.  Do *not* recursively
+initalize submodules at all as they rely on each other.  Please note that older
+versions of these libraries may be already installed in your distribution as a
+part of production compiler, e.g. GCC or Clang.  These versions may not be
+compatible with Clint.
+
+Building and installing
+-----------------------
+
+Clint is provided with a script that builds and installs the projet and the
+polyhedral libraries and tools. Run
+./build.sh
+to execute it.  This script will initalize and download submodules, build and
+install them before building and installing Clint.  After installation, clint
+executable file will be available in the installation directory.
+
+Build script is parameterized by the following environment variables:
+PREFIX -- installation path [default=$HOME/usr]
+QTPREFIX -- path where Qt is installed [default=/usr/lib]
+JOBS -- number of parallel `make' jobs [default=8].
+
+Tools and libraries are automatically installed to:
+$PREFIX/bin -- executables
+$PREFIX/lib -- libraries
+$PREFIX/include -- header files for the development.
+For example, clint executable will be available at $PREFIX/bin/clint.
+Ensure that the dynamic linker will be able to find the newly installed
+libraries by, e.g., changing (DY)LD_LIBRARY_PATH.
+
+Building Clint for Windows was never tested, however it does not depend on
+non-standard or platform-dependent behavior and should work as long as the
+library dependences are satisfied.
+
+Uninstalling
+------------
+
+Clint is provided with an uninstallation script.  Run
+./uninstall.sh
+to execute it.  Please note that this script uses the files that were created
+during the build process and is not guaranteed to completely remove Clint and
+all libraries if it is not called from the same location as the build script,
+especially for a different version.
+
+If you installed Clint to a specific folder identified by PREFIX, removing this
+folder suffices to completely delete Clint.
+

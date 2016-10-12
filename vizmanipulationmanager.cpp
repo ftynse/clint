@@ -641,7 +641,7 @@ void VizManipulationManager::polyhedronHasResized(VizPolyhedron *polyhedron) {
   Transformation densify = Transformation::densify(m_polyhedron->occurrence()->betaVector(),
                                                    depth);
   boost::optional<Transformation> inverse = m_polyhedron->occurrence()->scop()->guessInverseTransformation(densify);
-  int preGrainAmount = inverse ? inverse.value().constantAmount() : 1;
+  int preGrainAmount = inverse ? inverse.get().constantAmount() : 1;
 
   int horizontalRange = (m_polyhedron->localHorizontalMax() - m_polyhedron->localHorizontalMin());
   int verticalRange   = (m_polyhedron->localVerticalMax() - m_polyhedron->localVerticalMin());

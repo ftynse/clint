@@ -31,7 +31,8 @@ public slots:
   void updateRowColumn(int horizontalDim, int verticalDim);
 
 private:
-  std::map<std::pair<int, int>, VizProjection *> m_allProjections = std::map<std::pair<int, int>, VizProjection *>();
+  typedef std::map<std::pair<int, int>, VizProjection *> projectionMap;
+  projectionMap m_allProjections = projectionMap();
   QGridLayout *m_layout = nullptr;
 };
 

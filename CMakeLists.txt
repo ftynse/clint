@@ -1,6 +1,6 @@
 project(clint)
-cmake_minimum_required(VERSION 2.8.10)
-set(CMAKE_CXX_FLAGS "-std=c++1y -Wall -pedantic -O3")
+cmake_minimum_required(VERSION 3.0)
+set(CMAKE_CXX_FLAGS "-std=c++1y -Wall -pedantic -O3 -Wno-sign-compare")
 set(CMAKE_CXX_FLAGS_DEBUG "-std=c++1y -Wall -pedantic -O0 -g")
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
@@ -102,7 +102,7 @@ qt5_use_modules(${PROJECT_NAME} Widgets Gui Core Xml Svg)
 # Boost libraries
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_STATIC_RUNTIME OFF)
-find_package(Boost 1.56.0 REQUIRED)
+find_package(Boost 1.55.0 REQUIRED)
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
@@ -119,3 +119,13 @@ target_link_libraries(${PROJECT_NAME} ${CANDL_LIBRARY})
 target_link_libraries(${PROJECT_NAME} ${CLAY_LIBRARY})
 target_link_libraries(${PROJECT_NAME} ${PIPLIBMP_LIBRARY})
 target_link_libraries(${PROJECT_NAME} ${CHLORE_LIBRARY})
+
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake-uninstall.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake-uninstall.cmake"
+    IMMEDIATE @ONLY)
+
+add_custom_target(uninstall
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake-uninstall.cmake)

@@ -7,6 +7,9 @@
 
 #include <osl/osl.h>
 
+#include <climits>
+#include <cstring>
+#include <tuple>
 #include <vector>
 
 #include "macros.h"
