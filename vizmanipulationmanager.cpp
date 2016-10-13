@@ -148,8 +148,6 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
       std::tie(oldPileIdx, oldCsIdx) = oldCS->projection()->csIndices(oldCS);
       int horizontalDimensionIdx = vp->coordinateSystem()->projection()->horizontalDimensionIdx();
       int verticalDimensionIdx = vp->coordinateSystem()->projection()->verticalDimensionIdx();
-      bool oneDimensional = vp->occurrence()->dimensionality() < oldCS->verticalDimensionIdx();
-      bool zeroDimensional = vp->occurrence()->dimensionality() < oldCS->horizontalDimensionIdx();
 
       bool movedToAnotherCS = oldCS != cs; // split is needed if the polygon was moved to a different CS
 
@@ -158,14 +156,10 @@ void VizManipulationManager::polyhedronHasDetached(VizPolyhedron *polyhedron) {
         continue;
       }
 
-      bool csDeleted = false;
       bool pileDeleted = false;
-      CLINT_ASSERT(oneDimensional ? csDeleted : true, "In 1D cases, CS should be deleted");
-      CLINT_ASSERT(zeroDimensional ? pileDeleted : true, "In 0D cases, pile should be deleted");
 
       cs->reparentPolyhedron(vp);
       if (oldCS->isEmpty()) {
-        csDeleted = true;
         if (oldCS->projection()->pileCSNumber(oldPileIdx) == 1) {
           pileDeleted = true;
         }
