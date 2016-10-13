@@ -564,6 +564,7 @@ QRectF VizCoordinateSystem::outerRect() const {
   double top = internals.top();
   double width = internals.width();
   double height = internals.height();
+  double pointDistance = m_projection->vizProperties()->pointDistance();
 
   QFontMetrics fm(m_font);
   int ticWidth = 0;
@@ -575,6 +576,11 @@ QRectF VizCoordinateSystem::outerRect() const {
   width += ticWidth;
   left -= ticWidth;
   height += ticMargin() + fm.height();
+
+  // Account for outer dependence circles.
+  width += pointDistance + 4;
+  height += pointDistance + 4;
+  top -= pointDistance + 4;
 
   return QRectF(left, top, width, height);
 }

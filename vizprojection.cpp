@@ -419,24 +419,16 @@ void VizProjection::updateOuterDependences() {
       if (csIdx < csIdxEnd - 1) {
         VizCoordinateSystem *cs2 = pile1[csIdx + 1];
         int r = cs1->dependentWith(cs2);
-        if (r > 0) {
-          cs1->nextCsIsDependent = true;
-        }
-        if (r > 1) {
-          cs1->nextCsIsViolated = true;
-        }
+        cs1->nextCsIsDependent = r > 0;
+        cs1->nextCsIsViolated = r > 1;
       }
       if (pileIdx < pileIdxEnd - 1) {
         const std::vector<VizCoordinateSystem *> &pile2 = m_coordinateSystems[pileIdx + 1];
         for (int csoIdx = 0, csoIdxEnd = pile2.size(); csoIdx < csoIdxEnd; csoIdx++) {
           VizCoordinateSystem *cs3 = pile2[csoIdx];
           int r = cs1->dependentWith(cs3);
-          if (r > 0) {
-            pile1.front()->nextPileIsDependent = true;
-          }
-          if (r > 1) {
-            pile1.front()->nextPileIsViolated = true;
-          }
+          pile1.front()->nextPileIsDependent = r > 0;
+          pile1.front()->nextPileIsViolated = r > 1;
         }
       }
     }
@@ -918,6 +910,7 @@ VizProjection::recomputeCoordinateSystemPositions() {
 
 void VizProjection::enableSceneLayoutUpdates() {
   m_skipSceneLayoutUpdates = false;
+  updateOuterDependences();
 }
 
 void VizProjection::updateSceneLayout() {
@@ -934,6 +927,8 @@ void VizProjection::updateSceneLayout() {
   for (auto pos : positions) {
     pos.first->setPos(pos.second.first, pos.second.second);
   }
+
+  updateOuterDependences();
 }
 
 // This function moves coordianted systems with animation.  It should not be called when, e.g., constructing the projection from scratch.
