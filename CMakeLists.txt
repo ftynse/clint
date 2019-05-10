@@ -1,7 +1,9 @@
 project(clint)
 cmake_minimum_required(VERSION 3.0)
-set(CMAKE_CXX_FLAGS "-std=c++1y -Wall -pedantic -O3 -Wno-sign-compare")
-set(CMAKE_CXX_FLAGS_DEBUG "-std=c++1y -Wall -pedantic -O0 -g")
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "-Wall -pedantic -O3 -Wno-sign-compare")
+set(CMAKE_CXX_FLAGS_DEBUG "-Wall -pedantic -O0 -g")
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   message(STATUS "Using clang compiler")
